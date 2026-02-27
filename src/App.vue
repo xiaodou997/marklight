@@ -4,9 +4,6 @@ import { listen } from '@tauri-apps/api/event';
 import { open } from '@tauri-apps/plugin-dialog';
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { EditorState, TextSelection } from 'prosemirror-state';
-import { undo, redo } from 'prosemirror-history';
-import { selectAll } from 'prosemirror-commands';
 import { useFileStore } from './stores/file';
 import { useSettingsStore } from './stores/settings';
 import { useFileOperations } from './composables/useFileOperations';
@@ -138,7 +135,7 @@ async function copyToWechat() {
 }
 
 // 编辑器操作
-function editorAction(action: string) {
+function editorAction(_action: string) {
   if (!editorRef.value) return;
   const view = (editorRef.value as any).getEditorView?.();
   if (!view) return;

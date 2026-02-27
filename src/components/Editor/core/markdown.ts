@@ -2,7 +2,6 @@ import {
   MarkdownParser,
   MarkdownSerializer,
   defaultMarkdownSerializer,
-  defaultMarkdownParser,
 } from 'prosemirror-markdown';
 import { Node as ProsemirrorNode, Schema } from 'prosemirror-model';
 import markdownit from 'markdown-it';
