@@ -12,7 +12,12 @@
     <div class="flex items-center space-x-4">
       <span>{{ wordCount }} 字</span>
       <span>预计阅读 {{ readingTime }} 分钟</span>
-      <div class="flex items-center space-x-1">
+      <!-- 自动保存提示 -->
+      <div v-if="autoSaveStatus" class="text-green-500 font-medium">
+        {{ autoSaveStatus.message }}
+      </div>
+      <!-- 保存状态 -->
+      <div v-else class="flex items-center space-x-1">
         <span :class="fileStore.currentFile.isDirty ? 'text-orange-500' : 'text-green-500'">
           ●
         </span>
@@ -25,11 +30,13 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useFileStore } from '../../stores/file';
+import type { AutoSaveStatus } from '../../composables/useFileOperations';
 
 const props = defineProps<{
   wordCount: number;
   cursor: { line: number; col: number };
   selectionText: string;
+  autoSaveStatus?: AutoSaveStatus | null;
 }>();
 
 const fileStore = useFileStore();

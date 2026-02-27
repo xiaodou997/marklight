@@ -6,7 +6,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useFileStore } from './stores/file';
 import { useSettingsStore } from './stores/settings';
-import { useFileOperations } from './composables/useFileOperations';
+import { useFileOperations, type AutoSaveStatus } from './composables/useFileOperations';
 import EditorToolbar from './components/Toolbar/EditorToolbar.vue';
 import MarkdownEditor from './components/Editor/MarkdownEditor.vue';
 import StatusBar from './components/Layout/StatusBar.vue';
@@ -17,13 +17,16 @@ import { serializeMarkdown } from './components/Editor/core/markdown';
 
 const fileStore = useFileStore();
 const settingsStore = useSettingsStore();
-const { handleNew, handleOpen, handleSave, handleSaveAs } = useFileOperations();
+const { handleNew, handleOpen, handleSave, handleSaveAs, setupAutoSave } = useFileOperations();
 const editorRef = ref<InstanceType<typeof MarkdownEditor> | null>(null);
 const appWindow = getCurrentWindow();
 
 const isSidebarOpen = ref(true);
 const isSourceMode = ref(false);
 const sidebarMode = ref<'outline' | 'files'>('outline');
+
+// 自动保存状态
+const autoSaveStatus = ref<AutoSaveStatus | null>(null);
 
 // 统计与大纲数据
 const stats = reactive({
@@ -36,6 +39,9 @@ const outlineItems = ref<OutlineItem[]>([]);
 // 文件树数据
 const files = ref<FileInfo[]>([]);
 const currentFolder = ref<string | null>(null);
+
+// 自动保存清理函数
+let cleanupAutoSave: (() => void) | null = null;
 
 // 加载文件列表
 async function loadFiles(folderPath: string) {
@@ -198,10 +204,18 @@ onMounted(() => {
   updateWindowTitle();
   settingsStore.initTheme();
   document.addEventListener('copy', onCopy);
+  
+  // 设置自动保存
+  cleanupAutoSave = setupAutoSave(autoSaveStatus);
 });
 
 onUnmounted(() => {
   document.removeEventListener('copy', onCopy);
+  
+  // 清理自动保存
+  if (cleanupAutoSave) {
+    cleanupAutoSave();
+  }
 });
 
 // 监听原生菜单事件
@@ -299,6 +313,7 @@ onUnmounted(() => {
       :word-count="stats.wordCount"
       :cursor="stats.cursor"
       :selection-text="stats.selectionText"
+      :auto-save-status="autoSaveStatus"
     />
 
     <!-- 设置弹窗 -->

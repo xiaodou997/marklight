@@ -1,9 +1,17 @@
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { invoke } from '@tauri-apps/api/core';
+import { watch, type Ref } from 'vue';
 import { useFileStore } from '../stores/file';
+import { useSettingsStore } from '../stores/settings';
+
+export interface AutoSaveStatus {
+  message: string;
+  timestamp: number;
+}
 
 export function useFileOperations() {
   const fileStore = useFileStore();
+  const settingsStore = useSettingsStore();
 
   async function handleNew() {
     if (fileStore.currentFile.isDirty) {
@@ -34,12 +42,16 @@ export function useFileOperations() {
       try {
         await invoke('save_file', { path: file.path, content: file.content });
         fileStore.markSaved();
+        return true;
       } catch (error) { 
         console.error('Failed to save file:', error); 
+        return false;
       }
     } else { 
-      await handleSaveAs(); 
+      await handleSaveAs();
+      return true;
     }
+    return false;
   }
 
   async function handleSaveAs() {
@@ -57,10 +69,68 @@ export function useFileOperations() {
     }
   }
 
+  /**
+   * 设置自动保存
+   * @param autoSaveStatusRef 用于传递自动保存状态的 ref
+   */
+  function setupAutoSave(autoSaveStatusRef: Ref<AutoSaveStatus | null>) {
+    let saveTimeout: ReturnType<typeof setTimeout> | null = null;
+
+    // 监听 isDirty 变化
+    const stopWatch = watch(
+      () => fileStore.currentFile.isDirty,
+      (isDirty) => {
+        // 清除之前的定时器
+        if (saveTimeout) {
+          clearTimeout(saveTimeout);
+          saveTimeout = null;
+        }
+
+        // 如果 isDirty 为 true 且设置了自动保存
+        if (isDirty && settingsStore.settings.autoSave) {
+          const interval = settingsStore.settings.autoSaveInterval * 1000;
+          
+          saveTimeout = setTimeout(async () => {
+            // 再次检查条件（可能在等待期间发生了变化）
+            if (!fileStore.currentFile.isDirty || !fileStore.currentFile.path) {
+              return;
+            }
+
+            const success = await handleSave();
+            if (success) {
+              // 设置自动保存状态，供状态栏显示
+              autoSaveStatusRef.value = {
+                message: '已自动保存',
+                timestamp: Date.now()
+              };
+              
+              // 2秒后清除提示
+              setTimeout(() => {
+                if (autoSaveStatusRef.value?.timestamp === Date.now()) {
+                  autoSaveStatusRef.value = null;
+                }
+              }, 2000);
+            }
+          }, interval);
+        }
+      },
+      { immediate: false }
+    );
+
+    // 返回清理函数
+    return () => {
+      if (saveTimeout) {
+        clearTimeout(saveTimeout);
+      }
+      stopWatch();
+    };
+  }
+
   return {
     handleNew,
     handleOpen,
     handleSave,
-    handleSaveAs
+    handleSaveAs,
+    setupAutoSave
   };
 }
