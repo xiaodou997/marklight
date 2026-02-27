@@ -48,6 +48,7 @@ import { createImageHandlePlugin } from './core/plugins/image-handle';
 import { createTableToolbarPlugin, handleTableAction } from './core/plugins/table-toolbar';
 import { createSmartPastePlugin } from './core/plugins/smart-paste';
 import { createSearchPlugin, getSearchState, setQuery, setCaseSensitive, nextMatch, prevMatch, replaceCurrent, replaceAll, scrollToCurrentMatch, resetSearch } from './core/plugins/search';
+import { createLinkTooltipPlugin } from './core/plugins/link-tooltip';
 
 import CodeBlockView from './views/CodeBlockView.vue';
 import ImageView from './views/ImageView.vue';
@@ -106,7 +107,7 @@ const myKeymap = keymap({
   ...baseKeymap
 });
 
-const onMenuAction = (type: string) => { if (editorView) handleMenuAction(editorView, type, mySchema); };
+const onMenuAction = (type: string, data?: any) => { if (editorView) handleMenuAction(editorView, type, mySchema, data); };
 const onTableAction = (type: string) => { if (editorView) handleTableAction(editorView, type); };
 
 // 防抖更新统计信息
@@ -196,13 +197,14 @@ onMounted(() => {
         columnResizing(),
         tableEditing(),
         createSmartPastePlugin(mySchema),
-        createBubbleMenuPlugin(mySchema, (show, left, top, marks) => {
-          bubbleMenuRef.value?.update(show, left, top, marks);
+        createBubbleMenuPlugin(mySchema, (show, left, top, marks, linkHref) => {
+          bubbleMenuRef.value?.update(show, left, top, marks, linkHref);
         }),
         createTableToolbarPlugin((show, left, top) => {
           tableToolbarRef.value?.update(show, left, top);
         }),
-        createSearchPlugin()
+        createSearchPlugin(),
+        createLinkTooltipPlugin()
       ],
       doc: parseMarkdown(props.initialContent || '', mySchema)
     }),
