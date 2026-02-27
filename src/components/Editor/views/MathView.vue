@@ -6,10 +6,23 @@
       isEditing ? 'is-editing' : '',
     ]"
     @click.stop="startEditing"
+    @mouseenter="showPreview"
+    @mouseleave="hidePreview"
   >
     <!-- 渲染模式 -->
     <div v-show="!isEditing" ref="renderRef" class="math-render"></div>
     <span v-if="!latex && !isEditing" class="math-placeholder">空公式</span>
+
+    <!-- 预览气泡 -->
+    <div
+      v-if="showPreviewBubble && !isEditing && latex"
+      ref="previewRef"
+      class="math-preview-bubble"
+      :class="{ 'math-preview-bubble-visible': previewReady }"
+    >
+      <div class="math-preview-content" v-html="previewHtml"></div>
+      <div class="math-preview-source">{{ latex }}</div>
+    </div>
 
     <!-- 编辑模式：Typora 风格源码展示 -->
     <div v-if="isEditing" class="math-source" @click.stop>
@@ -56,6 +69,11 @@ const latex = ref(props.node.attrs.latex || '');
 const renderRef = ref<HTMLElement | null>(null);
 const inputRef = ref<HTMLTextAreaElement | HTMLInputElement | null>(null);
 
+// 预览气泡状态
+const showPreviewBubble = ref(false);
+const previewReady = ref(false);
+const previewHtml = ref('');
+
 const renderMath = () => {
   if (renderRef.value && latex.value) {
     try {
@@ -65,6 +83,19 @@ const renderMath = () => {
       });
     } catch (e) {
       console.error(e);
+    }
+  }
+};
+
+const renderPreview = () => {
+  if (latex.value) {
+    try {
+      previewHtml.value = katex.renderToString(latex.value, {
+        throwOnError: false,
+        displayMode: true, // 预览始终用块级模式
+      });
+    } catch (e) {
+      previewHtml.value = '<span style="color: red;">渲染错误</span>';
     }
   }
 };
@@ -79,6 +110,7 @@ const autoResize = () => {
 
 const startEditing = () => {
   isEditing.value = true;
+  showPreviewBubble.value = false;
   nextTick(() => {
     const el = inputRef.value;
     if (el) {
@@ -96,6 +128,28 @@ const startEditing = () => {
 const stopEditing = () => {
   isEditing.value = false;
   nextTick(renderMath);
+};
+
+const showPreview = () => {
+  if (isEditing.value || !latex.value) return;
+  
+  showPreviewBubble.value = true;
+  renderPreview();
+  
+  nextTick(() => {
+    // 延迟显示动画
+    setTimeout(() => {
+      previewReady.value = true;
+    }, 10);
+  });
+};
+
+const hidePreview = () => {
+  previewReady.value = false;
+  // 延迟隐藏，让动画完成
+  setTimeout(() => {
+    showPreviewBubble.value = false;
+  }, 150);
 };
 
 onMounted(renderMath);
@@ -118,6 +172,7 @@ watch(latex, (newVal) => {
   cursor: pointer;
   border-radius: 4px;
   transition: background-color 0.15s ease;
+  position: relative;
 }
 .math-view-wrapper:hover {
   background-color: rgba(59, 130, 246, 0.06);
@@ -149,6 +204,46 @@ watch(latex, (newVal) => {
   background: #f8fafc;
   border: 1px solid #e2e8f0;
   border-radius: 6px;
+}
+
+/* === 预览气泡 === */
+.math-preview-bubble {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  transform: translateX(-50%) translateY(4px);
+  z-index: 100;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  padding: 12px 16px;
+  min-width: 120px;
+  max-width: 400px;
+  opacity: 0;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  pointer-events: none;
+}
+.math-preview-bubble-visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.math-preview-content {
+  text-align: center;
+  font-size: 1.1em;
+  overflow-x: auto;
+}
+
+.math-preview-source {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #f3f4f6;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.75rem;
+  color: #6b7280;
+  text-align: center;
+  word-break: break-all;
 }
 
 /* === 源码区 === */
