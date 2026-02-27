@@ -1,12 +1,120 @@
 import { Plugin } from 'prosemirror-state';
 import { schema } from 'prosemirror-markdown';
+import { invoke } from '@tauri-apps/api/core';
+import { useFileStore } from '../../../../stores/file';
 
 /**
- * 尝试从 File 对象中获取路径 (Tauri 特有)
+ * 尝试从 File 对象获取路径 (Tauri 特有)
  */
 function getFilePath(file: File): string | null {
-  // 在 Tauri 中，拖拽进来的 File 对象通常包含一个 path 属性
   return (file as any).path || null;
+}
+
+/**
+ * 生成图片文件名
+ * 格式: image-{timestamp}-{random4}.{ext}
+ */
+function generateImageFilename(ext: string): string {
+  const timestamp = Date.now();
+  const random = Math.random().toString(36).substring(2, 6);
+  return `image-${timestamp}-${random}.${ext}`;
+}
+
+/**
+ * 从 MIME 类型获取文件扩展名
+ */
+function getExtensionFromMime(mimeType: string): string {
+  const mimeMap: Record<string, string> = {
+    'image/png': 'png',
+    'image/jpeg': 'jpg',
+    'image/jpg': 'jpg',
+    'image/gif': 'gif',
+    'image/webp': 'webp',
+    'image/svg+xml': 'svg',
+    'image/bmp': 'bmp',
+  };
+  return mimeMap[mimeType] || 'png';
+}
+
+/**
+ * 将 File 对象转换为 ArrayBuffer
+ */
+function fileToArrayBuffer(file: File): Promise<ArrayBuffer> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as ArrayBuffer);
+    reader.onerror = reject;
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+/**
+ * 异步保存图片并插入到编辑器
+ */
+async function saveAndInsertImage(
+  view: any,
+  file: File,
+  fileStore: ReturnType<typeof useFileStore>,
+  alt: string
+): Promise<void> {
+  if (!fileStore.currentFile.path) {
+    // 文件未保存，使用 data URL 并提示
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const node = schema.nodes.image.create({
+        src: e.target?.result,
+        alt
+      });
+      view.dispatch(view.state.tr.replaceSelectionWith(node));
+      
+      // 发送提示事件
+      window.dispatchEvent(new CustomEvent('image-paste-warning', {
+        detail: '请先保存文件以启用图片本地化存储'
+      }));
+    };
+    reader.readAsDataURL(file);
+    return;
+  }
+
+  try {
+    const ext = getExtensionFromMime(file.type);
+    const filename = generateImageFilename(ext);
+    
+    // 获取文件所在目录
+    const filePath = fileStore.currentFile.path;
+    const lastSlash = Math.max(filePath.lastIndexOf('/'), filePath.lastIndexOf('\\'));
+    const dir = lastSlash !== -1 ? filePath.substring(0, lastSlash) : filePath;
+    
+    // 读取图片数据
+    const arrayBuffer = await fileToArrayBuffer(file);
+    const data = Array.from(new Uint8Array(arrayBuffer));
+    
+    // 调用 Rust 命令保存图片
+    const relativePath = await invoke<string>('save_image', {
+      dir,
+      filename,
+      data
+    });
+    
+    // 插入相对路径
+    const node = schema.nodes.image.create({
+      src: relativePath,
+      alt
+    });
+    view.dispatch(view.state.tr.replaceSelectionWith(node));
+  } catch (error) {
+    console.error('保存图片失败:', error);
+    // 失败时回退到 data URL
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const node = schema.nodes.image.create({
+        src: e.target?.result,
+        alt
+      });
+      view.dispatch(view.state.tr.replaceSelectionWith(node));
+    };
+    reader.readAsDataURL(file);
+  }
 }
 
 export const createImageHandlePlugin = () => {
@@ -23,26 +131,18 @@ export const createImageHandlePlugin = () => {
           event.preventDefault();
 
           const path = getFilePath(file);
-          const { state, dispatch } = view;
+          const fileStore = useFileStore();
 
           if (path) {
-            // 1. 如果有真实路径（本地拖入），直接使用绝对路径
+            // 本地拖入的文件，直接使用绝对路径
             const node = schema.nodes.image.create({
               src: path,
               alt: file.name
             });
-            dispatch(state.tr.replaceSelectionWith(node));
+            view.dispatch(view.state.tr.replaceSelectionWith(node));
           } else {
-            // 2. 如果没有路径（如从浏览器拖入），回退到 Base64 或上传逻辑
-            const reader = new FileReader();
-            reader.onload = (e) => {
-              const node = schema.nodes.image.create({
-                src: e.target?.result,
-                alt: file.name
-              });
-              dispatch(view.state.tr.replaceSelectionWith(node));
-            };
-            reader.readAsDataURL(file);
+            // 异步保存图片
+            saveAndInsertImage(view, file, fileStore, file.name);
           }
 
           return true;
@@ -55,17 +155,10 @@ export const createImageHandlePlugin = () => {
             if (item.type.startsWith('image/')) {
               const file = item.getAsFile();
               if (file) {
-                // 剪贴板图片通常没有路径，需要处理为 Base64 
-                // 或者在实际项目中，这里会调用 Tauri 命令保存到本地 /assets 目录
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                   const node = schema.nodes.image.create({ 
-                     src: e.target?.result,
-                     alt: 'pasted-image'
-                   });
-                   view.dispatch(view.state.tr.replaceSelectionWith(node));
-                };
-                reader.readAsDataURL(file);
+                event.preventDefault();
+                const fileStore = useFileStore();
+                // 异步保存图片
+                saveAndInsertImage(view, file, fileStore, 'pasted-image');
                 return true;
               }
             }

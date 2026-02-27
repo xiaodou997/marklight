@@ -28,6 +28,9 @@ const sidebarMode = ref<'outline' | 'files'>('outline');
 // 自动保存状态
 const autoSaveStatus = ref<AutoSaveStatus | null>(null);
 
+// 图片粘贴警告
+const imagePasteWarning = ref<string | null>(null);
+
 // 统计与大纲数据
 const stats = reactive({
   wordCount: 0,
@@ -207,6 +210,16 @@ onMounted(() => {
   
   // 设置自动保存
   cleanupAutoSave = setupAutoSave(autoSaveStatus);
+  
+  // 监听图片粘贴警告事件
+  const handleImagePasteWarning = (e: CustomEvent) => {
+    imagePasteWarning.value = e.detail;
+    // 3秒后自动消失
+    setTimeout(() => {
+      imagePasteWarning.value = null;
+    }, 3000);
+  };
+  window.addEventListener('image-paste-warning', handleImagePasteWarning as EventListener);
 });
 
 onUnmounted(() => {
@@ -216,6 +229,9 @@ onUnmounted(() => {
   if (cleanupAutoSave) {
     cleanupAutoSave();
   }
+  
+  // 移除图片粘贴警告监听
+  window.removeEventListener('image-paste-warning', () => {});
 });
 
 // 监听原生菜单事件
@@ -316,6 +332,7 @@ onUnmounted(() => {
       :cursor="stats.cursor"
       :selection-text="stats.selectionText"
       :auto-save-status="autoSaveStatus"
+      :image-paste-warning="imagePasteWarning"
     />
 
     <!-- 设置弹窗 -->

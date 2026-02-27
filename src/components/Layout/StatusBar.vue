@@ -10,19 +10,25 @@
     </div>
 
     <div class="flex items-center space-x-4">
-      <span>{{ wordCount }} 字</span>
-      <span>预计阅读 {{ readingTime }} 分钟</span>
-      <!-- 自动保存提示 -->
-      <div v-if="autoSaveStatus" class="text-green-500 font-medium">
-        {{ autoSaveStatus.message }}
+      <!-- 图片粘贴警告 -->
+      <div v-if="imagePasteWarning" class="text-orange-500 font-medium">
+        ⚠️ {{ imagePasteWarning }}
       </div>
-      <!-- 保存状态 -->
-      <div v-else class="flex items-center space-x-1">
-        <span :class="fileStore.currentFile.isDirty ? 'text-orange-500' : 'text-green-500'">
-          ●
-        </span>
-        <span>{{ fileStore.currentFile.isDirty ? '未保存' : '已保存' }}</span>
-      </div>
+      <template v-else>
+        <span>{{ wordCount }} 字</span>
+        <span>预计阅读 {{ readingTime }} 分钟</span>
+        <!-- 自动保存提示 -->
+        <div v-if="autoSaveStatus" class="text-green-500 font-medium">
+          {{ autoSaveStatus.message }}
+        </div>
+        <!-- 保存状态 -->
+        <div v-else class="flex items-center space-x-1">
+          <span :class="fileStore.currentFile.isDirty ? 'text-orange-500' : 'text-green-500'">
+            ●
+          </span>
+          <span>{{ fileStore.currentFile.isDirty ? '未保存' : '已保存' }}</span>
+        </div>
+      </template>
     </div>
   </div>
 </template>
@@ -37,6 +43,7 @@ const props = defineProps<{
   cursor: { line: number; col: number };
   selectionText: string;
   autoSaveStatus?: AutoSaveStatus | null;
+  imagePasteWarning?: string | null;
 }>();
 
 const fileStore = useFileStore();

@@ -49,12 +49,14 @@
 <script setup lang="ts">
 import { ref, computed, nextTick } from 'vue';
 import { convertFileSrc } from '@tauri-apps/api/core';
+import { useFileStore } from '../../../stores/file';
 
 const props = defineProps<{
   node: any;
   updateAttributes: (attrs: any) => void;
 }>();
 
+const fileStore = useFileStore();
 const error = ref(false);
 const isEditing = ref(false);
 const altText = ref('');
@@ -64,8 +66,18 @@ const srcRef = ref<HTMLInputElement | null>(null);
 const safeSrc = computed(() => {
   const src = props.node?.attrs?.src;
   if (!src) return '';
-  if (src.startsWith('http')) return src;
-  if (src.startsWith('data:')) return src;
+  
+  // 网络图片直接返回
+  if (src.startsWith('http://') || src.startsWith('https://')) {
+    return src;
+  }
+  
+  // data URL 直接返回
+  if (src.startsWith('data:')) {
+    return src;
+  }
+  
+  // 绝对路径（以 / 开头或包含盘符如 C:\）
   if (src.startsWith('/') || src.includes(':\\')) {
     try {
       return convertFileSrc(src);
@@ -74,6 +86,24 @@ const safeSrc = computed(() => {
       return src;
     }
   }
+  
+  // 相对路径（如 assets/image-xxx.png）
+  // 需要基于当前文件目录解析
+  if (fileStore.currentFile.path) {
+    const filePath = fileStore.currentFile.path;
+    const lastSlash = Math.max(filePath.lastIndexOf('/'), filePath.lastIndexOf('\\'));
+    const dir = lastSlash !== -1 ? filePath.substring(0, lastSlash) : filePath;
+    
+    // 拼接绝对路径
+    const absolutePath = `${dir}/${src}`;
+    try {
+      return convertFileSrc(absolutePath);
+    } catch (e) {
+      console.warn('Relative path conversion failed:', e);
+      return src;
+    }
+  }
+  
   return src;
 });
 

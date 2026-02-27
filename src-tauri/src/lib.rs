@@ -1,6 +1,7 @@
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu, CheckMenuItem};
 use tauri::Emitter;
 use std::fs;
+use std::path::Path;
 
 #[tauri::command]
 fn read_file(path: String) -> Result<String, String> {
@@ -37,6 +38,38 @@ fn list_directory(path: String) -> Result<Vec<FileInfo>, String> {
         }
     });
     Ok(files)
+}
+
+/// 保存图片到指定目录的 assets 子目录中
+/// 返回相对路径，如 "assets/image-20240301-143022.png"
+#[tauri::command]
+fn save_image(dir: String, filename: String, data: Vec<u8>) -> Result<String, String> {
+    // 创建 assets 目录路径
+    let assets_dir = Path::new(&dir).join("assets");
+    
+    // 如果 assets 目录不存在，创建它
+    if !assets_dir.exists() {
+        fs::create_dir_all(&assets_dir).map_err(|e| format!("创建 assets 目录失败: {}", e))?;
+    }
+    
+    // 构建完整文件路径
+    let file_path = assets_dir.join(&filename);
+    
+    // 写入图片数据
+    fs::write(&file_path, data).map_err(|e| format!("保存图片失败: {}", e))?;
+    
+    // 返回相对路径
+    Ok(format!("assets/{}", filename))
+}
+
+/// 获取文件的绝对路径（用于解析相对路径的图片）
+#[tauri::command]
+fn resolve_image_path(file_dir: String, relative_path: String) -> Result<String, String> {
+    let absolute_path = Path::new(&file_dir).join(&relative_path);
+    absolute_path
+        .to_str()
+        .map(|s| s.to_string())
+        .ok_or_else(|| "无法解析图片路径".to_string())
 }
 
 #[derive(serde::Serialize, Clone)]
@@ -151,7 +184,7 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![read_file, save_file, list_directory])
+        .invoke_handler(tauri::generate_handler![read_file, save_file, list_directory, save_image, resolve_image_path])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
