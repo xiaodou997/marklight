@@ -231,6 +231,9 @@ onMounted(() => {
     }
   });
 
+  // 立即触发一次统计更新，发送初始大纲数据
+  debouncedStatsUpdate(editorView.state);
+  
   nextTick(() => editorView?.focus());
 });
 
@@ -251,6 +254,19 @@ defineExpose({
       const selection = TextSelection.near(resolvedPos);
       editorView.dispatch(tr.setSelection(selection).scrollIntoView());
       editorView.focus();
+      
+      // 额外确保滚动：手动计算位置并滚动
+      const coords = editorView.coordsAtPos(pos);
+      const editorContainer = editorRef.value;
+      if (editorContainer && coords) {
+        const containerRect = editorContainer.getBoundingClientRect();
+        const scrollTop = editorContainer.scrollTop;
+        const targetTop = coords.top - containerRect.top + scrollTop - containerRect.height / 3;
+        editorContainer.scrollTo({
+          top: Math.max(0, targetTop),
+          behavior: 'smooth'
+        });
+      }
     } catch (e) {
       console.error('scrollToPos error:', e);
     }
