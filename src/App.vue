@@ -12,6 +12,7 @@ import MarkdownEditor from './components/Editor/MarkdownEditor.vue';
 import StatusBar from './components/Layout/StatusBar.vue';
 import Sidebar, { OutlineItem, FileInfo } from './components/Editor/Sidebar.vue';
 import SettingsModal from './components/Settings/SettingsModal.vue';
+import CommandPalette from './components/Editor/CommandPalette.vue';
 import { renderToWechatHtml } from './utils/wechat-renderer';
 import { serializeMarkdown } from './components/Editor/core/markdown';
 
@@ -30,6 +31,9 @@ const autoSaveStatus = ref<AutoSaveStatus | null>(null);
 
 // 图片粘贴警告
 const imagePasteWarning = ref<string | null>(null);
+
+// 命令面板
+const isCommandPaletteOpen = ref(false);
 
 // 统计与大纲数据
 const stats = reactive({
@@ -232,12 +236,20 @@ onMounted(() => {
   };
   window.addEventListener('image-paste-warning', handleImagePasteWarning as EventListener);
   
-  // 焦点模式快捷键: Cmd+Shift+F (macOS) 或 F11
+  // 快捷键处理
   const handleKeyDown = (e: KeyboardEvent) => {
+    // 命令面板快捷键: Cmd+Shift+P
+    if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'P') {
+      e.preventDefault();
+      isCommandPaletteOpen.value = true;
+    }
+    
+    // 焦点模式快捷键: Cmd+Shift+F (macOS) 或 F11
     if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'F') {
       e.preventDefault();
       settingsStore.toggleFocusMode();
     }
+    
     // Esc 退出焦点模式
     if (e.key === 'Escape' && settingsStore.isFocusMode) {
       settingsStore.toggleFocusMode();
@@ -290,9 +302,29 @@ onMounted(async () => {
       case 'replace': editorRef.value?.openSearch(true); break;
       case 'new_window': handleOpenNewWindow(); break;
       case 'focus_mode': settingsStore.toggleFocusMode(); break;
+      case 'command_palette': isCommandPaletteOpen.value = true; break;
     }
   });
 });
+
+// 处理命令面板命令
+function handleCommandExecute(command: { id: string }) {
+  switch (command.id) {
+    case 'file.new': handleNew(); break;
+    case 'file.open': handleOpen(); break;
+    case 'file.save': handleSave(); break;
+    case 'file.saveAs': handleSaveAs(); break;
+    case 'file.newWindow': handleOpenNewWindow(); break;
+    case 'edit.find': editorRef.value?.openSearch(false); break;
+    case 'edit.replace': editorRef.value?.openSearch(true); break;
+    case 'view.focusMode': settingsStore.toggleFocusMode(); break;
+    case 'view.toggleSidebar': toggleSidebar(); break;
+    case 'view.toggleOutline': sidebarMode.value = 'outline'; isSidebarOpen.value = true; break;
+    case 'export.pdf': exportPdf(); break;
+    case 'export.wechat': copyToWechat(); break;
+    case 'settings.open': settingsStore.openModal(); break;
+  }
+}
 
 // 打开新窗口
 async function handleOpenNewWindow(path?: string) {
@@ -400,5 +432,12 @@ onUnmounted(() => {
 
     <!-- 设置弹窗 -->
     <SettingsModal />
+
+    <!-- 命令面板 -->
+    <CommandPalette
+      :visible="isCommandPaletteOpen"
+      @close="isCommandPaletteOpen = false"
+      @execute="handleCommandExecute"
+    />
   </div>
 </template>

@@ -170,6 +170,8 @@ pub fn run() {
                     &PredefinedMenuItem::separator(handle)?,
                     &MenuItem::with_id(handle, "find", "查找", true, Some("CmdOrCtrl+F"))?,
                     &MenuItem::with_id(handle, "replace", "替换", true, Some("CmdOrCtrl+H"))?,
+                    &PredefinedMenuItem::separator(handle)?,
+                    &MenuItem::with_id(handle, "command_palette", "命令面板", true, Some("CmdOrCtrl+Shift+P"))?,
                 ],
             )?;
 
