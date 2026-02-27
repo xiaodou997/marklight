@@ -108,6 +108,16 @@ async function exportHtml() {
   URL.revokeObjectURL(url);
 }
 
+// 导出为 PDF
+async function exportPdf() {
+  try {
+    await invoke('print_document');
+  } catch (error) {
+    console.error('PDF 导出失败:', error);
+    alert('PDF 导出失败: ' + error);
+  }
+}
+
 function handleEditorUpdate(data: any) {
   if (data.wordCount !== undefined) stats.wordCount = data.wordCount;
   if (data.cursor) stats.cursor = data.cursor;
@@ -261,6 +271,7 @@ onMounted(async () => {
       case 'save': handleSave(); break;
       case 'save_as': handleSaveAs(); break;
       case 'export_html': exportHtml(); break;
+      case 'export_pdf': exportPdf(); break;
       case 'export_wechat': copyToWechat(); break;
       case 'undo':
       case 'redo':

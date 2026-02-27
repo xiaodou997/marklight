@@ -100,6 +100,12 @@ async fn open_new_window(app: tauri::AppHandle, path: Option<String>) -> Result<
     Ok(())
 }
 
+/// 打印当前文档
+#[tauri::command]
+fn print_document(window: tauri::WebviewWindow) -> Result<(), String> {
+    window.print().map_err(|e| e.to_string())
+}
+
 #[derive(serde::Serialize, Clone)]
 struct FileInfo {
     name: String,
@@ -145,6 +151,7 @@ pub fn run() {
                     &MenuItem::with_id(handle, "save_as", "另存为...", true, Some("CmdOrCtrl+Shift+S"))?,
                     &PredefinedMenuItem::separator(handle)?,
                     &MenuItem::with_id(handle, "export_html", "导出为 HTML", true, None::<&str>)?,
+                    &MenuItem::with_id(handle, "export_pdf", "导出为 PDF...", true, Some("CmdOrCtrl+P"))?,
                     &MenuItem::with_id(handle, "export_wechat", "微信导出", true, Some("CmdOrCtrl+E"))?,
                 ],
             )?;
@@ -195,6 +202,7 @@ pub fn run() {
                     "save" => { let _ = app.emit("menu-event", "save"); }
                     "save_as" => { let _ = app.emit("menu-event", "save_as"); }
                     "export_html" => { let _ = app.emit("menu-event", "export_html"); }
+                    "export_pdf" => { let _ = app.emit("menu-event", "export_pdf"); }
                     "export_wechat" => { let _ = app.emit("menu-event", "export_wechat"); }
                     "undo" => { let _ = app.emit("menu-event", "undo"); }
                     "redo" => { let _ = app.emit("menu-event", "redo"); }
@@ -216,7 +224,7 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![read_file, save_file, list_directory, save_image, resolve_image_path, open_new_window])
+        .invoke_handler(tauri::generate_handler![read_file, save_file, list_directory, save_image, resolve_image_path, open_new_window, print_document])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

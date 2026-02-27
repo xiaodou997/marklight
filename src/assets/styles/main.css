@@ -69,3 +69,62 @@ html.focus-mode .statusbar-container:hover {
   opacity: 1 !important;
   pointer-events: auto !important;
 }
+
+/* 打印样式 */
+@media print {
+  /* 隐藏非内容区域 */
+  .toolbar-container,
+  .statusbar-container,
+  aside,
+  .link-tooltip,
+  .bubble-menu,
+  .table-toolbar,
+  .search-bar {
+    display: none !important;
+  }
+  
+  /* 重置布局 */
+  body, #app, .h-screen {
+    height: auto !important;
+    overflow: visible !important;
+  }
+  
+  .flex-1 {
+    flex: none !important;
+  }
+  
+  /* 编辑器内容 */
+  .prosemirror-editor {
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  
+  /* 分页控制 - 避免在标题和内容之间断页 */
+  h1, h2, h3, h4, h5, h6 {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+  
+  p, blockquote, ul, ol, pre, table {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  
+  /* 代码块 */
+  pre {
+    overflow-wrap: break-word;
+    white-space: pre-wrap;
+  }
+  
+  /* 表格 */
+  table {
+    break-inside: avoid;
+  }
+  
+  /* 图片 */
+  img {
+    max-width: 100% !important;
+    break-inside: avoid;
+  }
+}
