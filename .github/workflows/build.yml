@@ -66,25 +66,7 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'MarkLight ${{ github.ref_name }}'
-          releaseBody: 'See the assets to download this version and install.'
-          releaseDraft: true
-          prerelease: true
-          args: ${{ matrix.args }}
-
-  # 创建统一 Release，合并所有平台的安装包
-  create-release:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v1
-        with:
-          tag_name: ${{ github.ref_name }}
-          name: 'MarkLight ${{ github.ref_name }}'
-          body: |
+          releaseBody: |
             ## 🎉 MarkLight ${{ github.ref_name }}
             
             ### 下载安装包
@@ -95,10 +77,15 @@ jobs:
             | macOS (Intel) | `MarkLight_*_x64.dmg` |
             | Windows | `MarkLight_*_x64-setup.exe` |
             
-            ### 更新说明
+            ### 使用说明
             
-            请查看下方 Assets 下载对应平台的安装包。
-          draft: false
-          prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            1. 下载对应平台的安装包
+            2. macOS: 打开 .dmg 文件，将 MarkLight 拖入 Applications 文件夹
+            3. Windows: 运行 .exe 安装程序
+            
+            ---
+            
+            > 这是自动构建的 Draft Release，请检查后点击 **Publish release** 发布。
+          releaseDraft: true
+          prerelease: true
+          args: ${{ matrix.args }}
