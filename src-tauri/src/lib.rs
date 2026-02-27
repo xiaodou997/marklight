@@ -106,6 +106,54 @@ fn print_document(window: tauri::WebviewWindow) -> Result<(), String> {
     window.print().map_err(|e| e.to_string())
 }
 
+/// 重命名文件或文件夹
+#[tauri::command]
+fn rename_file(old_path: String, new_name: String) -> Result<String, String> {
+    let path = Path::new(&old_path);
+    let parent = path.parent().ok_or("无法获取父目录")?;
+    let new_path = parent.join(&new_name);
+    
+    if new_path.exists() {
+        return Err("目标名称已存在".to_string());
+    }
+    
+    fs::rename(&old_path, &new_path).map_err(|e| e.to_string())?;
+    Ok(new_path.to_string_lossy().to_string())
+}
+
+/// 删除文件或文件夹
+#[tauri::command]
+fn delete_file(path: String) -> Result<(), String> {
+    let path = Path::new(&path);
+    if path.is_dir() {
+        fs::remove_dir_all(path).map_err(|e| e.to_string())
+    } else {
+        fs::remove_file(path).map_err(|e| e.to_string())
+    }
+}
+
+/// 新建文件
+#[tauri::command]
+fn create_file(dir: String, name: String) -> Result<String, String> {
+    let path = Path::new(&dir).join(&name);
+    if path.exists() {
+        return Err("文件已存在".to_string());
+    }
+    fs::write(&path, "").map_err(|e| e.to_string())?;
+    Ok(path.to_string_lossy().to_string())
+}
+
+/// 新建文件夹
+#[tauri::command]
+fn create_folder(dir: String, name: String) -> Result<String, String> {
+    let path = Path::new(&dir).join(&name);
+    if path.exists() {
+        return Err("文件夹已存在".to_string());
+    }
+    fs::create_dir(&path).map_err(|e| e.to_string())?;
+    Ok(path.to_string_lossy().to_string())
+}
+
 #[derive(serde::Serialize, Clone)]
 struct FileInfo {
     name: String,
@@ -226,7 +274,7 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![read_file, save_file, list_directory, save_image, resolve_image_path, open_new_window, print_document])
+        .invoke_handler(tauri::generate_handler![read_file, save_file, list_directory, save_image, resolve_image_path, open_new_window, print_document, rename_file, delete_file, create_file, create_folder])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

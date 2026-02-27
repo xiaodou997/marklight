@@ -97,6 +97,59 @@ async function handleNavigateUp() {
   }
 }
 
+// 刷新文件列表
+async function refreshFiles() {
+  if (currentFolder.value) {
+    await loadFiles(currentFolder.value);
+  }
+}
+
+// 处理文件重命名
+async function handleFileRenamed(oldPath: string, newName: string) {
+  try {
+    const newPath = await invoke<string>('rename_file', { oldPath, newName });
+    await refreshFiles();
+    // 如果重命名的是当前打开的文件，更新路径
+    if (fileStore.currentFile.path === oldPath) {
+      fileStore.currentFile.path = newPath;
+    }
+  } catch (error) {
+    alert('重命名失败: ' + error);
+  }
+}
+
+// 处理文件删除
+async function handleFileDeleted(path: string) {
+  try {
+    await invoke('delete_file', { path });
+    await refreshFiles();
+    // 如果删除的是当前打开的文件，清空
+    if (fileStore.currentFile.path === path) {
+      fileStore.reset();
+    }
+  } catch (error) {
+    alert('删除失败: ' + error);
+  }
+}
+
+// 处理新建文件/文件夹
+async function handleFileCreated(name: string, isFolder: boolean) {
+  if (!currentFolder.value) return;
+  try {
+    const path = await invoke<string>(
+      isFolder ? 'create_folder' : 'create_file',
+      { dir: currentFolder.value, name }
+    );
+    await refreshFiles();
+    // 如果是文件，自动打开
+    if (!isFolder) {
+      handleOpenFile(path);
+    }
+  } catch (error) {
+    alert('创建失败: ' + error);
+  }
+}
+
 // 导出为 HTML
 async function exportHtml() {
   if (!editorRef.value) return;
@@ -387,6 +440,10 @@ onUnmounted(() => {
           @navigate-folder="handleNavigateFolder"
           @navigate-up="handleNavigateUp"
           @open-file-in-new-window="handleOpenNewWindow"
+          @refresh-files="refreshFiles"
+          @file-renamed="handleFileRenamed"
+          @file-deleted="handleFileDeleted"
+          @file-created="handleFileCreated"
         />
       </aside>
 
