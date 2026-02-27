@@ -14,10 +14,27 @@
 | 安全性 | 更高 | 一般 |
 
 ### 核心能力
-- **文件系统**：`@tauri-apps/plugin-fs`
+- **文件系统**：自定义 Rust 命令（read_file, save_file, list_directory 等）
 - **系统对话框**：`@tauri-apps/plugin-dialog`
 - **原生菜单**：通过 `menu-event` 事件通信
+- **多窗口**：`WebviewWindowBuilder` 创建独立窗口
 - **跨平台**：macOS / Windows / Linux
+
+### Rust 命令清单
+
+| 命令 | 功能 |
+|------|------|
+| `read_file` | 读取文件内容 |
+| `save_file` | 保存文件内容 |
+| `list_directory` | 列出目录内容 |
+| `save_image` | 保存图片到 assets/ |
+| `resolve_image_path` | 解析相对路径图片 |
+| `open_new_window` | 打开新窗口 |
+| `print_document` | 打印文档（PDF 导出） |
+| `rename_file` | 重命名文件/文件夹 |
+| `delete_file` | 删除文件/文件夹 |
+| `create_file` | 新建文件 |
+| `create_folder` | 新建文件夹 |
 
 ## 2. 编辑器内核：ProseMirror
 
@@ -79,18 +96,58 @@ export const useFileStore = defineStore('file', () => {
     isDirty: false,
   });
   
-  // 方法...
+  // 方法: setFile, setContent, markSaved, reset
+});
+
+// stores/settings.ts
+export const useSettingsStore = defineStore('settings', () => {
+  const settings = ref<Settings>({
+    theme: 'system',
+    fontSize: 16,
+    fontFamily: 'system-ui',
+    autoSave: true,
+    autoSaveInterval: 2000,
+    lineHeight: 1.6,
+    showLineNumbers: false,
+    tabSize: 2,
+    spellCheck: true,
+    wechatTheme: 'default',
+  });
+  
+  const isFocusMode = ref(false);
+  
+  // 方法: initTheme, toggleFocusMode, openModal, etc.
 });
 ```
 
-## 6. 工具库
+## 6. 微信导出系统
+
+### 主题配置
+```typescript
+// utils/wechat-themes.ts
+export const WECHAT_THEMES: WechatTheme[] = [
+  { id: 'default', name: '经典蓝', colors: {...} },
+  { id: 'green', name: '清新绿', colors: {...} },
+  { id: 'purple', name: '优雅紫', colors: {...} },
+  { id: 'orange', name: '温暖橙', colors: {...} },
+  { id: 'dark', name: '黑金风', colors: {...} },
+];
+```
+
+### 渲染流程
+```
+ProseMirror Document → renderToWechatHtml(doc, theme) → Clipboard
+```
+
+## 7. 工具库
 
 | 库 | 用途 |
 |---|------|
 | `lodash-es` | 防抖、节流等工具函数 |
 | `@tauri-apps/plugin-os` | 系统信息获取 |
+| `@tauri-apps/plugin-opener` | 外部链接打开 |
 
-## 7. 开发工具
+## 8. 开发工具
 
 | 工具 | 用途 |
 |------|------|
@@ -98,14 +155,22 @@ export const useFileStore = defineStore('file', () => {
 | **TypeScript** | 类型安全 |
 | **vue-tsc** | Vue 类型检查 |
 
-## 8. 依赖清单
+## 9. CI/CD
+
+```yaml
+# .github/workflows/build.yml
+# 触发: 推送 v* 标签
+# 平台: macOS (aarch64, x64), Windows (x64)
+# 输出: .dmg, .exe 安装包
+```
+
+## 10. 依赖清单
 
 ```json
 {
   "dependencies": {
     "@tauri-apps/api": "^2.10.1",
     "@tauri-apps/plugin-dialog": "^2.6.0",
-    "@tauri-apps/plugin-fs": "^2.4.5",
     "@tauri-apps/plugin-opener": "^2.5.3",
     "highlight.js": "^11.11.1",
     "katex": "^0.16.28",
