@@ -40,6 +40,7 @@ const DEFAULT_SETTINGS: Settings = {
 };
 
 const STORAGE_KEY = 'marklight-settings';
+const FOCUS_MODE_KEY = 'marklight-focus-mode';
 
 function loadSettings(): Settings {
   try {
@@ -65,12 +66,19 @@ function saveSettings(settings: Settings): void {
 export const useSettingsStore = defineStore('settings', () => {
   const settings = ref<Settings>(loadSettings());
   const isModalOpen = ref(false);
+  const isFocusMode = ref(localStorage.getItem(FOCUS_MODE_KEY) === 'true');
 
   // 监听设置变化，自动保存
   watch(settings, (newSettings) => {
     saveSettings(newSettings);
     applyTheme(newSettings.theme);
   }, { deep: true });
+
+  // 监听焦点模式变化
+  watch(isFocusMode, (value) => {
+    localStorage.setItem(FOCUS_MODE_KEY, String(value));
+    applyFocusMode(value);
+  });
 
   // 应用主题
   function applyTheme(theme: Theme) {
@@ -83,6 +91,21 @@ export const useSettingsStore = defineStore('settings', () => {
     } else {
       root.classList.remove('dark');
     }
+  }
+
+  // 应用焦点模式
+  function applyFocusMode(enabled: boolean) {
+    const root = document.documentElement;
+    if (enabled) {
+      root.classList.add('focus-mode');
+    } else {
+      root.classList.remove('focus-mode');
+    }
+  }
+
+  // 切换焦点模式
+  function toggleFocusMode() {
+    isFocusMode.value = !isFocusMode.value;
   }
 
   // 更新单个设置
@@ -122,14 +145,22 @@ export const useSettingsStore = defineStore('settings', () => {
     }
   }
 
+  // 初始化焦点模式
+  function initFocusMode() {
+    applyFocusMode(isFocusMode.value);
+  }
+
   return {
     settings,
     isModalOpen,
+    isFocusMode,
     updateSetting,
     updateSettings,
     resetSettings,
     openModal,
     closeModal,
     initTheme,
+    initFocusMode,
+    toggleFocusMode,
   };
 });

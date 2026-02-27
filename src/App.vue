@@ -206,6 +206,7 @@ watch(() => fileStore.currentFile, (file) => {
 onMounted(() => {
   updateWindowTitle();
   settingsStore.initTheme();
+  settingsStore.initFocusMode();
   document.addEventListener('copy', onCopy);
   
   // 设置自动保存
@@ -220,6 +221,19 @@ onMounted(() => {
     }, 3000);
   };
   window.addEventListener('image-paste-warning', handleImagePasteWarning as EventListener);
+  
+  // 焦点模式快捷键: Cmd+Shift+F (macOS) 或 F11
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'F') {
+      e.preventDefault();
+      settingsStore.toggleFocusMode();
+    }
+    // Esc 退出焦点模式
+    if (e.key === 'Escape' && settingsStore.isFocusMode) {
+      settingsStore.toggleFocusMode();
+    }
+  };
+  window.addEventListener('keydown', handleKeyDown);
 });
 
 onUnmounted(() => {
@@ -264,6 +278,7 @@ onMounted(async () => {
       case 'find': editorRef.value?.openSearch(false); break;
       case 'replace': editorRef.value?.openSearch(true); break;
       case 'new_window': handleOpenNewWindow(); break;
+      case 'focus_mode': settingsStore.toggleFocusMode(); break;
     }
   });
 });
@@ -293,20 +308,28 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="h-screen flex flex-col bg-white overflow-hidden font-sans select-none">
-    <!-- 工具栏 -->
-    <EditorToolbar
-      ref="toolbarRef"
-      :is-source-mode="isSourceMode"
-      @toggle-sidebar="toggleSidebar"
-      @toggle-source="toggleSourceMode"
-      @copy-wechat="copyToWechat"
-    />
+  <div 
+    class="h-screen flex flex-col bg-white overflow-hidden font-sans select-none"
+    :class="{ 'focus-mode': settingsStore.isFocusMode }"
+  >
+    <!-- 工具栏 - 焦点模式下隐藏，但悬停顶部时显示 -->
+    <div 
+      class="toolbar-container transition-opacity duration-300"
+      :class="{ 'opacity-0 pointer-events-none': settingsStore.isFocusMode }"
+    >
+      <EditorToolbar
+        ref="toolbarRef"
+        :is-source-mode="isSourceMode"
+        @toggle-sidebar="toggleSidebar"
+        @toggle-source="toggleSourceMode"
+        @copy-wechat="copyToWechat"
+      />
+    </div>
     
     <div class="flex-1 flex overflow-hidden">
       <!-- 侧边栏 -->
       <aside 
-        v-show="isSidebarOpen && !isSourceMode"
+        v-show="isSidebarOpen && !isSourceMode && !settingsStore.isFocusMode"
         class="w-64 flex-shrink-0 transition-all duration-300"
       >
         <Sidebar
@@ -325,7 +348,10 @@ onUnmounted(() => {
       </aside>
 
       <!-- 编辑器区域 -->
-      <main class="flex-1 relative overflow-hidden select-text">
+      <main 
+        class="flex-1 relative overflow-hidden select-text"
+        :class="{ 'focus-mode-editor': settingsStore.isFocusMode }"
+      >
         <!-- 实时渲染模式 -->
         <MarkdownEditor
           v-if="!isSourceMode"
@@ -347,14 +373,19 @@ onUnmounted(() => {
       </main>
     </div>
 
-    <!-- 状态栏 -->
-    <StatusBar 
-      :word-count="stats.wordCount"
-      :cursor="stats.cursor"
-      :selection-text="stats.selectionText"
-      :auto-save-status="autoSaveStatus"
-      :image-paste-warning="imagePasteWarning"
-    />
+    <!-- 状态栏 - 焦点模式下隐藏 -->
+    <div 
+      class="statusbar-container transition-opacity duration-300"
+      :class="{ 'opacity-0 pointer-events-none': settingsStore.isFocusMode }"
+    >
+      <StatusBar 
+        :word-count="stats.wordCount"
+        :cursor="stats.cursor"
+        :selection-text="stats.selectionText"
+        :auto-save-status="autoSaveStatus"
+        :image-paste-warning="imagePasteWarning"
+      />
+    </div>
 
     <!-- 设置弹窗 -->
     <SettingsModal />

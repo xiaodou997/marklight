@@ -22,3 +22,50 @@ body {
   --bg-color: #1e1e1e;
   --text-color: #e0e0e0;
 }
+
+/* 焦点写作模式 */
+html.focus-mode {
+  --bg-color: #ffffff;
+}
+
+html.dark.focus-mode {
+  --bg-color: #1e1e1e;
+}
+
+html.focus-mode .focus-mode-editor {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 60px 24px;
+}
+
+html.focus-mode .focus-mode-editor .prosemirror-editor {
+  padding: 0 !important;
+}
+
+/* 焦点模式下工具栏悬停显示 */
+html.focus-mode .toolbar-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+}
+
+html.focus-mode .toolbar-container:hover {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+/* 焦点模式状态栏悬停显示 */
+html.focus-mode .statusbar-container {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+}
+
+html.focus-mode .statusbar-container:hover {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}

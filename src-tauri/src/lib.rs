@@ -175,6 +175,7 @@ pub fn run() {
                     &MenuItem::with_id(handle, "sidebar_files", "  └ 文件树", true, Some("CmdOrCtrl+2"))?,
                     &PredefinedMenuItem::separator(handle)?,
                     &CheckMenuItem::with_id(handle, "toggle_source", "源码模式", true, false, Some("CmdOrCtrl+/"))?,
+                    &MenuItem::with_id(handle, "focus_mode", "焦点模式", true, Some("CmdOrCtrl+Shift+F"))?,
                     &PredefinedMenuItem::separator(handle)?,
                     &PredefinedMenuItem::fullscreen(handle, None)?,
                     &PredefinedMenuItem::separator(handle)?,
@@ -205,6 +206,7 @@ pub fn run() {
                     "sidebar_outline" => { let _ = app.emit("menu-event", "sidebar_outline"); }
                     "sidebar_files" => { let _ = app.emit("menu-event", "sidebar_files"); }
                     "toggle_source" => { let _ = app.emit("menu-event", "toggle_source"); }
+                    "focus_mode" => { let _ = app.emit("menu-event", "focus_mode"); }
                     "settings" => { let _ = app.emit("menu-event", "settings"); }
                     "find" => { let _ = app.emit("menu-event", "find"); }
                     "replace" => { let _ = app.emit("menu-event", "replace"); }
