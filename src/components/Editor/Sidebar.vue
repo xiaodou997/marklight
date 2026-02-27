@@ -78,7 +78,7 @@
             <div
               v-for="file in filteredFiles"
               :key="file.path"
-              @click="handleFileClick(file)"
+              @click="handleFileClick(file, $event)"
               class="flex items-center py-1.5 px-3 text-sm cursor-pointer transition-colors"
               :class="[
                 file.path === currentFilePath 
@@ -148,6 +148,7 @@ const emit = defineEmits<{
   (e: 'scroll-to', pos: number): void;
   (e: 'open-folder'): void;
   (e: 'open-file', path: string): void;
+  (e: 'open-file-in-new-window', path: string): void;
   (e: 'navigate-folder', path: string): void;
   (e: 'navigate-up'): void;
 }>();
@@ -174,7 +175,13 @@ const pathSegments = computed(() => {
   });
 });
 
-function handleFileClick(file: FileInfo) {
+function handleFileClick(file: FileInfo, event?: MouseEvent) {
+  // Cmd (macOS) 或 Ctrl (Windows/Linux) + 单击：在新窗口打开
+  if (event && (event.metaKey || event.ctrlKey) && !file.is_dir) {
+    emit('open-file-in-new-window', file.path);
+    return;
+  }
+  
   if (file.is_dir) {
     emit('navigate-folder', file.path);
   } else {

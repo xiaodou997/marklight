@@ -1,5 +1,5 @@
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu, CheckMenuItem};
-use tauri::Emitter;
+use tauri::{Emitter, WebviewUrl, WebviewWindowBuilder};
 use std::fs;
 use std::path::Path;
 
@@ -72,6 +72,34 @@ fn resolve_image_path(file_dir: String, relative_path: String) -> Result<String,
         .ok_or_else(|| "无法解析图片路径".to_string())
 }
 
+/// 打开新窗口
+/// 如果提供了 path 参数，新窗口将自动打开该文件
+#[tauri::command]
+async fn open_new_window(app: tauri::AppHandle, path: Option<String>) -> Result<(), String> {
+    let window_label = format!("main-{}", std::process::id());
+    
+    // 构建窗口
+    let builder = WebviewWindowBuilder::new(
+        &app,
+        &window_label,
+        WebviewUrl::App("index.html".into())
+    )
+    .title("未命名")
+    .inner_size(1200.0, 800.0)
+    .min_inner_size(800.0, 600.0)
+    .center();
+    
+    // 创建窗口
+    let window = builder.build().map_err(|e| e.to_string())?;
+    
+    // 如果有初始文件路径，在新窗口加载后发送事件
+    if let Some(file_path) = path {
+        window.emit("open-file-in-new-window", file_path).map_err(|e| e.to_string())?;
+    }
+    
+    Ok(())
+}
+
 #[derive(serde::Serialize, Clone)]
 struct FileInfo {
     name: String,
@@ -109,6 +137,7 @@ pub fn run() {
                 handle, "文件", true,
                 &[
                     &MenuItem::with_id(handle, "new", "新建", true, Some("CmdOrCtrl+N"))?,
+                    &MenuItem::with_id(handle, "new_window", "新建窗口", true, Some("CmdOrCtrl+Shift+N"))?,
                     &MenuItem::with_id(handle, "open", "打开...", true, Some("CmdOrCtrl+O"))?,
                     &MenuItem::with_id(handle, "open_folder", "打开文件夹...", true, None::<&str>)?,
                     &PredefinedMenuItem::separator(handle)?,
@@ -159,6 +188,7 @@ pub fn run() {
             app.on_menu_event(move |app, event| {
                 match event.id().as_ref() {
                     "new" => { let _ = app.emit("menu-event", "new"); }
+                    "new_window" => { let _ = app.emit("menu-event", "new_window"); }
                     "open" => { let _ = app.emit("menu-event", "open"); }
                     "open_folder" => { let _ = app.emit("menu-event", "open_folder"); }
                     "save" => { let _ = app.emit("menu-event", "save"); }
@@ -184,7 +214,7 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![read_file, save_file, list_directory, save_image, resolve_image_path])
+        .invoke_handler(tauri::generate_handler![read_file, save_file, list_directory, save_image, resolve_image_path, open_new_window])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

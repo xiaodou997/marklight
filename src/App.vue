@@ -263,8 +263,28 @@ onMounted(async () => {
       case 'settings': settingsStore.openModal(); break;
       case 'find': editorRef.value?.openSearch(false); break;
       case 'replace': editorRef.value?.openSearch(true); break;
+      case 'new_window': handleOpenNewWindow(); break;
     }
   });
+});
+
+// 打开新窗口
+async function handleOpenNewWindow(path?: string) {
+  await invoke('open_new_window', { path });
+}
+
+// 监听新窗口打开文件事件
+let unlistenOpenFile: (() => void) | null = null;
+
+onMounted(async () => {
+  unlistenOpenFile = await listen<string>('open-file-in-new-window', (event) => {
+    const path = event.payload;
+    handleOpenFile(path);
+  });
+});
+
+onUnmounted(() => {
+  if (unlistenOpenFile) unlistenOpenFile();
 });
 
 onUnmounted(() => {
@@ -300,6 +320,7 @@ onUnmounted(() => {
           @open-file="handleOpenFile"
           @navigate-folder="handleNavigateFolder"
           @navigate-up="handleNavigateUp"
+          @open-file-in-new-window="handleOpenNewWindow"
         />
       </aside>
 
