@@ -1,0 +1,227 @@
+.ProseMirror {
+  position: relative;
+  outline: none;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  line-height: 1.6;
+  color: #374151;
+  min-height: 500px;
+}
+.ProseMirror p { margin-bottom: 1em; }
+.ProseMirror h1 { font-size: 2.25rem; font-weight: 800; margin-top: 1.5em; margin-bottom: 0.5em; border-bottom: 1px solid #e5e7eb; padding-bottom: 0.3em; position: relative; }
+.ProseMirror h2 { font-size: 1.875rem; font-weight: 700; margin-top: 1.5em; margin-bottom: 0.5em; position: relative; }
+.ProseMirror h3 { font-size: 1.5rem; font-weight: 600; margin-top: 1.25em; margin-bottom: 0.5em; position: relative; }
+.ProseMirror h4 { font-size: 1.25rem; font-weight: 600; margin-top: 1em; margin-bottom: 0.5em; position: relative; }
+.ProseMirror h5 { font-size: 1.125rem; font-weight: 600; margin-top: 1em; margin-bottom: 0.5em; position: relative; }
+.ProseMirror h6 { font-size: 1rem; font-weight: 600; margin-top: 1em; margin-bottom: 0.5em; position: relative; }
+/* 标题在光标位于开头时显示 # 标记 */
+.ProseMirror h1.show-marker::before { content: "# "; }
+.ProseMirror h2.show-marker::before { content: "## "; }
+.ProseMirror h3.show-marker::before { content: "### "; }
+.ProseMirror h4.show-marker::before { content: "#### "; }
+.ProseMirror h5.show-marker::before { content: "##### "; }
+.ProseMirror h6.show-marker::before { content: "###### "; }
+.ProseMirror h1.show-marker::before,
+.ProseMirror h2.show-marker::before,
+.ProseMirror h3.show-marker::before,
+.ProseMirror h4.show-marker::before,
+.ProseMirror h5.show-marker::before,
+.ProseMirror h6.show-marker::before {
+  color: #9ca3af;
+  font-family: ui-monospace, monospace;
+  font-weight: normal;
+  font-size: 0.6em;
+  white-space: pre;
+}
+.ProseMirror blockquote { border-left: 4px solid #e5e7eb; padding-left: 1em; margin: 1em 0; color: #6b7280; position: relative; }
+/* 光标在引用开头时显示 > 标记 */
+.ProseMirror blockquote.show-marker::before {
+  content: ">";
+  position: absolute;
+  left: -1.2em;
+  color: #9ca3af;
+  font-family: ui-monospace, monospace;
+  font-weight: normal;
+}
+/* 行内标记定界符 */
+.ProseMirror .mark-delimiter {
+  color: #9ca3af;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-weight: normal;
+  font-style: normal;
+  font-size: 0.85em;
+  text-decoration: none;
+  user-select: none;
+  pointer-events: none;
+}
+
+.ProseMirror ul, .ProseMirror ol { padding-left: 1.5em; margin: 0.5em 0; }
+.ProseMirror ul { list-style: none; }
+.ProseMirror ol { list-style: none; }
+.ProseMirror li { margin: 0.25em 0; position: relative; }
+.ProseMirror li > p { margin-bottom: 0.25em; }
+/* 列表标记样式 - 默认显示圆点/数字 */
+.ProseMirror ul > li::before {
+  content: "•";
+  position: absolute;
+  left: -1.2em;
+  color: #374151;
+  font-size: 1em;
+}
+.ProseMirror ol > li::before {
+  content: counter(list-item) ".";
+  position: absolute;
+  left: -2em;
+  color: #374151;
+}
+.ProseMirror ol {
+  counter-reset: list-item;
+}
+.ProseMirror ol > li {
+  counter-increment: list-item;
+}
+/* 光标在列表项开头时显示 markdown 标记 */
+.ProseMirror ul > li.show-marker::before {
+  content: "-";
+  left: -1.2em;
+  color: #9ca3af;
+  font-family: ui-monospace, monospace;
+}
+.ProseMirror ol > li.show-marker::before {
+  content: counter(list-item) ".";
+  color: #9ca3af;
+  font-family: ui-monospace, monospace;
+}
+.ProseMirror pre { background: #1f2937; color: #f9fafb; padding: 1em; border-radius: 0.5em; overflow-x: auto; margin: 1em 0; }
+.ProseMirror code { font-family: ui-monospace, monospace; font-size: 0.9em; }
+.ProseMirror table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+  margin: 1em 0;
+  overflow: hidden;
+  display: table;
+}
+.ProseMirror tbody {
+  display: table-row-group;
+}
+.ProseMirror tr {
+  display: table-row;
+}
+.ProseMirror td, .ProseMirror th {
+  display: table-cell;
+  vertical-align: top;
+  box-sizing: border-box;
+  position: relative;
+  border: 1px solid #e5e7eb;
+  padding: 8px 12px;
+  min-width: 1em;
+}
+.ProseMirror th { font-weight: bold; text-align: left; background-color: #f9fafb; }
+.ProseMirror .selectedCell:after { z-index: 2; position: absolute; content: ""; left: 0; right: 0; top: 0; bottom: 0; background: rgba(191, 219, 254, 0.4); pointer-events: none; }
+.ProseMirror .math-inline, .ProseMirror .math-block { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; font-family: serif; }
+.ProseMirror .math-block { display: block; margin: 1em 0; text-align: center; }
+
+/* 任务列表样式 */
+.ProseMirror ul.task-list {
+  list-style: none;
+  padding-left: 0;
+  margin: 1em 0;
+}
+.ProseMirror li.task-item {
+  display: flex;
+  align-items: flex-start;
+  margin: 0.25em 0;
+  padding-left: 0;
+}
+.ProseMirror li.task-item::before {
+  content: none;
+}
+/* 光标在任务项开头时显示原始语法 */
+.ProseMirror ul.task-list > li.task-item.show-marker .task-checkbox {
+  display: none;
+}
+.ProseMirror ul.task-list > li.task-item.show-marker::before {
+  content: "- [ ] ";
+  position: static;
+  white-space: pre;
+  color: #9ca3af;
+  font-family: ui-monospace, monospace;
+  font-size: 0.9em;
+  flex-shrink: 0;
+  margin-right: 0.25em;
+}
+.ProseMirror ul.task-list > li.task-item.checked.show-marker::before {
+  content: "- [x] ";
+  position: static;
+  white-space: pre;
+  color: #9ca3af;
+  font-family: ui-monospace, monospace;
+  font-size: 0.9em;
+  flex-shrink: 0;
+  margin-right: 0.25em;
+}
+.ProseMirror .task-checkbox {
+  margin-right: 0.5em;
+  margin-top: 0.2em;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  flex-shrink: 0;
+  accent-color: #3b82f6;
+}
+.ProseMirror .task-content {
+  flex: 1;
+}
+.ProseMirror li.task-item.checked .task-content {
+  text-decoration: line-through;
+  color: #9ca3af;
+}
+
+/* 删除线 */
+.ProseMirror s { text-decoration: line-through; color: #9ca3af; }
+/* 高亮 */
+.ProseMirror mark { background-color: #fef08a; padding: 1px 2px; border-radius: 2px; }
+/* 上标/下标 */
+.ProseMirror sub { font-size: 0.75em; vertical-align: sub; }
+.ProseMirror sup { font-size: 0.75em; vertical-align: super; }
+/* 缩写 */
+.ProseMirror abbr.abbreviation {
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
+  cursor: help;
+}
+
+/* 脚注引用 */
+.ProseMirror .footnote-ref {
+  display: inline;
+  vertical-align: super;
+  font-size: 0.75em;
+  line-height: 1;
+}
+.ProseMirror .footnote-ref a {
+  color: #3b82f6;
+  text-decoration: none;
+}
+/* 脚注块 */
+.ProseMirror section.footnotes {
+  margin-top: 2em;
+  padding-top: 1em;
+  border-top: 1px solid #e5e7eb;
+  font-size: 0.875em;
+  color: #6b7280;
+}
+.ProseMirror .footnotes-list {
+  padding-left: 1.5em;
+  list-style: decimal;
+}
+.ProseMirror .footnote-item {
+  margin: 0.5em 0;
+}
+
+/* 定义列表 */
+.ProseMirror dl { margin: 1em 0; }
+.ProseMirror dt { font-weight: 600; margin-top: 0.75em; }
+.ProseMirror dd { margin-left: 2em; margin-top: 0.25em; color: #4b5563; }
+.ProseMirror dd > p { margin-bottom: 0.25em; }
