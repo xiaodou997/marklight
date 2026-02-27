@@ -18,7 +18,7 @@
               v-model="searchQuery"
               type="text"
               class="command-input"
-              placeholder="搜索命令..."
+              :placeholder="isCommandMode ? '搜索命令...' : '搜索文件... (输入 > 搜索命令)'"
               @keydown.down.prevent="selectNext"
               @keydown.up.prevent="selectPrev"
               @keydown.enter.prevent="executeSelected"
@@ -26,8 +26,40 @@
             />
           </div>
 
+          <!-- 文件列表 -->
+          <div v-if="!isCommandMode" class="command-list">
+            <div class="command-list-header" v-if="filteredFiles.length > 0">文件</div>
+            <div
+              v-for="(file, index) in filteredFiles"
+              :key="file.path"
+              class="command-item"
+              :class="{ 'command-item-selected': index === selectedIndex }"
+              @click="openFile(file)"
+              @mouseenter="selectedIndex = index"
+            >
+              <div class="command-item-icon">
+                <template v-if="file.is_dir">📁</template>
+                <template v-else-if="file.is_md">📝</template>
+                <template v-else>📄</template>
+              </div>
+              <div class="command-item-content">
+                <div class="command-item-title">{{ file.name }}</div>
+                <div class="command-item-path">{{ getRelativePath(file.path) }}</div>
+              </div>
+            </div>
+            <div v-if="filteredFiles.length === 0 && searchQuery" class="command-empty">
+              没有找到匹配的文件
+            </div>
+            <div v-if="filteredFiles.length === 0 && !searchQuery && allFiles.length === 0" class="command-empty">
+              请先打开文件夹
+            </div>
+            <div v-if="filteredFiles.length === 0 && !searchQuery && allFiles.length > 0" class="command-empty">
+              输入关键词搜索文件
+            </div>
+          </div>
+
           <!-- 命令列表 -->
-          <div class="command-list">
+          <div v-else class="command-list">
             <div
               v-for="(command, index) in filteredCommands"
               :key="command.id"
@@ -65,18 +97,48 @@ interface Command {
   action: () => void;
 }
 
+interface FileInfo {
+  name: string;
+  path: string;
+  is_dir: boolean;
+  is_md: boolean;
+}
+
 const props = defineProps<{
   visible: boolean;
+  files?: FileInfo[];
+  currentFolder?: string | null;
 }>();
 
 const emit = defineEmits<{
   (e: 'close'): void;
   (e: 'execute', command: Command): void;
+  (e: 'open-file', path: string): void;
 }>();
 
 const inputRef = ref<HTMLInputElement | null>(null);
 const searchQuery = ref('');
 const selectedIndex = ref(0);
+
+// 扁平化所有文件（递归）
+const allFiles = computed<FileInfo[]>(() => {
+  // 这里只使用传入的文件列表，不递归
+  // 如果需要递归搜索，需要在 Rust 端实现
+  return props.files || [];
+});
+
+// 判断是否为命令模式
+const isCommandMode = computed(() => {
+  return searchQuery.value.startsWith('>');
+});
+
+// 实际搜索查询（去掉前缀）
+const actualQuery = computed(() => {
+  if (isCommandMode.value) {
+    return searchQuery.value.slice(1).trim().toLowerCase();
+  }
+  return searchQuery.value.trim().toLowerCase();
+});
 
 // 命令列表
 const commands = computed<Command[]>(() => [
@@ -106,7 +168,7 @@ const commands = computed<Command[]>(() => [
 
 // 过滤命令
 const filteredCommands = computed(() => {
-  const query = searchQuery.value.toLowerCase().trim();
+  const query = actualQuery.value;
   if (!query) return commands.value;
   
   return commands.value.filter(cmd => 
@@ -115,9 +177,30 @@ const filteredCommands = computed(() => {
   );
 });
 
+// 过滤文件
+const filteredFiles = computed(() => {
+  const query = actualQuery.value;
+  if (!query) return allFiles.value.slice(0, 20); // 限制显示数量
+  
+  return allFiles.value.filter(file => 
+    file.name.toLowerCase().includes(query)
+  ).slice(0, 20);
+});
+
+// 获取相对路径
+function getRelativePath(path: string) {
+  if (!props.currentFolder) return path;
+  return path.replace(props.currentFolder, '~');
+}
+
+// 当前结果列表长度
+const currentListLength = computed(() => {
+  return isCommandMode.value ? filteredCommands.value.length : filteredFiles.value.length;
+});
+
 // 选择操作
 const selectNext = () => {
-  if (selectedIndex.value < filteredCommands.value.length - 1) {
+  if (selectedIndex.value < currentListLength.value - 1) {
     selectedIndex.value++;
   }
 };
@@ -129,13 +212,24 @@ const selectPrev = () => {
 };
 
 const executeSelected = () => {
-  if (filteredCommands.value[selectedIndex.value]) {
-    executeCommand(filteredCommands.value[selectedIndex.value]);
+  if (isCommandMode.value) {
+    if (filteredCommands.value[selectedIndex.value]) {
+      executeCommand(filteredCommands.value[selectedIndex.value]);
+    }
+  } else {
+    if (filteredFiles.value[selectedIndex.value]) {
+      openFile(filteredFiles.value[selectedIndex.value]);
+    }
   }
 };
 
 const executeCommand = (command: Command) => {
   command.action();
+  close();
+};
+
+const openFile = (file: FileInfo) => {
+  emit('open-file', file.path);
   close();
 };
 
@@ -211,6 +305,16 @@ watch(searchQuery, () => {
   padding: 8px;
 }
 
+.command-list-header {
+  font-size: 11px;
+  font-weight: 600;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 4px 12px;
+  margin-bottom: 4px;
+}
+
 .command-item {
   display: flex;
   align-items: center;
@@ -242,6 +346,12 @@ watch(searchQuery, () => {
 .command-item-title {
   font-size: 14px;
   color: #1f2937;
+}
+
+.command-item-path {
+  font-size: 12px;
+  color: #9ca3af;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 .command-item-shortcut {

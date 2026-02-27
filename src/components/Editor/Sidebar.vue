@@ -214,7 +214,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue';
+import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue';
 
 export interface OutlineItem {
   text: string;
@@ -235,6 +235,7 @@ const props = defineProps<{
   files: FileInfo[];
   currentFolder: string | null;
   currentFilePath: string | null;
+  pendingRenamePath?: string | null; // 新建后需要重命名的文件路径
 }>();
 
 const emit = defineEmits<{
@@ -250,6 +251,7 @@ const emit = defineEmits<{
   (e: 'file-deleted', path: string): void;
   (e: 'file-created', name: string, isFolder: boolean): void;
   (e: 'reveal-in-finder', path: string): void;
+  (e: 'rename-completed'): void; // 重命名完成事件
 }>();
 
 const searchQuery = ref('');
@@ -380,6 +382,7 @@ function confirmRename() {
   if (!contextMenu.value.file || !renameDialog.value.newName.trim()) return;
   emit('file-renamed', contextMenu.value.file.path, renameDialog.value.newName.trim());
   renameDialog.value.visible = false;
+  emit('rename-completed');
 }
 
 // 删除
@@ -403,17 +406,11 @@ function handleRevealInFinder() {
   contextMenu.value.visible = false;
 }
 
-// 新建文件
+// 新建文件 - 使用默认名称创建，自动进入重命名
 function handleNewFile() {
-  newDialog.value = {
-    visible: true,
-    name: '',
-    isFolder: false,
-  };
   newMenu.value.visible = false;
-  nextTick(() => {
-    newInputRef.value?.focus();
-  });
+  // 发出特殊事件，让父组件处理创建并重命名
+  emit('file-created', '__AUTO_RENAME__', false);
 }
 
 // 新建文件夹
@@ -441,6 +438,26 @@ function handleClickOutside() {
   contextMenu.value.visible = false;
   newMenu.value.visible = false;
 }
+
+// 监听 pendingRenamePath，自动打开重命名对话框
+watch(() => props.pendingRenamePath, (path) => {
+  if (path) {
+    // 查找对应的文件
+    const file = props.files.find(f => f.path === path);
+    if (file) {
+      // 稍微延迟，确保文件列表已更新
+      nextTick(() => {
+        contextMenu.value.file = file;
+        renameDialog.value.newName = file.name;
+        renameDialog.value.visible = true;
+        nextTick(() => {
+          renameInputRef.value?.focus();
+          renameInputRef.value?.select();
+        });
+      });
+    }
+  }
+});
 
 onMounted(() => {
   document.addEventListener('click', handleClickOutside);

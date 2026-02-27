@@ -47,6 +47,9 @@ const outlineItems = ref<OutlineItem[]>([]);
 const files = ref<FileInfo[]>([]);
 const currentFolder = ref<string | null>(null);
 
+// 新建文件后需要重命名的文件路径
+const pendingRenamePath = ref<string | null>(null);
+
 // 自动保存清理函数
 let cleanupAutoSave: (() => void) | null = null;
 
@@ -135,6 +138,13 @@ async function handleFileDeleted(path: string) {
 // 处理新建文件/文件夹
 async function handleFileCreated(name: string, isFolder: boolean) {
   if (!currentFolder.value) return;
+  
+  // 特殊标记：新建文件并自动重命名
+  if (name === '__AUTO_RENAME__' && !isFolder) {
+    await handleNewFileWithRename();
+    return;
+  }
+  
   try {
     const path = await invoke<string>(
       isFolder ? 'create_folder' : 'create_file',
@@ -148,6 +158,31 @@ async function handleFileCreated(name: string, isFolder: boolean) {
   } catch (error) {
     alert('创建失败: ' + error);
   }
+}
+
+// 新建文件并自动进入重命名状态
+async function handleNewFileWithRename() {
+  if (!currentFolder.value) return;
+  // 生成默认文件名
+  const defaultName = '未命名.md';
+  try {
+    const path = await invoke<string>('create_file', { 
+      dir: currentFolder.value, 
+      name: defaultName 
+    });
+    await refreshFiles();
+    // 自动打开文件
+    handleOpenFile(path);
+    // 设置待重命名路径，触发 Sidebar 打开重命名对话框
+    pendingRenamePath.value = path;
+  } catch (error) {
+    alert('创建失败: ' + error);
+  }
+}
+
+// 重命名完成，清除 pendingRenamePath
+function handleRenameCompleted() {
+  pendingRenamePath.value = null;
 }
 
 // 在 Finder 中显示
@@ -483,6 +518,7 @@ onUnmounted(() => {
           :files="files"
           :current-folder="currentFolder"
           :current-file-path="fileStore.currentFile.path"
+          :pending-rename-path="pendingRenamePath"
           @scroll-to="scrollToHeading"
           @open-folder="handleOpenFolder"
           @open-file="handleOpenFile"
@@ -494,6 +530,7 @@ onUnmounted(() => {
           @file-deleted="handleFileDeleted"
           @file-created="handleFileCreated"
           @reveal-in-finder="handleRevealInFinder"
+          @rename-completed="handleRenameCompleted"
         />
       </aside>
 
@@ -543,8 +580,11 @@ onUnmounted(() => {
     <!-- 命令面板 -->
     <CommandPalette
       :visible="isCommandPaletteOpen"
+      :files="files"
+      :current-folder="currentFolder"
       @close="isCommandPaletteOpen = false"
       @execute="handleCommandExecute"
+      @open-file="handleOpenFile"
     />
   </div>
 </template>
