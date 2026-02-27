@@ -142,6 +142,10 @@
             <span class="context-menu-icon">✏️</span>
             <span>重命名</span>
           </div>
+          <div class="context-menu-item" @click="handleRevealInFinder">
+            <span class="context-menu-icon">📂</span>
+            <span>在 Finder 中显示</span>
+          </div>
           <div class="context-menu-item context-menu-item-danger" @click="handleDelete">
             <span class="context-menu-icon">🗑️</span>
             <span>删除</span>
@@ -245,6 +249,7 @@ const emit = defineEmits<{
   (e: 'file-renamed', oldPath: string, newPath: string): void;
   (e: 'file-deleted', path: string): void;
   (e: 'file-created', name: string, isFolder: boolean): void;
+  (e: 'reveal-in-finder', path: string): void;
 }>();
 
 const searchQuery = ref('');
@@ -388,6 +393,13 @@ function handleDelete() {
   if (confirm(message)) {
     emit('file-deleted', file.path);
   }
+  contextMenu.value.visible = false;
+}
+
+// 在 Finder 中显示
+function handleRevealInFinder() {
+  if (!contextMenu.value.file) return;
+  emit('reveal-in-finder', contextMenu.value.file.path);
   contextMenu.value.visible = false;
 }
 

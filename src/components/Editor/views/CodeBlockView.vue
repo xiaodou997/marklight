@@ -28,18 +28,25 @@
               placeholder="搜索语言..."
               class="w-full px-2 py-1 text-xs border border-gray-200 dark:border-gray-600 rounded focus:outline-none focus:border-blue-400 dark:bg-gray-700 dark:text-white"
               @keydown.escape="closeDropdown"
-              @keydown.enter="selectFirst"
+              @keydown.enter="selectHighlighted"
+              @keydown.down.prevent="navigateDown"
+              @keydown.up.prevent="navigateUp"
             />
           </div>
           
           <!-- 语言列表 -->
-          <div class="max-h-48 overflow-y-auto">
+          <div ref="listRef" class="max-h-48 overflow-y-auto">
             <button
-              v-for="lang in filteredLanguages"
+              v-for="(lang, index) in filteredLanguages"
               :key="lang"
+              :ref="el => setItemRef(el as HTMLElement, index)"
               @click="selectLanguage(lang)"
-              class="w-full px-3 py-1.5 text-left text-xs font-mono uppercase hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors"
-              :class="selectedLang === lang ? 'bg-blue-50 dark:bg-gray-700 text-blue-500' : 'text-gray-600 dark:text-gray-300'"
+              @mouseenter="highlightedIndex = index"
+              class="w-full px-3 py-1.5 text-left text-xs font-mono uppercase transition-colors"
+              :class="[
+                highlightedIndex === index ? 'bg-blue-100 dark:bg-gray-700 text-blue-600' :
+                selectedLang === lang ? 'bg-blue-50 dark:bg-gray-700 text-blue-500' : 'text-gray-600 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-gray-700'
+              ]"
             >
               {{ lang }}
             </button>
@@ -101,6 +108,17 @@ const copied = ref(false);
 const showDropdown = ref(false);
 const searchQuery = ref('');
 const searchInputRef = ref<HTMLInputElement | null>(null);
+const listRef = ref<HTMLElement | null>(null);
+const highlightedIndex = ref(0);
+
+// 用于存储每个选项的 ref
+const itemRefs = ref<Map<number, HTMLElement>>(new Map());
+
+const setItemRef = (el: HTMLElement | null, index: number) => {
+  if (el) {
+    itemRefs.value.set(index, el);
+  }
+};
 
 // 过滤后的语言列表
 const filteredLanguages = computed(() => {
@@ -115,6 +133,7 @@ const filteredLanguages = computed(() => {
 const toggleDropdown = () => {
   showDropdown.value = !showDropdown.value;
   if (showDropdown.value) {
+    highlightedIndex.value = 0;
     nextTick(() => {
       searchInputRef.value?.focus();
     });
@@ -125,6 +144,7 @@ const toggleDropdown = () => {
 const closeDropdown = () => {
   showDropdown.value = false;
   searchQuery.value = '';
+  highlightedIndex.value = 0;
 };
 
 // 选择语言
@@ -134,10 +154,34 @@ const selectLanguage = (lang: string) => {
   closeDropdown();
 };
 
-// 选择第一个匹配项
-const selectFirst = () => {
-  if (filteredLanguages.value.length > 0) {
-    selectLanguage(filteredLanguages.value[0]);
+// 选择高亮项
+const selectHighlighted = () => {
+  if (filteredLanguages.value.length > 0 && highlightedIndex.value >= 0) {
+    selectLanguage(filteredLanguages.value[highlightedIndex.value]);
+  }
+};
+
+// 向下导航
+const navigateDown = () => {
+  if (highlightedIndex.value < filteredLanguages.value.length - 1) {
+    highlightedIndex.value++;
+    scrollToHighlighted();
+  }
+};
+
+// 向上导航
+const navigateUp = () => {
+  if (highlightedIndex.value > 0) {
+    highlightedIndex.value--;
+    scrollToHighlighted();
+  }
+};
+
+// 滚动到高亮项
+const scrollToHighlighted = () => {
+  const el = itemRefs.value.get(highlightedIndex.value);
+  if (el && listRef.value) {
+    el.scrollIntoView({ block: 'nearest' });
   }
 };
 
@@ -154,6 +198,11 @@ const copyCode = async () => {
     console.error('Copy failed:', e);
   }
 };
+
+// 重置高亮索引当搜索变化
+watch(searchQuery, () => {
+  highlightedIndex.value = 0;
+});
 
 // 点击外部关闭下拉框
 watch(showDropdown, (show) => {

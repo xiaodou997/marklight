@@ -1,5 +1,5 @@
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu, CheckMenuItem};
-use tauri::{Emitter, WebviewUrl, WebviewWindowBuilder};
+use tauri::{Emitter, WebviewUrl, WebviewWindowBuilder, Manager};
 use std::fs;
 use std::path::Path;
 
@@ -121,15 +121,10 @@ fn rename_file(old_path: String, new_name: String) -> Result<String, String> {
     Ok(new_path.to_string_lossy().to_string())
 }
 
-/// 删除文件或文件夹
+/// 删除文件或文件夹（移到回收站）
 #[tauri::command]
 fn delete_file(path: String) -> Result<(), String> {
-    let path = Path::new(&path);
-    if path.is_dir() {
-        fs::remove_dir_all(path).map_err(|e| e.to_string())
-    } else {
-        fs::remove_file(path).map_err(|e| e.to_string())
-    }
+    trash::delete(&path).map_err(|e| e.to_string())
 }
 
 /// 新建文件
@@ -154,6 +149,13 @@ fn create_folder(dir: String, name: String) -> Result<String, String> {
     Ok(path.to_string_lossy().to_string())
 }
 
+/// 在 Finder/资源管理器 中显示文件
+#[tauri::command]
+async fn reveal_in_finder(app: tauri::AppHandle, path: String) -> Result<(), String> {
+    use tauri_plugin_opener::OpenerExt;
+    app.opener().reveal_item_in_dir(path).map_err(|e| e.to_string())
+}
+
 #[derive(serde::Serialize, Clone)]
 struct FileInfo {
     name: String,
@@ -174,15 +176,17 @@ pub fn run() {
             let app_menu = Submenu::with_items(
                 handle, "MarkLight", true,
                 &[
-                    &PredefinedMenuItem::about(handle, None, None)?,
+                    &MenuItem::with_id(handle, "about", "关于 MarkLight", true, None::<&str>)?,
                     &PredefinedMenuItem::separator(handle)?,
-                    &PredefinedMenuItem::services(handle, None)?,
+                    &MenuItem::with_id(handle, "settings", "设置...", true, Some("CmdOrCtrl+,"))?,
                     &PredefinedMenuItem::separator(handle)?,
-                    &PredefinedMenuItem::hide(handle, None)?,
-                    &PredefinedMenuItem::hide_others(handle, None)?,
-                    &PredefinedMenuItem::show_all(handle, None)?,
+                    &PredefinedMenuItem::services(handle, Some("服务"))?,
                     &PredefinedMenuItem::separator(handle)?,
-                    &PredefinedMenuItem::quit(handle, None)?,
+                    &MenuItem::with_id(handle, "hide", "隐藏 MarkLight", true, Some("CmdOrCtrl+H"))?,
+                    &MenuItem::with_id(handle, "hide_others", "隐藏其他", true, Some("CmdOrCtrl+Alt+H"))?,
+                    &MenuItem::with_id(handle, "show_all", "显示全部", true, None::<&str>)?,
+                    &PredefinedMenuItem::separator(handle)?,
+                    &MenuItem::with_id(handle, "quit", "退出 MarkLight", true, Some("CmdOrCtrl+Q"))?,
                 ],
             )?;
 
@@ -234,9 +238,7 @@ pub fn run() {
                     &CheckMenuItem::with_id(handle, "toggle_source", "源码模式", true, false, Some("CmdOrCtrl+/"))?,
                     &MenuItem::with_id(handle, "focus_mode", "焦点模式", true, Some("CmdOrCtrl+Shift+F"))?,
                     &PredefinedMenuItem::separator(handle)?,
-                    &PredefinedMenuItem::fullscreen(handle, None)?,
-                    &PredefinedMenuItem::separator(handle)?,
-                    &MenuItem::with_id(handle, "settings", "设置...", true, Some("CmdOrCtrl+,"))?,
+                    &MenuItem::with_id(handle, "fullscreen", "全屏", true, Some("CmdOrCtrl+Ctrl+F"))?,
                 ],
             )?;
 
@@ -245,6 +247,14 @@ pub fn run() {
 
             app.on_menu_event(move |app, event| {
                 match event.id().as_ref() {
+                    // 应用菜单
+                    "about" => { let _ = app.emit("menu-event", "about"); }
+                    "settings" => { let _ = app.emit("menu-event", "settings"); }
+                    "hide" => { let _ = app.emit("menu-event", "hide"); }
+                    "hide_others" => { let _ = app.emit("menu-event", "hide_others"); }
+                    "show_all" => { let _ = app.emit("menu-event", "show_all"); }
+                    "quit" => { let _ = app.emit("menu-event", "quit"); }
+                    // 文件菜单
                     "new" => { let _ = app.emit("menu-event", "new"); }
                     "new_window" => { let _ = app.emit("menu-event", "new_window"); }
                     "open" => { let _ = app.emit("menu-event", "open"); }
@@ -254,27 +264,42 @@ pub fn run() {
                     "export_html" => { let _ = app.emit("menu-event", "export_html"); }
                     "export_pdf" => { let _ = app.emit("menu-event", "export_pdf"); }
                     "export_wechat" => { let _ = app.emit("menu-event", "export_wechat"); }
+                    // 编辑菜单
                     "undo" => { let _ = app.emit("menu-event", "undo"); }
                     "redo" => { let _ = app.emit("menu-event", "redo"); }
                     "cut" => { let _ = app.emit("menu-event", "cut"); }
                     "copy" => { let _ = app.emit("menu-event", "copy"); }
                     "paste" => { let _ = app.emit("menu-event", "paste"); }
                     "select_all" => { let _ = app.emit("menu-event", "select_all"); }
+                    "find" => { let _ = app.emit("menu-event", "find"); }
+                    "replace" => { let _ = app.emit("menu-event", "replace"); }
+                    // 视图菜单
                     "toggle_sidebar" => { let _ = app.emit("menu-event", "toggle_sidebar"); }
                     "sidebar_outline" => { let _ = app.emit("menu-event", "sidebar_outline"); }
                     "sidebar_files" => { let _ = app.emit("menu-event", "sidebar_files"); }
                     "toggle_source" => { let _ = app.emit("menu-event", "toggle_source"); }
                     "focus_mode" => { let _ = app.emit("menu-event", "focus_mode"); }
-                    "settings" => { let _ = app.emit("menu-event", "settings"); }
-                    "find" => { let _ = app.emit("menu-event", "find"); }
-                    "replace" => { let _ = app.emit("menu-event", "replace"); }
+                    "fullscreen" => { let _ = app.emit("menu-event", "fullscreen"); }
                     _ => {}
                 }
             });
 
+            // 监听主窗口关闭事件
+            if let Some(main_window) = app.get_webview_window("main") {
+                let window_clone = main_window.clone();
+                main_window.on_window_event(move |event| {
+                    if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                        // 阻止默认关闭行为
+                        api.prevent_close();
+                        // 发送事件给前端处理
+                        let _ = window_clone.emit("window-close-requested", ());
+                    }
+                });
+            }
+
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![read_file, save_file, list_directory, save_image, resolve_image_path, open_new_window, print_document, rename_file, delete_file, create_file, create_folder])
+        .invoke_handler(tauri::generate_handler![read_file, save_file, list_directory, save_image, resolve_image_path, open_new_window, print_document, rename_file, delete_file, create_file, create_folder, reveal_in_finder])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

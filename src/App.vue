@@ -150,6 +150,15 @@ async function handleFileCreated(name: string, isFolder: boolean) {
   }
 }
 
+// 在 Finder 中显示
+async function handleRevealInFinder(path: string) {
+  try {
+    await invoke('reveal_in_finder', { path });
+  } catch (error) {
+    alert('无法在 Finder 中显示: ' + error);
+  }
+}
+
 // 导出为 HTML
 async function exportHtml() {
   if (!editorRef.value) return;
@@ -356,9 +365,33 @@ onMounted(async () => {
       case 'new_window': handleOpenNewWindow(); break;
       case 'focus_mode': settingsStore.toggleFocusMode(); break;
       case 'command_palette': isCommandPaletteOpen.value = true; break;
+      case 'about': showAbout(); break;
+      case 'fullscreen': toggleFullscreen(); break;
+      case 'quit': handleQuit(); break;
     }
   });
 });
+
+// 显示关于对话框
+function showAbout() {
+  alert('MarkLight v0.2.0\n\n一款轻量级 Markdown 编辑器\n\n© 2026 MarkLight Team');
+}
+
+// 切换全屏
+async function toggleFullscreen() {
+  await appWindow.setFullscreen(!await appWindow.isFullscreen());
+}
+
+// 处理退出
+async function handleQuit() {
+  if (fileStore.currentFile.isDirty) {
+    const confirmed = confirm('文件未保存，是否保存？');
+    if (confirmed) {
+      await handleSave();
+    }
+  }
+  await appWindow.destroy();
+}
 
 // 处理命令面板命令
 function handleCommandExecute(command: { id: string }) {
@@ -386,16 +419,32 @@ async function handleOpenNewWindow(path?: string) {
 
 // 监听新窗口打开文件事件
 let unlistenOpenFile: (() => void) | null = null;
+let unlistenCloseRequest: (() => void) | null = null;
 
 onMounted(async () => {
   unlistenOpenFile = await listen<string>('open-file-in-new-window', (event) => {
     const path = event.payload;
     handleOpenFile(path);
   });
+  
+  // 监听窗口关闭请求
+  unlistenCloseRequest = await listen('window-close-requested', async () => {
+    if (fileStore.currentFile.isDirty) {
+      const confirmed = confirm('文件未保存，是否保存？\n\n选择"确定"保存并关闭\n选择"取消"放弃关闭');
+      if (confirmed) {
+        await handleSave();
+      } else {
+        return; // 用户取消，不关闭
+      }
+    }
+    // 销毁窗口
+    await appWindow.destroy();
+  });
 });
 
 onUnmounted(() => {
   if (unlistenOpenFile) unlistenOpenFile();
+  if (unlistenCloseRequest) unlistenCloseRequest();
 });
 
 onUnmounted(() => {
@@ -444,6 +493,7 @@ onUnmounted(() => {
           @file-renamed="handleFileRenamed"
           @file-deleted="handleFileDeleted"
           @file-created="handleFileCreated"
+          @reveal-in-finder="handleRevealInFinder"
         />
       </aside>
 
