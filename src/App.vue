@@ -141,7 +141,7 @@ async function copyToWechat() {
   if (!editorRef.value) return;
   const doc = editorRef.value.getDoc();
   if (!doc) return;
-  const html = renderToWechatHtml(doc);
+  const html = renderToWechatHtml(doc, settingsStore.settings.wechatTheme);
   try {
     const type = 'text/html';
     const blob = new Blob([html], { type });

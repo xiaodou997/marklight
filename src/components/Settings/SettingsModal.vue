@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useSettingsStore } from '../../stores/settings';
+import { WECHAT_THEMES } from '../../utils/wechat-themes';
 
 const settingsStore = useSettingsStore();
 const settings = settingsStore.settings;
 
 // 当前选中的设置分组
-const activeTab = ref<'appearance' | 'editor' | 'save'>('appearance');
+const activeTab = ref<'appearance' | 'editor' | 'save' | 'export'>('appearance');
 
 // 字体选项
 const fontOptions = [
@@ -29,6 +30,7 @@ const tabs = [
   { key: 'appearance', label: '外观', icon: '🎨' },
   { key: 'editor', label: '编辑器', icon: '✏️' },
   { key: 'save', label: '保存', icon: '💾' },
+  { key: 'export', label: '导出', icon: '📤' },
 ];
 
 // 关闭弹窗
@@ -271,6 +273,48 @@ function onKeyDown(e: KeyboardEvent) {
                   <div class="flex justify-between text-xs text-gray-500">
                     <span>10秒</span>
                     <span>120秒</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 导出设置 -->
+              <div v-show="activeTab === 'export'" class="space-y-6">
+                <div class="space-y-2">
+                  <label class="block text-sm font-medium text-gray-700 dark:text-gray-300">微信导出主题</label>
+                  <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">选择复制到微信时的排版风格</p>
+                  
+                  <div class="grid grid-cols-2 gap-3 mt-3">
+                    <button
+                      v-for="theme in WECHAT_THEMES"
+                      :key="theme.id"
+                      class="p-3 rounded-lg border-2 transition-all text-left"
+                      :class="settings.wechatTheme === theme.id 
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
+                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'"
+                      @click="settings.wechatTheme = theme.id"
+                    >
+                      <div class="flex items-center gap-2 mb-2">
+                        <span 
+                          class="w-4 h-4 rounded-full" 
+                          :style="{ backgroundColor: theme.colors.primary }"
+                        ></span>
+                        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ theme.name }}</span>
+                      </div>
+                      <div class="flex gap-1">
+                        <span 
+                          class="w-6 h-2 rounded" 
+                          :style="{ backgroundColor: theme.colors.primary }"
+                        ></span>
+                        <span 
+                          class="w-6 h-2 rounded" 
+                          :style="{ backgroundColor: theme.colors.primaryDark }"
+                        ></span>
+                        <span 
+                          class="w-6 h-2 rounded" 
+                          :style="{ backgroundColor: theme.colors.codeBg }"
+                        ></span>
+                      </div>
+                    </button>
                   </div>
                 </div>
               </div>

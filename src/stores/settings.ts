@@ -24,6 +24,8 @@ export interface Settings {
   outlineExpanded: boolean;
   /** 编辑器行高 */
   lineHeight: number;
+  /** 微信导出主题 */
+  wechatTheme: string;
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -37,6 +39,7 @@ const DEFAULT_SETTINGS: Settings = {
   spellCheck: true,
   outlineExpanded: true,
   lineHeight: 1.6,
+  wechatTheme: 'blue',
 };
 
 const STORAGE_KEY = 'marklight-settings';
