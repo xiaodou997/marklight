@@ -98,6 +98,9 @@ pub fn run() {
                     &PredefinedMenuItem::copy(handle, Some("复制"))?,
                     &PredefinedMenuItem::paste(handle, Some("粘贴"))?,
                     &PredefinedMenuItem::select_all(handle, Some("全选"))?,
+                    &PredefinedMenuItem::separator(handle)?,
+                    &MenuItem::with_id(handle, "find", "查找", true, Some("CmdOrCtrl+F"))?,
+                    &MenuItem::with_id(handle, "replace", "替换", true, Some("CmdOrCtrl+H"))?,
                 ],
             )?;
 
@@ -140,6 +143,8 @@ pub fn run() {
                     "sidebar_files" => { let _ = app.emit("menu-event", "sidebar_files"); }
                     "toggle_source" => { let _ = app.emit("menu-event", "toggle_source"); }
                     "settings" => { let _ = app.emit("menu-event", "settings"); }
+                    "find" => { let _ = app.emit("menu-event", "find"); }
+                    "replace" => { let _ = app.emit("menu-event", "replace"); }
                     _ => {}
                 }
             });

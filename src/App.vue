@@ -245,6 +245,8 @@ onMounted(async () => {
       case 'sidebar_files': sidebarMode.value = 'files'; isSidebarOpen.value = true; break;
       case 'toggle_source': toggleSourceMode(); break;
       case 'settings': settingsStore.openModal(); break;
+      case 'find': editorRef.value?.openSearch(false); break;
+      case 'replace': editorRef.value?.openSearch(true); break;
     }
   });
 });

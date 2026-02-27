@@ -225,3 +225,14 @@
 .ProseMirror dt { font-weight: 600; margin-top: 0.75em; }
 .ProseMirror dd { margin-left: 2em; margin-top: 0.25em; color: #4b5563; }
 .ProseMirror dd > p { margin-bottom: 0.25em; }
+
+/* 搜索高亮 */
+.ProseMirror .search-match {
+  background-color: #fef08a;
+  border-radius: 2px;
+}
+.ProseMirror .search-match-current {
+  background-color: #fbbf24;
+  box-shadow: 0 0 0 2px #f59e0b;
+  border-radius: 2px;
+}

@@ -6,6 +6,19 @@
     <div ref="editorRef" class="prosemirror-editor h-full px-12 py-8 overflow-y-auto outline-none"></div>
     <BubbleMenu ref="bubbleMenuRef" @action="onMenuAction" />
     <TableToolbar ref="tableToolbarRef" @action="onTableAction" />
+    <SearchBar
+      ref="searchBarRef"
+      :visible="isSearchVisible"
+      :match-count="searchMatchCount"
+      :current-index="searchCurrentIndex"
+      @query="onSearchQuery"
+      @case-sensitive="onSearchCaseSensitive"
+      @next="onSearchNext"
+      @prev="onSearchPrev"
+      @replace="onSearchReplace"
+      @replace-all="onSearchReplaceAll"
+      @close="onSearchClose"
+    />
   </div>
 </template>
 
@@ -34,6 +47,7 @@ import { createBubbleMenuPlugin, handleMenuAction } from './core/plugins/bubble-
 import { createImageHandlePlugin } from './core/plugins/image-handle';
 import { createTableToolbarPlugin, handleTableAction } from './core/plugins/table-toolbar';
 import { createSmartPastePlugin } from './core/plugins/smart-paste';
+import { createSearchPlugin, getSearchState, setQuery, setCaseSensitive, nextMatch, prevMatch, replaceCurrent, replaceAll, scrollToCurrentMatch, resetSearch } from './core/plugins/search';
 
 import CodeBlockView from './views/CodeBlockView.vue';
 import ImageView from './views/ImageView.vue';
@@ -41,6 +55,7 @@ import MathView from './views/MathView.vue';
 import MermaidView from './views/MermaidView.vue';
 import BubbleMenu from './views/BubbleMenu.vue';
 import TableToolbar from './views/TableToolbar.vue';
+import SearchBar from './SearchBar.vue';
 
 import 'highlight.js/styles/github.css';
 import 'prosemirror-tables/style/tables.css';
@@ -52,6 +67,12 @@ const fileStore = useFileStore();
 const editorRef = ref<HTMLElement | null>(null);
 const bubbleMenuRef = ref<InstanceType<typeof BubbleMenu> | null>(null);
 const tableToolbarRef = ref<InstanceType<typeof TableToolbar> | null>(null);
+const searchBarRef = ref<InstanceType<typeof SearchBar> | null>(null);
+
+// 搜索状态
+const isSearchVisible = ref(false);
+const searchMatchCount = ref(0);
+const searchCurrentIndex = ref(0);
 
 let editorView: EditorView | null = null;
 
@@ -180,7 +201,8 @@ onMounted(() => {
         }),
         createTableToolbarPlugin((show, left, top) => {
           tableToolbarRef.value?.update(show, left, top);
-        })
+        }),
+        createSearchPlugin()
       ],
       doc: parseMarkdown(props.initialContent || '', mySchema)
     }),
@@ -232,6 +254,110 @@ defineExpose({
     }
   },
   getDoc: () => editorView?.state.doc,
-  getEditorView: () => editorView
+  getEditorView: () => editorView,
+  // 搜索功能
+  openSearch: (showReplace = false) => {
+    isSearchVisible.value = true;
+    nextTick(() => {
+      searchBarRef.value?.setShowReplace(showReplace);
+    });
+  },
+  closeSearch: () => {
+    isSearchVisible.value = false;
+    if (editorView) {
+      editorView.dispatch(resetSearch(editorView.state.tr));
+    }
+  },
+  setSearchQuery: (query: string) => {
+    if (!editorView) return;
+    editorView.dispatch(setQuery(editorView.state.tr, query));
+    updateSearchState();
+    scrollToCurrentMatch(editorView);
+  },
+  setSearchCaseSensitive: (caseSensitive: boolean) => {
+    if (!editorView) return;
+    editorView.dispatch(setCaseSensitive(editorView.state.tr, caseSensitive));
+    updateSearchState();
+  },
+  searchNext: () => {
+    if (!editorView) return;
+    editorView.dispatch(nextMatch(editorView.state.tr));
+    updateSearchState();
+    scrollToCurrentMatch(editorView);
+  },
+  searchPrev: () => {
+    if (!editorView) return;
+    editorView.dispatch(prevMatch(editorView.state.tr));
+    updateSearchState();
+    scrollToCurrentMatch(editorView);
+  },
+  searchReplace: (replacement: string) => {
+    if (!editorView) return;
+    replaceCurrent(editorView, replacement);
+    updateSearchState();
+  },
+  searchReplaceAll: (replacement: string) => {
+    if (!editorView) return;
+    replaceAll(editorView, replacement);
+    updateSearchState();
+  }
 });
+
+// 更新搜索状态
+function updateSearchState() {
+  if (!editorView) return;
+  const state = getSearchState(editorView.state);
+  if (state) {
+    searchMatchCount.value = state.matches.length;
+    searchCurrentIndex.value = state.currentIndex;
+  }
+}
+
+// 搜索栏事件处理
+function onSearchQuery(query: string) {
+  if (!editorView) return;
+  editorView.dispatch(setQuery(editorView.state.tr, query));
+  updateSearchState();
+  scrollToCurrentMatch(editorView);
+}
+
+function onSearchCaseSensitive(caseSensitive: boolean) {
+  if (!editorView) return;
+  editorView.dispatch(setCaseSensitive(editorView.state.tr, caseSensitive));
+  updateSearchState();
+}
+
+function onSearchNext() {
+  if (!editorView) return;
+  editorView.dispatch(nextMatch(editorView.state.tr));
+  updateSearchState();
+  scrollToCurrentMatch(editorView);
+}
+
+function onSearchPrev() {
+  if (!editorView) return;
+  editorView.dispatch(prevMatch(editorView.state.tr));
+  updateSearchState();
+  scrollToCurrentMatch(editorView);
+}
+
+function onSearchReplace(replacement: string) {
+  if (!editorView) return;
+  replaceCurrent(editorView, replacement);
+  updateSearchState();
+}
+
+function onSearchReplaceAll(replacement: string) {
+  if (!editorView) return;
+  replaceAll(editorView, replacement);
+  updateSearchState();
+}
+
+function onSearchClose() {
+  isSearchVisible.value = false;
+  if (editorView) {
+    editorView.dispatch(resetSearch(editorView.state.tr));
+  }
+  editorView?.focus();
+}
 </script>
