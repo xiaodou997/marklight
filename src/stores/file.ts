@@ -56,6 +56,8 @@ export const useFileStore = defineStore('file', () => {
 
   return {
     currentFile,
+    isLoading,
+    setLoading,
     setContent,
     setFile,
     markSaved,
