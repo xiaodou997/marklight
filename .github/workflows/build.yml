@@ -23,9 +23,6 @@ jobs:
           - platform: 'windows-latest'
             args: ''
             target: 'x86_64-pc-windows-msvc'
-          - platform: 'ubuntu-22.04'
-            args: ''
-            target: 'x86_64-unknown-linux-gnu'
 
     runs-on: ${{ matrix.platform }}
     
@@ -93,19 +90,13 @@ jobs:
           [ ! -z "$CHORES" ] && BODY="$BODY\n### 🏗️ 维护与工程\n$CHORES"
           [ ! -z "$OTHERS" ] && BODY="$BODY\n### 📝 其他变动\n$OTHERS"
 
-          BODY="$BODY\n\n---\n### 📦 平台支持说明\n* **macOS**: 支持 Apple Silicon (aarch64) 和 Intel (x64) 架构。\n* **Windows**: 提供标准安装向导 (.exe)。\n* **Linux**: 提供 AppImage 格式，下载后赋予执行权限即可运行。"
+          BODY="$BODY\n\n---\n### 📦 平台支持说明\n* **macOS**: 支持 Apple Silicon (aarch64) 和 Intel (x64) 架构。\n* **Windows**: 提供标准安装向导 (.exe)。"
 
           # 处理多行输出
           EOF=$(dd if=/dev/urandom bs=15 count=1 2>/dev/null | base64)
           echo "body<<$EOF" >> $GITHUB_OUTPUT
           echo -e "$BODY" >> $GITHUB_OUTPUT
           echo "$EOF" >> $GITHUB_OUTPUT
-
-      - name: Install dependencies (ubuntu only)
-        if: matrix.platform == 'ubuntu-22.04'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.0-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
