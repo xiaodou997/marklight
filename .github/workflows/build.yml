@@ -23,6 +23,9 @@ jobs:
           - platform: 'windows-latest'
             args: ''
             target: 'x86_64-pc-windows-msvc'
+          - platform: 'ubuntu-22.04'
+            args: ''
+            target: 'x86_64-unknown-linux-gnu'
 
     runs-on: ${{ matrix.platform }}
     
@@ -42,9 +45,9 @@ jobs:
           node-version: '20'
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v2
+        uses: pnpm/action-setup@v4
         with:
-          version: 8
+          version: 10
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
@@ -76,16 +79,18 @@ jobs:
             | macOS (Apple Silicon) | `MarkLight_*_aarch64.dmg` |
             | macOS (Intel) | `MarkLight_*_x64.dmg` |
             | Windows | `MarkLight_*_x64-setup.exe` |
+            | Linux | `MarkLight_*_amd64.AppImage` |
             
             ### 使用说明
             
             1. 下载对应平台的安装包
             2. macOS: 打开 .dmg 文件，将 MarkLight 拖入 Applications 文件夹
             3. Windows: 运行 .exe 安装程序
+            4. Linux: 给予 .AppImage 执行权限后直接运行
             
             ---
             
-            > 这是自动构建的 Draft Release，请检查后点击 **Publish release** 发布。
-          releaseDraft: true
+            > 这是自动构建的 Release，由 GitHub Actions 生成。
+          releaseDraft: false
           prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
           args: ${{ matrix.args }}
