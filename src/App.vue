@@ -15,7 +15,7 @@ import SettingsModal from './components/Settings/SettingsModal.vue';
 import CommandPalette from './components/Editor/CommandPalette.vue';
 import { renderToWechatHtml } from './utils/wechat-renderer';
 import { serializeMarkdown } from './components/Editor/core/markdown';
-import { isModKey } from './utils/platform';
+import { isModKey, isMac } from './utils/platform';
 
 const fileStore = useFileStore();
 const settingsStore = useSettingsStore();
@@ -60,10 +60,17 @@ async function loadFiles(folderPath: string) {
     const result = await invoke<FileInfo[]>('list_directory', { path: folderPath });
     files.value = result;
     currentFolder.value = folderPath;
+    // 开启监听
+    await invoke('watch_directory', { path: folderPath });
   } catch (error) {
     console.error('Failed to list directory:', error);
   }
 }
+
+// 窗口控制
+const minimizeWindow = () => appWindow.minimize();
+const maximizeWindow = () => appWindow.toggleMaximize();
+const closeWindow = () => appWindow.destroy();
 
 // 打开文件夹
 async function handleOpenFolder() {
@@ -456,11 +463,17 @@ async function handleOpenNewWindow(path?: string) {
 // 监听新窗口打开文件事件
 let unlistenOpenFile: (() => void) | null = null;
 let unlistenCloseRequest: (() => void) | null = null;
+let unlistenFileChanged: (() => void) | null = null;
 
 onMounted(async () => {
   unlistenOpenFile = await listen<string>('open-file-in-new-window', (event) => {
     const path = event.payload;
     handleOpenFile(path);
+  });
+
+  // 监听后端文件变动通知
+  unlistenFileChanged = await listen('file-changed', () => {
+    refreshFiles();
   });
   
   // 监听窗口关闭请求
@@ -481,6 +494,7 @@ onMounted(async () => {
 onUnmounted(() => {
   if (unlistenOpenFile) unlistenOpenFile();
   if (unlistenCloseRequest) unlistenCloseRequest();
+  if (unlistenFileChanged) unlistenFileChanged();
 });
 
 onUnmounted(() => {
@@ -493,6 +507,24 @@ onUnmounted(() => {
     class="h-screen flex flex-col bg-white overflow-hidden font-sans select-none"
     :class="{ 'focus-mode': settingsStore.isFocusMode }"
   >
+    <!-- Windows/Linux 自定义标题栏 -->
+    <div v-if="!isMac" class="custom-titlebar flex-shrink-0 h-8 bg-gray-50 border-b border-gray-200 flex items-center justify-between px-3 select-none">
+      <div class="custom-titlebar-drag-area flex-1 h-full flex items-center" data-tauri-drag-region>
+        <span class="text-xs text-gray-500 font-medium">{{ fileStore.currentFile.path?.split(/[/\\]/).pop() || '未命名' }}{{ fileStore.currentFile.isDirty ? ' ●' : '' }} - MarkLight</span>
+      </div>
+      <div class="flex items-center gap-1 ml-2">
+        <button @click="minimizeWindow" class="w-6 h-6 flex items-center justify-center rounded hover:bg-gray-200 transition-colors text-gray-600">
+          <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/></svg>
+        </button>
+        <button @click="maximizeWindow" class="w-6 h-6 flex items-center justify-center rounded hover:bg-gray-200 transition-colors text-gray-600">
+          <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/></svg>
+        </button>
+        <button @click="closeWindow" class="w-6 h-6 flex items-center justify-center rounded hover:bg-red-500 hover:text-white transition-colors text-gray-600">
+          <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+    </div>
+
     <!-- 工具栏 - 焦点模式下隐藏，但悬停顶部时显示 -->
     <div 
       class="toolbar-container transition-opacity duration-300"
