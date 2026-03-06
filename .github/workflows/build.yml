@@ -43,6 +43,7 @@ jobs:
           PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
           
           if [ -z "$PREV_TAG" ]; then
+            # 如果没有上一个标签，获取最近 30 天或所有提交
             COMMITS=$(git log --pretty=format:%s --since="1 month ago")
           else
             COMMITS=$(git log --pretty=format:%s $PREV_TAG..HEAD)
@@ -54,27 +55,42 @@ jobs:
           PERFS=""
           REFACTORS=""
           DOCS=""
+          UI_STYLE=""
+          CHORES=""
           OTHERS=""
 
           while IFS= read -r COMMIT; do
-            case "$COMMIT" in
-              feat:*) FEATS="$FEATS\n* ${COMMIT#feat: }" ;;
-              fix:*) FIXES="$FIXES\n* ${COMMIT#fix: }" ;;
-              perf:*) PERFS="$PERFS\n* ${COMMIT#perf: }" ;;
-              refactor:*) REFACTORS="$REFACTORS\n* ${COMMIT#refactor: }" ;;
-              docs:*) DOCS="$DOCS\n* ${COMMIT#docs: }" ;;
-              chore:*|ci:*|style:*|test:*) ;; # 忽略这些琐碎提交
-              *) [ ! -z "$COMMIT" ] && OTHERS="$OTHERS\n* $COMMIT" ;;
-            esac
+            # 忽略 CI 和无意义的提交
+            [[ "$COMMIT" =~ ^ci: ]] && continue
+            
+            if [[ "$COMMIT" =~ ^feat(\(.*\))?: ]]; then
+              FEATS="$FEATS\n* ${COMMIT}"
+            elif [[ "$COMMIT" =~ ^fix(\(.*\))?: ]]; then
+              FIXES="$FIXES\n* ${COMMIT}"
+            elif [[ "$COMMIT" =~ ^perf(\(.*\))?: ]]; then
+              PERFS="$PERFS\n* ${COMMIT}"
+            elif [[ "$COMMIT" =~ ^refactor(\(.*\))?: ]]; then
+              REFACTORS="$REFACTORS\n* ${COMMIT}"
+            elif [[ "$COMMIT" =~ ^docs(\(.*\))?: ]]; then
+              DOCS="$DOCS\n* ${COMMIT}"
+            elif [[ "$COMMIT" =~ ^style(\(.*\))?: ]]; then
+              UI_STYLE="$UI_STYLE\n* ${COMMIT}"
+            elif [[ "$COMMIT" =~ ^(chore|build)(\(.*\))?: ]]; then
+              CHORES="$CHORES\n* ${COMMIT}"
+            else
+              [ ! -z "$COMMIT" ] && OTHERS="$OTHERS\n* $COMMIT"
+            fi
           done <<< "$COMMITS"
 
           # 构建最终 Markdown
           BODY="## 🎉 MarkLight ${{ github.ref_name }} 版本发布\n"
           [ ! -z "$FEATS" ] && BODY="$BODY\n### 🚀 新功能\n$FEATS"
           [ ! -z "$FIXES" ] && BODY="$BODY\n### 🐛 修复\n$FIXES"
+          [ ! -z "$UI_STYLE" ] && BODY="$BODY\n### 🎨 UI 与样式\n$UI_STYLE"
           [ ! -z "$PERFS" ] && BODY="$BODY\n### ⚡ 性能优化\n$PERFS"
           [ ! -z "$REFACTORS" ] && BODY="$BODY\n### 🔨 代码重构\n$REFACTORS"
           [ ! -z "$DOCS" ] && BODY="$BODY\n### 📚 文档更新\n$DOCS"
+          [ ! -z "$CHORES" ] && BODY="$BODY\n### 🏗️ 维护与工程\n$CHORES"
           [ ! -z "$OTHERS" ] && BODY="$BODY\n### 📝 其他变动\n$OTHERS"
 
           BODY="$BODY\n\n---\n### 📦 平台支持说明\n* **macOS**: 支持 Apple Silicon (aarch64) 和 Intel (x64) 架构。\n* **Windows**: 提供标准安装向导 (.exe)。\n* **Linux**: 提供 AppImage 格式，下载后赋予执行权限即可运行。"
