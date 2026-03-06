@@ -16,6 +16,12 @@ export const useFileStore = defineStore('file', () => {
     lastModifiedTime: null,
   });
 
+  const isLoading = ref(false);
+
+  function setLoading(loading: boolean) {
+    isLoading.value = loading;
+  }
+
   function setContent(content: string) {
     if (currentFile.value.content !== content) {
       currentFile.value.content = content;

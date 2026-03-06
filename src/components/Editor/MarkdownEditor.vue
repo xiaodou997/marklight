@@ -4,6 +4,13 @@
     @click="handleContainerClick"
   >
     <div ref="editorRef" class="prosemirror-editor h-full px-12 py-8 overflow-y-auto outline-none"></div>
+    
+    <!-- 加载中遮罩 -->
+    <div v-if="fileStore.isLoading" class="absolute inset-0 bg-white/80 flex flex-col items-center justify-center z-50">
+      <div class="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+      <div class="mt-4 text-xs text-gray-500 font-medium">正在处理文档...</div>
+    </div>
+
     <BubbleMenu ref="bubbleMenuRef" @action="onMenuAction" />
     <TableToolbar ref="tableToolbarRef" @action="onTableAction" />
     <SearchBar
@@ -120,7 +127,11 @@ const debouncedStatsUpdate = debounce((state: EditorState) => {
   if (!editorView) return;
 
   const { doc, selection } = state;
-  const wordCount = doc.textContent.replace(/[\x00-\xff]/g, "m").replace(/m+/g, "*").length;
+  
+  // 优化字数计算：匹配中文字符 + 连续的非中文字符作为一个单词
+  const text = doc.textContent;
+  const wordCount = (text.match(/[\u4e00-\u9fa5]/g) || []).length + 
+                    (text.replace(/[\u4e00-\u9fa5]/g, ' ').match(/[a-zA-Z0-9_-]+/g) || []).length;
   
   // 增量更新大纲：只遍历文档一次，使用缓存避免重复计算
   const outline: any[] = [];

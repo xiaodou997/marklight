@@ -28,11 +28,14 @@ export function useFileOperations() {
     });
     if (selected && typeof selected === 'string') {
       try {
+        fileStore.setLoading(true);
         const content = await invoke<string>('read_file', { path: selected });
         const mtime = await invoke<number>('get_file_modified_time', { path: selected });
         fileStore.setFile(content, selected, mtime);
       } catch (error) { 
         console.error('Failed to read file:', error); 
+      } finally {
+        fileStore.setLoading(false);
       }
     }
   }
