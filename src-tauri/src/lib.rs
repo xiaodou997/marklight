@@ -153,7 +153,23 @@ fn create_folder(dir: String, name: String) -> Result<String, String> {
 #[tauri::command]
 async fn reveal_in_finder(app: tauri::AppHandle, path: String) -> Result<(), String> {
     use tauri_plugin_opener::OpenerExt;
-    app.opener().reveal_item_in_dir(path).map_err(|e| e.to_string())
+    
+    #[cfg(target_os = "linux")]
+    {
+        // Linux 下 reveal_item_in_dir 经常失效，改为打开父目录
+        let path_buf = std::path::Path::new(&path);
+        let dir = if path_buf.is_dir() {
+            path_buf
+        } else {
+            path_buf.parent().unwrap_or(std::path::Path::new("/"))
+        };
+        app.opener().open_path(dir.to_string_lossy().to_string(), None).map_err(|e| e.to_string())
+    }
+    
+    #[cfg(not(target_os = "linux"))]
+    {
+        app.opener().reveal_item_in_dir(path).map_err(|e| e.to_string())
+    }
 }
 
 #[derive(serde::Serialize, Clone)]
