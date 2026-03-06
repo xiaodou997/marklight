@@ -15,6 +15,7 @@ import SettingsModal from './components/Settings/SettingsModal.vue';
 import CommandPalette from './components/Editor/CommandPalette.vue';
 import { renderToWechatHtml } from './utils/wechat-renderer';
 import { serializeMarkdown } from './components/Editor/core/markdown';
+import { isModKey } from './utils/platform';
 
 const fileStore = useFileStore();
 const settingsStore = useSettingsStore();
@@ -336,13 +337,13 @@ onMounted(() => {
   // 快捷键处理
   const handleKeyDown = (e: KeyboardEvent) => {
     // 命令面板快捷键: Cmd+Shift+P
-    if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'P') {
+    if (isModKey(e) && e.shiftKey && e.key === 'P') {
       e.preventDefault();
       isCommandPaletteOpen.value = true;
     }
     
     // 焦点模式快捷键: Cmd+Shift+F (macOS) 或 F11
-    if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'F') {
+    if (isModKey(e) && e.shiftKey && e.key === 'F') {
       e.preventDefault();
       settingsStore.toggleFocusMode();
     }
