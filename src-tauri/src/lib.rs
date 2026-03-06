@@ -195,7 +195,7 @@ pub fn run() {
                 handle, "文件", true,
                 &[
                     &MenuItem::with_id(handle, "new", "新建", true, Some("CmdOrCtrl+N"))?,
-                    &MenuItem::with_id(handle, "new_window", "新建窗口", true, Some("CmdOrCtrl+Shift+N"))?,
+                    &MenuItem::with_id(handle, "new_window", "新建窗口", true, Some("CmdOrCtrl+Alt+N"))?,
                     &MenuItem::with_id(handle, "open", "打开...", true, Some("CmdOrCtrl+O"))?,
                     &MenuItem::with_id(handle, "open_folder", "打开文件夹...", true, None::<&str>)?,
                     &PredefinedMenuItem::separator(handle)?,
@@ -203,7 +203,7 @@ pub fn run() {
                     &MenuItem::with_id(handle, "save_as", "另存为...", true, Some("CmdOrCtrl+Shift+S"))?,
                     &PredefinedMenuItem::separator(handle)?,
                     &MenuItem::with_id(handle, "export_html", "导出为 HTML", true, None::<&str>)?,
-                    &MenuItem::with_id(handle, "export_pdf", "导出为 PDF...", true, Some("CmdOrCtrl+P"))?,
+                    &MenuItem::with_id(handle, "export_pdf", "导出为 PDF...", true, Some("CmdOrCtrl+Shift+P"))?,
                     &MenuItem::with_id(handle, "export_wechat", "微信导出", true, Some("CmdOrCtrl+E"))?,
                 ],
             )?;
@@ -223,7 +223,7 @@ pub fn run() {
                     &MenuItem::with_id(handle, "find", "查找", true, Some("CmdOrCtrl+F"))?,
                     &MenuItem::with_id(handle, "replace", "替换", true, Some("CmdOrCtrl+H"))?,
                     &PredefinedMenuItem::separator(handle)?,
-                    &MenuItem::with_id(handle, "command_palette", "命令面板", true, Some("CmdOrCtrl+Shift+P"))?,
+                    &MenuItem::with_id(handle, "command_palette", "命令面板", true, Some("CmdOrCtrl+K"))?,
                 ],
             )?;
 
