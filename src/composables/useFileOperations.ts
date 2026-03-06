@@ -29,7 +29,8 @@ export function useFileOperations() {
     if (selected && typeof selected === 'string') {
       try {
         const content = await invoke<string>('read_file', { path: selected });
-        fileStore.setFile(content, selected);
+        const mtime = await invoke<number>('get_file_modified_time', { path: selected });
+        fileStore.setFile(content, selected, mtime);
       } catch (error) { 
         console.error('Failed to read file:', error); 
       }
@@ -40,8 +41,18 @@ export function useFileOperations() {
     const file = fileStore.currentFile;
     if (file.path) {
       try {
+        // 检测冲突
+        if (file.lastModifiedTime) {
+          const currentMtime = await invoke<number>('get_file_modified_time', { path: file.path });
+          if (currentMtime > file.lastModifiedTime) {
+            const confirmed = await window.confirm('文件已被外部程序修改，是否覆盖？');
+            if (!confirmed) return false;
+          }
+        }
+
         await invoke('save_file', { path: file.path, content: file.content });
-        fileStore.markSaved();
+        const newMtime = await invoke<number>('get_file_modified_time', { path: file.path });
+        fileStore.markSaved(newMtime);
         return true;
       } catch (error) { 
         console.error('Failed to save file:', error); 
@@ -61,8 +72,9 @@ export function useFileOperations() {
     if (selected) {
       try {
         await invoke('save_file', { path: selected, content: fileStore.currentFile.content });
-        fileStore.setFile(fileStore.currentFile.content, selected);
-        fileStore.markSaved();
+        const newMtime = await invoke<number>('get_file_modified_time', { path: selected });
+        fileStore.setFile(fileStore.currentFile.content, selected, newMtime);
+        fileStore.markSaved(newMtime);
       } catch (error) { 
         console.error('Failed to save file:', error); 
       }

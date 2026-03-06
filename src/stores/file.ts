@@ -5,6 +5,7 @@ export interface FileState {
   path: string | null;
   content: string;
   isDirty: boolean;
+  lastModifiedTime: number | null;
 }
 
 export const useFileStore = defineStore('file', () => {
@@ -12,6 +13,7 @@ export const useFileStore = defineStore('file', () => {
     path: null,
     content: '',
     isDirty: false,
+    lastModifiedTime: null,
   });
 
   function setContent(content: string) {
@@ -21,16 +23,20 @@ export const useFileStore = defineStore('file', () => {
     }
   }
 
-  function setFile(content: string, path: string | null) {
+  function setFile(content: string, path: string | null, lastModifiedTime: number | null = null) {
     currentFile.value = {
       path,
       content,
       isDirty: false,
+      lastModifiedTime,
     };
   }
 
-  function markSaved() {
+  function markSaved(lastModifiedTime: number | null = null) {
     currentFile.value.isDirty = false;
+    if (lastModifiedTime !== null) {
+      currentFile.value.lastModifiedTime = lastModifiedTime;
+    }
   }
 
   function reset() {
@@ -38,6 +44,7 @@ export const useFileStore = defineStore('file', () => {
       path: null,
       content: '',
       isDirty: false,
+      lastModifiedTime: null,
     };
   }
 

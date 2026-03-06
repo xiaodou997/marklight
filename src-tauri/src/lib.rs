@@ -2,6 +2,8 @@ use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu, CheckMenuItem};
 use tauri::{Emitter, WebviewUrl, WebviewWindowBuilder, Manager};
 use std::fs;
 use std::path::Path;
+use std::time::SystemTime;
+use notify::{Watcher, RecursiveMode, Config};
 
 #[tauri::command]
 fn read_file(path: String) -> Result<String, String> {
@@ -40,29 +42,27 @@ fn list_directory(path: String) -> Result<Vec<FileInfo>, String> {
     Ok(files)
 }
 
+#[tauri::command]
+fn get_file_modified_time(path: String) -> Result<u64, String> {
+    let metadata = fs::metadata(&path).map_err(|e| e.to_string())?;
+    let modified = metadata.modified().map_err(|e| e.to_string())?;
+    let duration = modified.duration_since(SystemTime::UNIX_EPOCH).map_err(|e| e.to_string())?;
+    Ok(duration.as_secs())
+}
+
 /// 保存图片到指定目录的 assets 子目录中
-/// 返回相对路径，如 "assets/image-20240301-143022.png"
 #[tauri::command]
 fn save_image(dir: String, filename: String, data: Vec<u8>) -> Result<String, String> {
-    // 创建 assets 目录路径
     let assets_dir = Path::new(&dir).join("assets");
-    
-    // 如果 assets 目录不存在，创建它
     if !assets_dir.exists() {
         fs::create_dir_all(&assets_dir).map_err(|e| format!("创建 assets 目录失败: {}", e))?;
     }
-    
-    // 构建完整文件路径
     let file_path = assets_dir.join(&filename);
-    
-    // 写入图片数据
     fs::write(&file_path, data).map_err(|e| format!("保存图片失败: {}", e))?;
-    
-    // 返回相对路径
     Ok(format!("assets/{}", filename))
 }
 
-/// 获取文件的绝对路径（用于解析相对路径的图片）
+/// 获取文件的绝对路径
 #[tauri::command]
 fn resolve_image_path(file_dir: String, relative_path: String) -> Result<String, String> {
     let absolute_path = Path::new(&file_dir).join(&relative_path);
@@ -73,12 +73,9 @@ fn resolve_image_path(file_dir: String, relative_path: String) -> Result<String,
 }
 
 /// 打开新窗口
-/// 如果提供了 path 参数，新窗口将自动打开该文件
 #[tauri::command]
 async fn open_new_window(app: tauri::AppHandle, path: Option<String>) -> Result<(), String> {
     let window_label = format!("main-{}", std::process::id());
-    
-    // 构建窗口
     let builder = WebviewWindowBuilder::new(
         &app,
         &window_label,
@@ -89,14 +86,10 @@ async fn open_new_window(app: tauri::AppHandle, path: Option<String>) -> Result<
     .min_inner_size(800.0, 600.0)
     .center();
     
-    // 创建窗口
     let window = builder.build().map_err(|e| e.to_string())?;
-    
-    // 如果有初始文件路径，在新窗口加载后发送事件
     if let Some(file_path) = path {
         window.emit("open-file-in-new-window", file_path).map_err(|e| e.to_string())?;
     }
-    
     Ok(())
 }
 
@@ -112,11 +105,9 @@ fn rename_file(old_path: String, new_name: String) -> Result<String, String> {
     let path = Path::new(&old_path);
     let parent = path.parent().ok_or("无法获取父目录")?;
     let new_path = parent.join(&new_name);
-    
     if new_path.exists() {
         return Err("目标名称已存在".to_string());
     }
-    
     fs::rename(&old_path, &new_path).map_err(|e| e.to_string())?;
     Ok(new_path.to_string_lossy().to_string())
 }
@@ -153,23 +144,27 @@ fn create_folder(dir: String, name: String) -> Result<String, String> {
 #[tauri::command]
 async fn reveal_in_finder(app: tauri::AppHandle, path: String) -> Result<(), String> {
     use tauri_plugin_opener::OpenerExt;
-    
     #[cfg(target_os = "linux")]
     {
-        // Linux 下 reveal_item_in_dir 经常失效，改为打开父目录
-        let path_buf = std::path::Path::new(&path);
-        let dir = if path_buf.is_dir() {
-            path_buf
-        } else {
-            path_buf.parent().unwrap_or(std::path::Path::new("/"))
-        };
+        let path_buf = Path::new(&path);
+        let dir = if path_buf.is_dir() { path_buf } else { path_buf.parent().unwrap_or(Path::new("/")) };
         app.opener().open_path(dir.to_string_lossy().to_string(), None).map_err(|e| e.to_string())
     }
-    
     #[cfg(not(target_os = "linux"))]
     {
         app.opener().reveal_item_in_dir(path).map_err(|e| e.to_string())
     }
+}
+
+/// 监听指定目录
+#[tauri::command]
+fn watch_directory(state: tauri::State<std::sync::Mutex<notify::RecommendedWatcher>>, path: String) -> Result<(), String> {
+    let mut watcher = state.lock().map_err(|e| e.to_string())?;
+    // 先取消所有之前的监听（简单处理，实际可根据路径管理）
+    // 注意：notify 的 RecommendedWatcher 在某些平台下 unwatch 可能需要精确路径
+    // 这里我们先尝试直接添加新路径，notify 会处理重复添加
+    watcher.watch(Path::new(&path), RecursiveMode::Recursive).map_err(|e| e.to_string())?;
+    Ok(())
 }
 
 #[derive(serde::Serialize, Clone)]
@@ -186,8 +181,28 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .setup(|app| {
-            let handle = app.handle();
+            let handle = app.handle().clone();
             
+            // 设置文件监听器
+            let (tx, rx) = std::sync::mpsc::channel();
+            let watcher = notify::RecommendedWatcher::new(tx, Config::default()).map_err(|e| e.to_string())?;
+            
+            // 在后台线程处理监听事件
+            std::thread::spawn(move || {
+                for res in rx {
+                    match res {
+                        Ok(_) => {
+                            let _ = handle.emit("file-changed", ());
+                        }
+                        Err(e) => println!("watch error: {:?}", e),
+                    }
+                }
+            });
+
+            // 将 watcher 存储在状态中，防止被销毁
+            app.manage(std::sync::Mutex::new(watcher));
+
+            let handle = app.handle();
             // 应用菜单 (MarkLight)
             let app_menu = Submenu::with_items(
                 handle, "MarkLight", true,
@@ -263,14 +278,9 @@ pub fn run() {
 
             app.on_menu_event(move |app, event| {
                 match event.id().as_ref() {
-                    // 应用菜单
                     "about" => { let _ = app.emit("menu-event", "about"); }
                     "settings" => { let _ = app.emit("menu-event", "settings"); }
-                    "hide" => { let _ = app.emit("menu-event", "hide"); }
-                    "hide_others" => { let _ = app.emit("menu-event", "hide_others"); }
-                    "show_all" => { let _ = app.emit("menu-event", "show_all"); }
                     "quit" => { let _ = app.emit("menu-event", "quit"); }
-                    // 文件菜单
                     "new" => { let _ = app.emit("menu-event", "new"); }
                     "new_window" => { let _ = app.emit("menu-event", "new_window"); }
                     "open" => { let _ = app.emit("menu-event", "open"); }
@@ -280,7 +290,6 @@ pub fn run() {
                     "export_html" => { let _ = app.emit("menu-event", "export_html"); }
                     "export_pdf" => { let _ = app.emit("menu-event", "export_pdf"); }
                     "export_wechat" => { let _ = app.emit("menu-event", "export_wechat"); }
-                    // 编辑菜单
                     "undo" => { let _ = app.emit("menu-event", "undo"); }
                     "redo" => { let _ = app.emit("menu-event", "redo"); }
                     "cut" => { let _ = app.emit("menu-event", "cut"); }
@@ -289,7 +298,6 @@ pub fn run() {
                     "select_all" => { let _ = app.emit("menu-event", "select_all"); }
                     "find" => { let _ = app.emit("menu-event", "find"); }
                     "replace" => { let _ = app.emit("menu-event", "replace"); }
-                    // 视图菜单
                     "toggle_sidebar" => { let _ = app.emit("menu-event", "toggle_sidebar"); }
                     "sidebar_outline" => { let _ = app.emit("menu-event", "sidebar_outline"); }
                     "sidebar_files" => { let _ = app.emit("menu-event", "sidebar_files"); }
@@ -300,14 +308,15 @@ pub fn run() {
                 }
             });
 
-            // 监听主窗口关闭事件
             if let Some(main_window) = app.get_webview_window("main") {
+                // Windows 和 Linux 下禁用原生边框以使用自定义标题栏
+                #[cfg(any(target_os = "windows", target_os = "linux"))]
+                main_window.set_decorations(false).map_err(|e| e.to_string())?;
+
                 let window_clone = main_window.clone();
                 main_window.on_window_event(move |event| {
                     if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                        // 阻止默认关闭行为
                         api.prevent_close();
-                        // 发送事件给前端处理
                         let _ = window_clone.emit("window-close-requested", ());
                     }
                 });
@@ -315,7 +324,7 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![read_file, save_file, list_directory, save_image, resolve_image_path, open_new_window, print_document, rename_file, delete_file, create_file, create_folder, reveal_in_finder])
+        .invoke_handler(tauri::generate_handler![read_file, save_file, list_directory, save_image, resolve_image_path, open_new_window, print_document, rename_file, delete_file, create_file, create_folder, reveal_in_finder, get_file_modified_time, watch_directory])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
