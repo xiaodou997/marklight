@@ -148,7 +148,7 @@ async fn reveal_in_finder(app: tauri::AppHandle, path: String) -> Result<(), Str
     {
         let path_buf = Path::new(&path);
         let dir = if path_buf.is_dir() { path_buf } else { path_buf.parent().unwrap_or(Path::new("/")) };
-        app.opener().open_path(dir.to_string_lossy().to_string(), None).map_err(|e| e.to_string())
+        app.opener().open_path(dir.to_string_lossy().to_string(), None::<String>).map_err(|e| e.to_string())
     }
     #[cfg(not(target_os = "linux"))]
     {
