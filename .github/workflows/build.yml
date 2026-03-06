@@ -32,6 +32,58 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # 获取完整历史以生成 Changelog
+
+      - name: Generate Structured Changelog
+        id: changelog
+        shell: bash
+        run: |
+          # 获取标签范围
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          
+          if [ -z "$PREV_TAG" ]; then
+            COMMITS=$(git log --pretty=format:%s --since="1 month ago")
+          else
+            COMMITS=$(git log --pretty=format:%s $PREV_TAG..HEAD)
+          fi
+
+          # 初始化类别
+          FEATS=""
+          FIXES=""
+          PERFS=""
+          REFACTORS=""
+          DOCS=""
+          OTHERS=""
+
+          while IFS= read -r COMMIT; do
+            case "$COMMIT" in
+              feat:*) FEATS="$FEATS\n* ${COMMIT#feat: }" ;;
+              fix:*) FIXES="$FIXES\n* ${COMMIT#fix: }" ;;
+              perf:*) PERFS="$PERFS\n* ${COMMIT#perf: }" ;;
+              refactor:*) REFACTORS="$REFACTORS\n* ${COMMIT#refactor: }" ;;
+              docs:*) DOCS="$DOCS\n* ${COMMIT#docs: }" ;;
+              chore:*|ci:*|style:*|test:*) ;; # 忽略这些琐碎提交
+              *) [ ! -z "$COMMIT" ] && OTHERS="$OTHERS\n* $COMMIT" ;;
+            esac
+          done <<< "$COMMITS"
+
+          # 构建最终 Markdown
+          BODY="## 🎉 MarkLight ${{ github.ref_name }} 版本发布\n"
+          [ ! -z "$FEATS" ] && BODY="$BODY\n### 🚀 新功能\n$FEATS"
+          [ ! -z "$FIXES" ] && BODY="$BODY\n### 🐛 修复\n$FIXES"
+          [ ! -z "$PERFS" ] && BODY="$BODY\n### ⚡ 性能优化\n$PERFS"
+          [ ! -z "$REFACTORS" ] && BODY="$BODY\n### 🔨 代码重构\n$REFACTORS"
+          [ ! -z "$DOCS" ] && BODY="$BODY\n### 📚 文档更新\n$DOCS"
+          [ ! -z "$OTHERS" ] && BODY="$BODY\n### 📝 其他变动\n$OTHERS"
+
+          BODY="$BODY\n\n---\n### 📦 平台支持说明\n* **macOS**: 支持 Apple Silicon (aarch64) 和 Intel (x64) 架构。\n* **Windows**: 提供标准安装向导 (.exe)。\n* **Linux**: 提供 AppImage 格式，下载后赋予执行权限即可运行。"
+
+          # 处理多行输出
+          EOF=$(dd if=/dev/urandom bs=15 count=1 2>/dev/null | base64)
+          echo "body<<$EOF" >> $GITHUB_OUTPUT
+          echo -e "$BODY" >> $GITHUB_OUTPUT
+          echo "$EOF" >> $GITHUB_OUTPUT
 
       - name: Install dependencies (ubuntu only)
         if: matrix.platform == 'ubuntu-22.04'
@@ -69,28 +121,7 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'MarkLight ${{ github.ref_name }}'
-          releaseBody: |
-            ## 🎉 MarkLight ${{ github.ref_name }}
-            
-            ### 下载安装包
-            
-            | 平台 | 文件 |
-            |------|------|
-            | macOS (Apple Silicon) | `MarkLight_*_aarch64.dmg` |
-            | macOS (Intel) | `MarkLight_*_x64.dmg` |
-            | Windows | `MarkLight_*_x64-setup.exe` |
-            | Linux | `MarkLight_*_amd64.AppImage` |
-            
-            ### 使用说明
-            
-            1. 下载对应平台的安装包
-            2. macOS: 打开 .dmg 文件，将 MarkLight 拖入 Applications 文件夹
-            3. Windows: 运行 .exe 安装程序
-            4. Linux: 给予 .AppImage 执行权限后直接运行
-            
-            ---
-            
-            > 这是自动构建的 Release，由 GitHub Actions 生成。
+          releaseBody: ${{ steps.changelog.outputs.body }}
           releaseDraft: false
           prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
           args: ${{ matrix.args }}
