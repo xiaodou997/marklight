@@ -88,6 +88,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue';
+import { formatShortcut } from '../../utils/platform';
 
 interface Command {
   id: string;
@@ -143,28 +144,28 @@ const actualQuery = computed(() => {
 // 命令列表
 const commands = computed<Command[]>(() => [
   // 文件操作
-  { id: 'file.new', title: '新建文件', icon: '📄', shortcut: '⌘N', action: () => emit('execute', { id: 'file.new' } as Command) },
-  { id: 'file.open', title: '打开文件', icon: '📂', shortcut: '⌘O', action: () => emit('execute', { id: 'file.open' } as Command) },
-  { id: 'file.save', title: '保存文件', icon: '💾', shortcut: '⌘S', action: () => emit('execute', { id: 'file.save' } as Command) },
-  { id: 'file.saveAs', title: '另存为...', icon: '💾', shortcut: '⌘⇧S', action: () => emit('execute', { id: 'file.saveAs' } as Command) },
-  { id: 'file.newWindow', title: '新建窗口', icon: '🪟', shortcut: '⌘⌥N', action: () => emit('execute', { id: 'file.newWindow' } as Command) },
+  { id: 'file.new', title: '新建文件', icon: '📄', shortcut: formatShortcut('CmdOrCtrl+N'), action: () => emit('execute', { id: 'file.new' } as Command) },
+  { id: 'file.open', title: '打开文件', icon: '📂', shortcut: formatShortcut('CmdOrCtrl+O'), action: () => emit('execute', { id: 'file.open' } as Command) },
+  { id: 'file.save', title: '保存文件', icon: '💾', shortcut: formatShortcut('CmdOrCtrl+S'), action: () => emit('execute', { id: 'file.save' } as Command) },
+  { id: 'file.saveAs', title: '另存为...', icon: '💾', shortcut: formatShortcut('CmdOrCtrl+Shift+S'), action: () => emit('execute', { id: 'file.saveAs' } as Command) },
+  { id: 'file.newWindow', title: '新建窗口', icon: '🪟', shortcut: formatShortcut('CmdOrCtrl+Alt+N'), action: () => emit('execute', { id: 'file.newWindow' } as Command) },
 
   // 编辑操作
-  { id: 'edit.find', title: '查找', icon: '🔍', shortcut: '⌘F', action: () => emit('execute', { id: 'edit.find' } as Command) },
-  { id: 'edit.replace', title: '查找和替换', icon: '🔄', shortcut: '⌘H', action: () => emit('execute', { id: 'edit.replace' } as Command) },
-  { id: 'edit.commandPalette', title: '命令面板', icon: '⌨️', shortcut: '⌘K', action: () => emit('execute', { id: 'edit.commandPalette' } as Command) },
+  { id: 'edit.find', title: '查找', icon: '🔍', shortcut: formatShortcut('CmdOrCtrl+F'), action: () => emit('execute', { id: 'edit.find' } as Command) },
+  { id: 'edit.replace', title: '查找和替换', icon: '🔄', shortcut: formatShortcut('CmdOrCtrl+H'), action: () => emit('execute', { id: 'edit.replace' } as Command) },
+  { id: 'edit.commandPalette', title: '命令面板', icon: '⌨️', shortcut: formatShortcut('CmdOrCtrl+K'), action: () => emit('execute', { id: 'edit.commandPalette' } as Command) },
 
   // 视图操作
-  { id: 'view.focusMode', title: '切换焦点模式', icon: '🎯', shortcut: '⌘⇧F', action: () => emit('execute', { id: 'view.focusMode' } as Command) },
-  { id: 'view.toggleSidebar', title: '切换侧边栏', icon: '📋', shortcut: '⌘\\', action: () => emit('execute', { id: 'view.toggleSidebar' } as Command) },
+  { id: 'view.focusMode', title: '切换焦点模式', icon: '🎯', shortcut: formatShortcut('CmdOrCtrl+Shift+F'), action: () => emit('execute', { id: 'view.focusMode' } as Command) },
+  { id: 'view.toggleSidebar', title: '切换侧边栏', icon: '📋', shortcut: formatShortcut('CmdOrCtrl+\\'), action: () => emit('execute', { id: 'view.toggleSidebar' } as Command) },
   { id: 'view.toggleOutline', title: '切换大纲', icon: '📑', action: () => emit('execute', { id: 'view.toggleOutline' } as Command) },
 
   // 导出
-  { id: 'export.pdf', title: '导出为 PDF', icon: '📕', shortcut: '⌘⇧P', action: () => emit('execute', { id: 'export.pdf' } as Command) },
+  { id: 'export.pdf', title: '导出为 PDF', icon: '📕', shortcut: formatShortcut('CmdOrCtrl+Shift+P'), action: () => emit('execute', { id: 'export.pdf' } as Command) },
   { id: 'export.wechat', title: '导出为微信格式', icon: '💬', action: () => emit('execute', { id: 'export.wechat' } as Command) },
 
   // 设置
-  { id: 'settings.open', title: '打开设置', icon: '⚙️', shortcut: '⌘,', action: () => emit('execute', { id: 'settings.open' } as Command) },
+  { id: 'settings.open', title: '打开设置', icon: '⚙️', shortcut: formatShortcut('CmdOrCtrl+,'), action: () => emit('execute', { id: 'settings.open' } as Command) },
 ]);
 
 // 过滤命令

@@ -144,7 +144,7 @@
           </div>
           <div class="context-menu-item" @click="handleRevealInFinder">
             <span class="context-menu-icon">📂</span>
-            <span>在 Finder 中显示</span>
+            <span>在 {{ getFileManagerName() }} 中显示</span>
           </div>
           <div class="context-menu-item context-menu-item-danger" @click="handleDelete">
             <span class="context-menu-icon">🗑️</span>
@@ -215,6 +215,7 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue';
+import { getFileManagerName } from '../../utils/platform';
 
 export interface OutlineItem {
   text: string;
