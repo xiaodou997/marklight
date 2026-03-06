@@ -156,9 +156,23 @@ export function parseMarkdown(content: string, schema: Schema): ProsemirrorNode 
   try {
     const doc = parser.parse(content);
     return postProcessTaskItems(doc, schema);
-  } catch (e) {
-    console.error('Markdown parse error:', e);
-    return schema.node('doc', null, [schema.node('paragraph')]);
+  } catch (e: any) {
+    // 如果是未知 token 导致的错误，尝试清理 HTML 标签后重新解析
+    if (e.message?.includes('token') || e.message?.includes('html')) {
+      console.warn('Markdown parse error, attempting to sanitize HTML:', e);
+      // 移除 HTML 标签
+      const sanitized = content.replace(/<[^>]*>/g, '');
+      try {
+        const doc = parser.parse(sanitized);
+        return postProcessTaskItems(doc, schema);
+      } catch (e2) {
+        console.error('Markdown parse error after sanitization:', e2);
+      }
+    } else {
+      console.error('Markdown parse error:', e);
+    }
+    // 返回最小可用文档
+    return schema.node('doc', null, [schema.node('paragraph', null, [schema.text('无法解析的文档内容')])]);
   }
 }
 
