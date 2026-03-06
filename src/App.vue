@@ -2,6 +2,7 @@
 import { ref, reactive, onMounted, onUnmounted, watch } from 'vue';
 import { listen } from '@tauri-apps/api/event';
 import { open } from '@tauri-apps/plugin-dialog';
+import { openUrl } from '@tauri-apps/plugin-opener';
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useFileStore } from './stores/file';
@@ -408,6 +409,9 @@ onMounted(async () => {
       case 'new_window': handleOpenNewWindow(); break;
       case 'focus_mode': settingsStore.toggleFocusMode(); break;
       case 'command_palette': isCommandPaletteOpen.value = true; break;
+      case 'github': openUrl('https://github.com/xiaodou997/marklight'); break;
+      case 'issues': openUrl('https://github.com/xiaodou997/marklight/issues'); break;
+      case 'check_updates': openUrl('https://github.com/xiaodou997/marklight/releases'); break;
       case 'about': showAbout(); break;
       case 'fullscreen': toggleFullscreen(); break;
       case 'quit': handleQuit(); break;
@@ -417,7 +421,7 @@ onMounted(async () => {
 
 // 显示关于对话框
 function showAbout() {
-  alert('MarkLight v0.2.0\n\n一款轻量级 Markdown 编辑器\n\n© 2026 MarkLight Team');
+  alert('墨光 (MarkLight) v0.2.0\n\n一款高性能、自研内核的 Markdown 编辑器\n\n项目主页: https://github.com/xiaodou997/marklight\n\n© 2026 MarkLight Team');
 }
 
 // 切换全屏

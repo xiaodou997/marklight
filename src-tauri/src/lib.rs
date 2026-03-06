@@ -273,11 +273,25 @@ pub fn run() {
                 ],
             )?;
 
-            let menu = Menu::with_items(handle, &[&app_menu, &file_menu, &edit_menu, &view_menu])?;
+            // 帮助菜单
+            let help_menu = Submenu::with_items(
+                handle, "帮助", true,
+                &[
+                    &MenuItem::with_id(handle, "github", "项目主页 (GitHub)", true, None::<&str>)?,
+                    &MenuItem::with_id(handle, "issues", "报告问题", true, None::<&str>)?,
+                    &PredefinedMenuItem::separator(handle)?,
+                    &MenuItem::with_id(handle, "check_updates", "检查更新...", true, None::<&str>)?,
+                ],
+            )?;
+
+            let menu = Menu::with_items(handle, &[&app_menu, &file_menu, &edit_menu, &view_menu, &help_menu])?;
             app.set_menu(menu)?;
 
             app.on_menu_event(move |app, event| {
                 match event.id().as_ref() {
+                    "github" => { let _ = app.emit("menu-event", "github"); }
+                    "issues" => { let _ = app.emit("menu-event", "issues"); }
+                    "check_updates" => { let _ = app.emit("menu-event", "check_updates"); }
                     "about" => { let _ = app.emit("menu-event", "about"); }
                     "settings" => { let _ = app.emit("menu-event", "settings"); }
                     "quit" => { let _ = app.emit("menu-event", "quit"); }
