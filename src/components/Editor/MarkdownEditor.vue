@@ -49,6 +49,7 @@ import { createTableToolbarPlugin, handleTableAction } from './core/plugins/tabl
 import { createSmartPastePlugin } from './core/plugins/smart-paste';
 import { createSearchPlugin, getSearchState, setQuery, setCaseSensitive, nextMatch, prevMatch, replaceCurrent, replaceAll, scrollToCurrentMatch, resetSearch } from './core/plugins/search';
 import { createLinkTooltipPlugin } from './core/plugins/link-tooltip';
+import { createMathPreviewPlugin } from './core/plugins/math-preview';
 
 import CodeBlockView from './views/CodeBlockView.vue';
 import ImageView from './views/ImageView.vue';
@@ -110,19 +111,49 @@ const myKeymap = keymap({
 const onMenuAction = (type: string, data?: any) => { if (editorView) handleMenuAction(editorView, type, mySchema, data); };
 const onTableAction = (type: string) => { if (editorView) handleTableAction(editorView, type); };
 
+// 缓存大纲数据，实现增量更新
+let cachedOutline: any[] = [];
+let cachedOutlineVersion = 0;
+
 // 防抖更新统计信息
 const debouncedStatsUpdate = debounce((state: EditorState) => {
   if (!editorView) return;
 
   const { doc, selection } = state;
   const wordCount = doc.textContent.replace(/[\x00-\xff]/g, "m").replace(/m+/g, "*").length;
+  
+  // 增量更新大纲：只遍历文档一次，使用缓存避免重复计算
   const outline: any[] = [];
+  let outlineChanged = false;
+  let outlineIndex = 0;
 
   doc.descendants((node, pos) => {
     if (node.type.name === 'heading') {
-      outline.push({ text: node.textContent, level: node.attrs.level, pos });
+      const headingData = { text: node.textContent, level: node.attrs.level, pos };
+      if (outlineIndex < cachedOutline.length) {
+        // 比较缓存
+        const cached = cachedOutline[outlineIndex];
+        if (!cached || cached.text !== headingData.text || cached.level !== headingData.level || cached.pos !== pos) {
+          outlineChanged = true;
+        }
+      } else {
+        outlineChanged = true;
+      }
+      outline.push(headingData);
+      outlineIndex++;
     }
   });
+
+  // 如果大纲长度变化，也认为有变化
+  if (outline.length !== cachedOutline.length) {
+    outlineChanged = true;
+  }
+
+  // 只有在大纲变化时才更新缓存
+  if (outlineChanged) {
+    cachedOutline = outline;
+    cachedOutlineVersion++;
+  }
 
   const selectionText = selection instanceof TextSelection
     ? doc.textBetween(selection.from, selection.to)
@@ -204,7 +235,8 @@ onMounted(() => {
           tableToolbarRef.value?.update(show, left, top);
         }),
         createSearchPlugin(),
-        createLinkTooltipPlugin()
+        createLinkTooltipPlugin(),
+        createMathPreviewPlugin()
       ],
       doc: parseMarkdown(props.initialContent || '', mySchema)
     }),

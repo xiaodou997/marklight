@@ -448,10 +448,13 @@ watch(() => props.pendingRenamePath, (path) => {
       // 稍微延迟，确保文件列表已更新
       nextTick(() => {
         contextMenu.value.file = file;
-        renameDialog.value.newName = file.name;
+        // 去掉扩展名，方便用户重命名
+        const nameWithoutExt = file.name.replace(/\.md$/i, '');
+        renameDialog.value.newName = nameWithoutExt;
         renameDialog.value.visible = true;
         nextTick(() => {
           renameInputRef.value?.focus();
+          // 全选文件名（不含扩展名）
           renameInputRef.value?.select();
         });
       });
