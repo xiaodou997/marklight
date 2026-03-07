@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Mirror the GitHub repo to Gitee
-        uses: Yikun/gitee-mirror-action@v0.0.2
+        uses: Yikun/gitee-mirror-action@master
         with:
           # GitHub 仓库源
           src: github/xiaodou997
