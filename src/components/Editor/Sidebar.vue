@@ -92,6 +92,8 @@
               <span class="mr-2 text-sm">
                 <template v-if="file.is_dir">📁</template>
                 <template v-else-if="file.is_md">📝</template>
+                <template v-else-if="file.is_image">🖼️</template>
+                <template v-else-if="file.is_txt">📄</template>
                 <template v-else>📄</template>
               </span>
               <span class="truncate">{{ file.name }}</span>
@@ -228,6 +230,8 @@ export interface FileInfo {
   path: string;
   is_dir: boolean;
   is_md: boolean;
+  is_txt: boolean;
+  is_image: boolean;
 }
 
 const props = defineProps<{
@@ -244,6 +248,7 @@ const emit = defineEmits<{
   (e: 'scroll-to', pos: number): void;
   (e: 'open-folder'): void;
   (e: 'open-file', path: string): void;
+  (e: 'open-image', path: string): void;
   (e: 'open-file-in-new-window', path: string): void;
   (e: 'navigate-folder', path: string): void;
   (e: 'navigate-up'): void;
@@ -325,6 +330,12 @@ const pathSegments = computed(() => {
 });
 
 function handleFileClick(file: FileInfo, event?: MouseEvent) {
+  // 处理图片文件的预览请求
+  if (file.is_image) {
+    emit('open-image', file.path);
+    return;
+  }
+
   // Cmd (macOS) 或 Ctrl (Windows/Linux) + 单击：在新窗口打开
   if (event && (event.metaKey || event.ctrlKey) && !file.is_dir) {
     emit('open-file-in-new-window', file.path);

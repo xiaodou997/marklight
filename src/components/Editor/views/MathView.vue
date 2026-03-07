@@ -5,7 +5,9 @@
       isBlock ? 'math-view-block' : 'math-view-inline',
       isEditing ? 'is-editing' : '',
     ]"
-    @click.stop="startEditing"
+    tabindex="0"
+    @click.stop="startEditing()"
+    @keydown="handleKeyDown"
     @mouseenter="showPreview"
     @mouseleave="hidePreview"
   >
@@ -69,6 +71,13 @@ const latex = ref(props.node.attrs.latex || '');
 const renderRef = ref<HTMLElement | null>(null);
 const inputRef = ref<HTMLTextAreaElement | HTMLInputElement | null>(null);
 
+const handleKeyDown = (e: KeyboardEvent) => {
+  if (e.key === 'Backspace' && !isEditing.value) {
+    e.preventDefault();
+    startEditing(true);
+  }
+};
+
 // 预览气泡状态
 const showPreviewBubble = ref(false);
 const previewReady = ref(false);
@@ -108,7 +117,11 @@ const autoResize = () => {
   }
 };
 
-const startEditing = () => {
+const startEditing = (isFromBackspace = false) => {
+  if (isFromBackspace && latex.value.length > 0) {
+    latex.value = latex.value.slice(0, -1);
+    props.updateAttributes({ latex: latex.value });
+  }
   isEditing.value = true;
   showPreviewBubble.value = false;
   nextTick(() => {
