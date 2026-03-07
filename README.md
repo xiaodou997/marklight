@@ -12,13 +12,32 @@
   <a href="https://github.com/xiaodou997/marklight/releases">
     <img src="https://img.shields.io/github/v/release/xiaodou997/marklight?style=flat-square&color=blue" alt="Version" />
   </a>
-  <a href="https://github.com/xiaodou997/marklight/blob/main/LICENSE">
-    <img src="https://img.shields.io/github/license/xiaodou997/marklight?style=flat-square&color=yellow" alt="License" />
+  <a href="https://gitee.com/xiaodou997/marklight">
+    <img src="https://img.shields.io/badge/Gitee-xiaodou997-red?style=flat-square&logo=gitee" alt="Gitee" />
   </a>
-  <img src="https://img.shields.io/badge/Tauri-2.0-blue?style=flat-square&logo=tauri" alt="Tauri" />
-  <img src="https://img.shields.io/badge/Vue-3.5-green?style=flat-square&logo=vue.js" alt="Vue" />
-  <img src="https://img.shields.io/badge/pnpm-10-orange?style=flat-square&logo=pnpm" alt="pnpm" />
+  <a href="https://github.com/xiaodou997/marklight/blob/main/LICENSE-GPL">
+    <img src="https://img.shields.io/badge/License-GPL--3.0-blue?style=flat-square" alt="GPL-3.0" />
+  </a>
+  <a href="https://github.com/xiaodou997/marklight/blob/main/LICENSE-COMMERCIAL.md">
+    <img src="https://img.shields.io/badge/License-Commercial-green?style=flat-square" alt="Commercial" />
+  </a>
 </p>
+
+---
+
+## 📜 许可说明
+
+**MarkLight 采用双许可模式发布：**
+
+- **GPL-3.0**（免费）- 个人使用、公司内部使用、开源项目 **完全免费**
+- **商业许可**（付费）- 仅当你要**闭源商用**时才需要
+
+📧 **商业许可咨询**: [sgbcj@qq.com](mailto:sgbcj@qq.com)
+
+> 💡 **一句话总结**：自己用、开源用 → 免费；改改卖钱、闭源商用 → 付费  
+> **99% 的用户不需要付费，请放心使用！**
+
+👉 详细说明请查看 [LICENSING.md](LICENSING.md)
 
 ---
 
@@ -73,5 +92,6 @@ MarkLight 仍处于快速进化中，欢迎提交 [Issue](https://github.com/xia
 
 ---
 <p align="center">
-  <b>MarkLight - 记录思考，从轻开始。</b>
+  <b>墨光 (MarkLight) - 记录思考，从轻开始。</b><br/>
+  <i>Developed by luoxiaodou</i>
 </p>
