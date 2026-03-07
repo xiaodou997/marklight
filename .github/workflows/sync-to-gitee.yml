@@ -17,7 +17,7 @@ jobs:
       - name: Sync to Gitee
         env:
           GITEE_RSA_PRIVATE_KEY: ${{ secrets.GITEE_RSA_PRIVATE_KEY }}
-          GITEE_REPO: git@gitee.com:xiaodou997/marklight.git
+          GITEE_REPO: ${{ secrets.GITEE_REPO }}
         run: |
           # 配置 SSH
           mkdir -p ~/.ssh
