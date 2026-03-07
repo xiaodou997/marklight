@@ -15,29 +15,7 @@
   <a href="https://gitee.com/xiaodou997/marklight">
     <img src="https://img.shields.io/badge/Gitee-xiaodou997-red?style=flat-square&logo=gitee" alt="Gitee" />
   </a>
-  <a href="https://github.com/xiaodou997/marklight/blob/main/LICENSE-GPL">
-    <img src="https://img.shields.io/badge/License-GPL--3.0-blue?style=flat-square" alt="GPL-3.0" />
-  </a>
-  <a href="https://github.com/xiaodou997/marklight/blob/main/LICENSE-COMMERCIAL.md">
-    <img src="https://img.shields.io/badge/License-Commercial-green?style=flat-square" alt="Commercial" />
-  </a>
 </p>
-
----
-
-## 📜 许可说明
-
-**MarkLight 采用双许可模式发布：**
-
-- **GPL-3.0**（免费）- 个人使用、公司内部使用、开源项目 **完全免费**
-- **商业许可**（付费）- 仅当你要**闭源商用**时才需要
-
-📧 **商业许可咨询**: [sgbcj@qq.com](mailto:sgbcj@qq.com)
-
-> 💡 **一句话总结**：自己用、开源用 → 免费；改改卖钱、闭源商用 → 付费  
-> **99% 的用户不需要付费，请放心使用！**
-
-👉 详细说明请查看 [LICENSING.md](LICENSING.md)
 
 ---
 
@@ -84,11 +62,29 @@ pnpm build:tauri
 
 ## 🤝 贡献与反馈
 
-MarkLight 仍处于快速进化中，欢迎提交 [Issue](https://github.com/xiaodou997/marklight/issues) 或 Pull Request。
+MarkLight 仍处于快速进化中，欢迎你的反馈和建议！
 
-## 📄 开源协议
+- 💡 **功能建议**：欢迎提交 [Issue](https://github.com/xiaodou997/marklight/issues)
+- 🐛 **Bug 报告**：请提交 [Issue](https://github.com/xiaodou997/marklight/issues)
+- 📧 **商务合作**：请联系 [sgbcj@qq.com](mailto:sgbcj@qq.com)
 
-本项目基于 [MIT License](LICENSE) 协议开源。
+> ⚠️ **关于代码贡献**：由于商业许可需求，本项目暂不接受外部 Pull Request。如有代码贡献需求，请先邮件联系作者讨论授权事宜。
+
+---
+
+## 📜 开源协议
+
+**MarkLight 采用双许可模式：**
+
+- **GPL-3.0**（免费）- 个人使用、公司内部使用、开源项目 **完全免费**
+- **商业许可**（付费）- 仅当你要**闭源商用**时才需要
+
+📧 **商业许可咨询**: [sgbcj@qq.com](mailto:sgbcj@qq.com)
+
+> 💡 **一句话总结**：自己用、开源用 → 免费；改改卖钱、闭源商用 → 付费  
+> **99% 的用户不需要付费，请放心使用！**
+
+👉 详细说明请查看 [LICENSING.md](LICENSING.md)
 
 ---
 <p align="center">

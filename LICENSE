@@ -1,21 +1,54 @@
-MIT License
+# MarkLight 双许可说明
 
-Copyright (c) 2025 xiaodou997
+**MarkLight** 采用双许可模式发布。
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+## 📋 快速选择
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+### 个人/开源使用 → GPL-3.0（免费）
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+如果您是使用 MarkLight 进行：
+- 个人笔记、写作
+- 学习研究
+- 开源项目开发
+- 公司内部使用（不对外销售）
+
+**您不需要付费！** 请查看 [LICENSE-GPL](LICENSE-GPL) 了解 GPL-3.0 条款。
+
+---
+
+### 闭源商用 → 商业许可（付费）
+
+如果您希望：
+- 将 MarkLight 集成到闭源商业产品中销售
+- 免除 GPL 开源义务
+
+请联系：**sgbcj@qq.com**
+
+详细条款请查看 [LICENSE-COMMERCIAL.md](LICENSE-COMMERCIAL.md)
+
+---
+
+## 💡 一句话总结
+
+> **自己用、开源用 → 免费**  
+> **改改卖钱、闭源商用 → 付费**
+
+**99% 的用户不需要付费，请放心使用！**
+
+---
+
+## 📄 完整许可文档
+
+- [GPL-3.0 许可](LICENSE-GPL) - 免费许可完整文本
+- [商业许可](LICENSE-COMMERCIAL.md) - 商业许可完整条款
+- [用户指南](LICENSING.md) - 更详细的许可说明和常见问题
+
+---
+
+## 📞 联系方式
+
+**商业许可咨询**: sgbcj@qq.com
+
+---
+
+**Copyright © 2026 MarkLight Team**
