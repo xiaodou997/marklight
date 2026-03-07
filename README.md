@@ -2,7 +2,7 @@
   <img src="./public/icon.png" width="160" alt="MarkLight Logo" />
 </p>
 
-<h1 align="center">MarkLight</h1>
+<h1 align="center">墨光 (MarkLight)</h1>
 
 <p align="center">
   <strong>一款基于 Tauri 2.0 与 ProseMirror 的高性能、自研内核 Markdown 编辑器</strong>
@@ -14,6 +14,9 @@
   </a>
   <a href="https://gitee.com/xiaodou997/marklight">
     <img src="https://img.shields.io/badge/Gitee-xiaodou997-red?style=flat-square&logo=gitee" alt="Gitee" />
+  </a>
+  <a href="https://github.com/xiaodou997/marklight/blob/main/LICENSE">
+    <img src="https://img.shields.io/badge/License-Apache--2.0-green?style=flat-square" alt="Apache-2.0" />
   </a>
 </p>
 
@@ -62,29 +65,22 @@ pnpm build:tauri
 
 ## 🤝 贡献与反馈
 
-MarkLight 仍处于快速进化中，欢迎你的反馈和建议！
+墨光 (MarkLight) 仍处于快速进化中，欢迎你的反馈和建议！
 
 - 💡 **功能建议**：欢迎提交 [Issue](https://github.com/xiaodou997/marklight/issues)
 - 🐛 **Bug 报告**：请提交 [Issue](https://github.com/xiaodou997/marklight/issues)
-- 📧 **商务合作**：请联系 [sgbcj@qq.com](mailto:sgbcj@qq.com)
 
-> ⚠️ **关于代码贡献**：由于商业许可需求，本项目暂不接受外部 Pull Request。如有代码贡献需求，请先邮件联系作者讨论授权事宜。
+## 📄 开源协议
 
----
+本项目基于 [Apache License 2.0](LICENSE) 协议开源。
 
-## 📜 开源协议
+这意味着你可以：
+- ✅ 商业使用
+- ✅ 修改代码
+- ✅ 分发副本
+- ✅ 专利授权
 
-**MarkLight 采用双许可模式：**
-
-- **GPL-3.0**（免费）- 个人使用、公司内部使用、开源项目 **完全免费**
-- **商业许可**（付费）- 仅当你要**闭源商用**时才需要
-
-📧 **商业许可咨询**: [sgbcj@qq.com](mailto:sgbcj@qq.com)
-
-> 💡 **一句话总结**：自己用、开源用 → 免费；改改卖钱、闭源商用 → 付费  
-> **99% 的用户不需要付费，请放心使用！**
-
-👉 详细说明请查看 [LICENSING.md](LICENSING.md)
+唯一要求是保留原始的版权声明和许可证副本。
 
 ---
 <p align="center">
