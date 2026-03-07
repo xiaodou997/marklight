@@ -9,16 +9,32 @@ jobs:
   repo-sync:
     runs-on: ubuntu-latest
     steps:
-      - name: Mirror the GitHub repo to Gitee
-        uses: Yikun/gitee-mirror-action@master
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
-          # GitHub 仓库源
-          src: github/xiaodou997
-          # Gitee 目标仓库
-          dst: gitee/xiaodou997
-          dst_key: ${{ secrets.GITEE_RSA_PRIVATE_KEY }}
-          dst_token: ${{ secrets.GITEE_PASSWORD }}
-          static_list: "marklight"
-          account_type: user
-          force_update: true
-          debug: true
+          fetch-depth: 0  # 获取所有历史用于同步
+
+      - name: Sync to Gitee
+        env:
+          GITEE_RSA_PRIVATE_KEY: ${{ secrets.GITEE_RSA_PRIVATE_KEY }}
+          GITEE_REPO: git@gitee.com:xiaodou997/marklight.git
+        run: |
+          # 配置 SSH
+          mkdir -p ~/.ssh
+          echo "$GITEE_RSA_PRIVATE_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan gitee.com >> ~/.ssh/known_hosts 2>/dev/null
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+
+          # 移除 GitHub Actions 工作流文件（不需要同步到 Gitee）
+          rm -rf .github/workflows/sync-to-gitee.yml
+
+          # 添加 Gitee 远程仓库
+          git remote add gitee $GITEE_REPO || git remote set-url gitee $GITEE_REPO
+
+          # 推送到 Gitee（强制同步所有分支和标签）
+          git push -f gitee main
+          git push --tags gitee
+
+          echo "✅ Sync to Gitee completed!"

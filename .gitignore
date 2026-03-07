@@ -44,3 +44,6 @@ coverage/
 
 # Test images (keep in git for now, can remove later)
 # *.jpg
+
+# Gitee sync workflow (don't sync this file to Gitee)
+.github/workflows/sync-to-gitee.yml
