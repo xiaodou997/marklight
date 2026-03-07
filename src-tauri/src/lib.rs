@@ -192,7 +192,7 @@ async fn reveal_in_finder(app: tauri::AppHandle, path: String) -> Result<(), Str
 
 /// 监听指定目录
 #[tauri::command]
-fn watch_directory(state: tauri::State<std::sync::Mutex<notify::RecommendedWatcher>>, path: String) -> Result<(), String> {
+fn watch_directory(state: tauri::State<std::sync::Mutex<RecommendedWatcher>>, path: String) -> Result<(), String> {
     let mut watcher = state.lock().map_err(|e| e.to_string())?;
     // 先取消所有之前的监听（简单处理，实际可根据路径管理）
     // 注意：notify 的 RecommendedWatcher 在某些平台下 unwatch 可能需要精确路径
@@ -221,7 +221,7 @@ pub fn run() {
             
             // 设置文件监听器
             let (tx, rx) = std::sync::mpsc::channel();
-            let watcher = notify::RecommendedWatcher::new(tx, Config::default()).map_err(|e| e.to_string())?;
+            let watcher = RecommendedWatcher::new(tx, Config::default()).map_err(|e: notify::Error| e.to_string())?;
             
             // 在后台线程处理监听事件
             std::thread::spawn(move || {

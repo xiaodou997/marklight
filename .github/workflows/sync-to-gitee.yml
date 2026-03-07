@@ -19,5 +19,6 @@ jobs:
           dst_key: ${{ secrets.GITEE_RSA_PRIVATE_KEY }}
           dst_token: ${{ secrets.GITEE_PASSWORD }}
           static_list: "marklight"
+          account_type: user
           force_update: true
           debug: true
