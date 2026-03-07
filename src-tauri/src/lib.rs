@@ -19,16 +19,50 @@ fn save_file(path: String, content: String) -> Result<(), String> {
 fn list_directory(path: String) -> Result<Vec<FileInfo>, String> {
     let entries = fs::read_dir(&path).map_err(|e| e.to_string())?;
     let mut files = Vec::new();
+    
+    // 定义支持的扩展名
+    let md_exts = ["md", "markdown"];
+    let txt_exts = ["txt"];
+    let img_exts = ["png", "jpg", "jpeg", "gif", "webp", "svg"];
+
     for entry in entries {
         if let Ok(entry) = entry {
             let path_buf = entry.path();
             let metadata = entry.metadata().ok();
-            files.push(FileInfo {
-                name: entry.file_name().to_string_lossy().to_string(),
-                path: path_buf.to_string_lossy().to_string(),
-                is_dir: metadata.as_ref().map(|m| m.is_dir()).unwrap_or(false),
-                is_md: path_buf.extension().map(|e| e == "md" || e == "markdown").unwrap_or(false),
-            });
+            let is_dir = metadata.as_ref().map(|m| m.is_dir()).unwrap_or(false);
+            
+            if is_dir {
+                files.push(FileInfo {
+                    name: entry.file_name().to_string_lossy().to_string(),
+                    path: path_buf.to_string_lossy().to_string(),
+                    is_dir: true,
+                    is_md: false,
+                    is_txt: false,
+                    is_image: false,
+                });
+                continue;
+            }
+
+            let ext = path_buf.extension()
+                .and_then(|s| s.to_str())
+                .map(|s| s.to_lowercase())
+                .unwrap_or_default();
+
+            let is_md = md_exts.contains(&ext.as_str());
+            let is_txt = txt_exts.contains(&ext.as_str());
+            let is_image = img_exts.contains(&ext.as_str());
+
+            // 只添加支持的文件类型
+            if is_md || is_txt || is_image {
+                files.push(FileInfo {
+                    name: entry.file_name().to_string_lossy().to_string(),
+                    path: path_buf.to_string_lossy().to_string(),
+                    is_dir: false,
+                    is_md,
+                    is_txt,
+                    is_image,
+                });
+            }
         }
     }
     // 排序：文件夹在前，然后按名称排序
@@ -173,6 +207,8 @@ struct FileInfo {
     path: String,
     is_dir: bool,
     is_md: bool,
+    is_txt: bool,
+    is_image: bool,
 }
 
 pub fn run() {
@@ -278,6 +314,7 @@ pub fn run() {
                 handle, "帮助", true,
                 &[
                     &MenuItem::with_id(handle, "github", "项目主页 (GitHub)", true, None::<&str>)?,
+                    &MenuItem::with_id(handle, "gitee", "项目主页 (Gitee)", true, None::<&str>)?,
                     &MenuItem::with_id(handle, "issues", "报告问题", true, None::<&str>)?,
                     &PredefinedMenuItem::separator(handle)?,
                     &MenuItem::with_id(handle, "check_updates", "检查更新...", true, None::<&str>)?,
@@ -290,6 +327,7 @@ pub fn run() {
             app.on_menu_event(move |app, event| {
                 match event.id().as_ref() {
                     "github" => { let _ = app.emit("menu-event", "github"); }
+                    "gitee" => { let _ = app.emit("menu-event", "gitee"); }
                     "issues" => { let _ = app.emit("menu-event", "issues"); }
                     "check_updates" => { let _ = app.emit("menu-event", "check_updates"); }
                     "about" => { let _ = app.emit("menu-event", "about"); }

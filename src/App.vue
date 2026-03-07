@@ -3,7 +3,7 @@ import { ref, reactive, onMounted, onUnmounted, watch } from 'vue';
 import { listen } from '@tauri-apps/api/event';
 import { open } from '@tauri-apps/plugin-dialog';
 import { openUrl } from '@tauri-apps/plugin-opener';
-import { invoke } from '@tauri-apps/api/core';
+import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useFileStore } from './stores/file';
 import { useSettingsStore } from './stores/settings';
@@ -27,6 +27,11 @@ const appWindow = getCurrentWindow();
 const isSidebarOpen = ref(true);
 const isSourceMode = ref(false);
 const sidebarMode = ref<'outline' | 'files'>('outline');
+
+// 视图模式: editor (编辑) | image (图片查看)
+const activeViewMode = ref<'editor' | 'image'>('editor');
+const imagePreviewUrl = ref<string | null>(null);
+const isFullscreenPreview = ref(false);
 
 // 自动保存状态
 const autoSaveStatus = ref<AutoSaveStatus | null>(null);
@@ -73,6 +78,15 @@ const minimizeWindow = () => appWindow.minimize();
 const maximizeWindow = () => appWindow.toggleMaximize();
 const closeWindow = () => appWindow.destroy();
 
+// 检查未保存的更改
+async function checkUnsavedChanges() {
+  if (fileStore.currentFile.isDirty) {
+    const confirmed = confirm('当前文件有未保存的更改，是否放弃更改？');
+    return confirmed;
+  }
+  return true;
+}
+
 // 打开文件夹
 async function handleOpenFolder() {
   const selected = await open({ 
@@ -87,9 +101,13 @@ async function handleOpenFolder() {
 
 // 打开文件
 async function handleOpenFile(path: string) {
+  if (!await checkUnsavedChanges()) return;
+  
   try {
     const content = await invoke<string>('read_file', { path });
     fileStore.setFile(content, path);
+    activeViewMode.value = 'editor';
+    imagePreviewUrl.value = null;
   } catch (error) {
     console.error('Failed to read file:', error);
   }
@@ -103,8 +121,9 @@ async function handleNavigateFolder(path: string) {
 // 返回上级文件夹
 async function handleNavigateUp() {
   if (!currentFolder.value) return;
-  const parentPath = currentFolder.value.substring(0, currentFolder.value.lastIndexOf('/'));
-  if (parentPath) {
+  const lastSlashIndex = Math.max(currentFolder.value.lastIndexOf('/'), currentFolder.value.lastIndexOf('\\'));
+  if (lastSlashIndex !== -1) {
+    const parentPath = currentFolder.value.substring(0, lastSlashIndex) || (isMac ? '/' : '');
     await loadFiles(parentPath);
   }
 }
@@ -138,6 +157,7 @@ async function handleFileDeleted(path: string) {
     // 如果删除的是当前打开的文件，清空
     if (fileStore.currentFile.path === path) {
       fileStore.reset();
+      activeViewMode.value = 'editor';
     }
   } catch (error) {
     alert('删除失败: ' + error);
@@ -194,6 +214,23 @@ function handleRenameCompleted() {
   pendingRenamePath.value = null;
 }
 
+// 打开图片预览
+async function handleOpenImage(path?: string) {
+  if (path) {
+    if (!await checkUnsavedChanges()) return;
+    activeViewMode.value = 'image';
+    imagePreviewUrl.value = convertFileSrc(path);
+    isFullscreenPreview.value = false;
+  } else {
+    isFullscreenPreview.value = false;
+  }
+}
+
+// 关闭全屏预览
+function closeFullscreenPreview() {
+  isFullscreenPreview.value = false;
+}
+
 // 在 Finder 中显示
 async function handleRevealInFinder(path: string) {
   try {
@@ -205,7 +242,7 @@ async function handleRevealInFinder(path: string) {
 
 // 导出为 HTML
 async function exportHtml() {
-  if (!editorRef.value) return;
+  if (!editorRef.value || activeViewMode.value !== 'editor') return;
   const doc = editorRef.value.getDoc();
   if (!doc) return;
   const html = renderToWechatHtml(doc);
@@ -220,6 +257,7 @@ async function exportHtml() {
 
 // 导出为 PDF
 async function exportPdf() {
+  if (activeViewMode.value !== 'editor') return;
   try {
     await invoke('print_document');
   } catch (error) {
@@ -248,7 +286,7 @@ function toggleSourceMode() {
 }
 
 async function copyToWechat() {
-  if (!editorRef.value) return;
+  if (!editorRef.value || activeViewMode.value !== 'editor') return;
   const doc = editorRef.value.getDoc();
   if (!doc) return;
   const html = renderToWechatHtml(doc, settingsStore.settings.wechatTheme);
@@ -265,7 +303,7 @@ async function copyToWechat() {
 
 // 编辑器操作
 function editorAction(_action: string) {
-  if (!editorRef.value) return;
+  if (!editorRef.value || activeViewMode.value !== 'editor') return;
   const view = (editorRef.value as any).getEditorView?.();
   if (!view) return;
   
@@ -276,7 +314,7 @@ function editorAction(_action: string) {
 
 // 监听剪贴板复制事件，确保复制的是 Markdown 源码而不是 HTML
 function onCopy(event: ClipboardEvent) {
-  if (!editorRef.value || isSourceMode.value) return;
+  if (!editorRef.value || isSourceMode.value || activeViewMode.value !== 'editor') return;
   const view = (editorRef.value as any).getEditorView?.();
   if (!view || !view.hasFocus()) return;
 
@@ -295,9 +333,13 @@ function onCopy(event: ClipboardEvent) {
 function updateWindowTitle() {
   const file = fileStore.currentFile;
   // 兼容不同系统的路径分隔符
-  const fileName = file.path 
-    ? file.path.split(/[/\\]/).pop() || '未命名'
-    : '未命名';
+  let fileName = '未命名';
+  if (activeViewMode.value === 'editor') {
+    fileName = file.path ? file.path.split(/[/\\]/).pop() || '未命名' : '未命名';
+  } else if (activeViewMode.value === 'image' && imagePreviewUrl.value) {
+    fileName = '查看图片'; 
+  }
+  
   const title = file.isDirty ? `${fileName} ●` : fileName;
   appWindow.setTitle(title).catch(err => {
     // 静默处理，避免控制台报错影响体验
@@ -308,8 +350,9 @@ function updateWindowTitle() {
 }
 
 // 监听文件状态变化（路径、修改状态、内容等）
-watch(() => fileStore.currentFile, (file) => {
-  if (file.path) {
+watch(() => [fileStore.currentFile, activeViewMode.value, imagePreviewUrl.value], () => {
+  const file = fileStore.currentFile;
+  if (file.path && activeViewMode.value === 'editor') {
     // 兼容提取文件夹路径
     const lastSlashIndex = Math.max(file.path.lastIndexOf('/'), file.path.lastIndexOf('\\'));
     if (lastSlashIndex !== -1) {
@@ -356,9 +399,13 @@ onMounted(() => {
       settingsStore.toggleFocusMode();
     }
     
-    // Esc 退出焦点模式
-    if (e.key === 'Escape' && settingsStore.isFocusMode) {
-      settingsStore.toggleFocusMode();
+    // Esc 退出焦点模式或图片预览
+    if (e.key === 'Escape') {
+      if (isFullscreenPreview.value) {
+        isFullscreenPreview.value = false;
+      } else if (settingsStore.isFocusMode) {
+        settingsStore.toggleFocusMode();
+      }
     }
   };
   window.addEventListener('keydown', handleKeyDown);
@@ -410,6 +457,7 @@ onMounted(async () => {
       case 'focus_mode': settingsStore.toggleFocusMode(); break;
       case 'command_palette': isCommandPaletteOpen.value = true; break;
       case 'github': openUrl('https://github.com/xiaodou997/marklight'); break;
+      case 'gitee': openUrl('https://gitee.com/xiaodou997/marklight'); break;
       case 'issues': openUrl('https://github.com/xiaodou997/marklight/issues'); break;
       case 'check_updates': openUrl('https://github.com/xiaodou997/marklight/releases'); break;
       case 'about': showAbout(); break;
@@ -421,7 +469,7 @@ onMounted(async () => {
 
 // 显示关于对话框
 function showAbout() {
-  alert('墨光 (MarkLight) v0.2.0\n\n一款高性能、自研内核的 Markdown 编辑器\n\n项目主页: https://github.com/xiaodou997/marklight\n\n© 2026 MarkLight Team');
+  alert('墨光 (MarkLight) v0.2.0\n\n一款高性能、自研内核的 Markdown 编辑器\n\nGitHub: https://github.com/xiaodou997/marklight\nGitee: https://gitee.com/xiaodou997/marklight\n\n© 2026 luoxiaodou');
 }
 
 // 切换全屏
@@ -559,6 +607,7 @@ onUnmounted(() => {
           @scroll-to="scrollToHeading"
           @open-folder="handleOpenFolder"
           @open-file="handleOpenFile"
+          @open-image="handleOpenImage"
           @navigate-folder="handleNavigateFolder"
           @navigate-up="handleNavigateUp"
           @open-file-in-new-window="handleOpenNewWindow"
@@ -578,13 +627,31 @@ onUnmounted(() => {
       >
         <!-- 实时渲染模式 -->
         <MarkdownEditor
-          v-if="!isSourceMode"
+          v-if="activeViewMode === 'editor' && !isSourceMode"
           :key="fileStore.currentFile.path || 'new-file'"
           ref="editorRef"
           :initial-content="fileStore.currentFile.content"
           @update="handleEditorUpdate"
         />
         
+        <!-- 图片查看模式 -->
+        <div 
+          v-else-if="activeViewMode === 'image' && imagePreviewUrl" 
+          class="h-full w-full flex items-center justify-center bg-gray-50 p-12 overflow-auto"
+        >
+          <div class="relative group max-w-full max-h-full">
+            <img 
+              :src="imagePreviewUrl" 
+              class="max-w-full max-h-full object-contain shadow-md rounded border border-gray-200 cursor-zoom-in bg-white" 
+              title="双击全屏预览"
+              @dblclick="isFullscreenPreview = true"
+            />
+            <div class="absolute bottom-4 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 text-white text-[10px] px-3 py-1 rounded-full backdrop-blur-sm pointer-events-none">
+              双击全屏查看
+            </div>
+          </div>
+        </div>
+
         <!-- 源码模式 (极简实现) -->
         <div v-else class="h-full w-full p-8">
           <textarea
@@ -623,5 +690,33 @@ onUnmounted(() => {
       @execute="handleCommandExecute"
       @open-file="handleOpenFile"
     />
+
+    <!-- 图片全屏预览弹窗 -->
+    <Teleport to="body">
+      <Transition name="fade">
+        <div 
+          v-if="isFullscreenPreview && imagePreviewUrl" 
+          class="fixed inset-0 z-[2000] bg-black/90 backdrop-blur-md flex items-center justify-center p-8 cursor-zoom-out"
+          @click="closeFullscreenPreview"
+        >
+          <img 
+            :src="imagePreviewUrl" 
+            class="max-w-full max-h-full object-contain" 
+            @click.stop
+          />
+          <button 
+            class="absolute top-6 right-6 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors"
+            @click="closeFullscreenPreview"
+          >
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12" stroke-width="2" stroke-linecap="round"/></svg>
+          </button>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
+
+<style>
+.fade-enter-active, .fade-leave-active { transition: opacity 0.2s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+</style>

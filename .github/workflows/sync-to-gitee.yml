@@ -1,0 +1,23 @@
+name: Sync to Gitee
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  repo-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Mirror the GitHub repo to Gitee
+        uses: Yikun/gitee-mirror-action@v0.0.2
+        with:
+          # GitHub 仓库源
+          src: github/xiaodou997
+          # Gitee 目标仓库
+          dst: gitee/xiaodou997
+          dst_key: ${{ secrets.GITEE_RSA_PRIVATE_KEY }}
+          dst_token: ${{ secrets.GITEE_PASSWORD }}
+          static_list: "marklight"
+          force_update: true
+          debug: true
