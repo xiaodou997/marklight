@@ -3,6 +3,7 @@ use tauri::{Emitter, WebviewUrl, WebviewWindowBuilder, Manager};
 use std::fs;
 use std::path::Path;
 use std::time::SystemTime;
+use notify::{Watcher, RecursiveMode, Config, RecommendedWatcher};
 
 #[tauri::command]
 fn read_file(path: String) -> Result<String, String> {
@@ -189,6 +190,14 @@ async fn reveal_in_finder(app: tauri::AppHandle, path: String) -> Result<(), Str
     }
 }
 
+/// 监听指定目录
+#[tauri::command]
+fn watch_directory(state: tauri::State<std::sync::Mutex<RecommendedWatcher>>, path: String) -> Result<(), String> {
+    let mut watcher = state.lock().map_err(|e| e.to_string())?;
+    watcher.watch(Path::new(&path), RecursiveMode::Recursive).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 #[derive(serde::Serialize, Clone)]
 struct FileInfo {
     name: String,
@@ -206,6 +215,25 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .setup(|app| {
             let handle = app.handle().clone();
+            
+            // 设置文件监听器
+            let (tx, rx) = std::sync::mpsc::channel();
+            let watcher = RecommendedWatcher::new(tx, Config::default()).map_err(|e: notify::Error| e.to_string())?;
+            
+            // 在后台线程处理监听事件
+            std::thread::spawn(move || {
+                for res in rx {
+                    match res {
+                        Ok(_) => {
+                            let _ = handle.emit("file-changed", ());
+                        }
+                        Err(e) => println!("watch error: {:?}", e),
+                    }
+                }
+            });
+
+            // 将 watcher 存储在状态中，防止被销毁
+            app.manage(std::sync::Mutex::new(watcher));
 
             let handle = app.handle();
             // 应用菜单 (MarkLight)

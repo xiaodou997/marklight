@@ -2,7 +2,7 @@
   <div
     class="image-view-wrapper"
     :class="{ 'is-editing': isEditing }"
-    @click.stop="startEditing"
+    @click.stop="handleClick"
   >
     <!-- 编辑模式：图片上方显示源码 -->
     <div v-if="isEditing" class="image-source" @click.stop>
@@ -37,12 +37,42 @@
         :alt="node.attrs.alt"
         class="image-el"
         @error="handleError"
+        @load="handleLoad"
       />
       <div v-if="error" class="image-error">
         <span class="text-xl">🖼️</span>
         <p>图片无法加载</p>
+        <p class="error-path" :title="node?.attrs?.src">{{ truncatePath(node?.attrs?.src) }}</p>
       </div>
     </div>
+
+    <!-- 图片预览弹窗 -->
+    <Teleport to="body">
+      <Transition name="preview-fade">
+        <div
+          v-if="showPreview"
+          class="image-preview-overlay"
+          @click="closePreview"
+          @keydown.esc="closePreview"
+        >
+          <div class="image-preview-container">
+            <img
+              :src="safeSrc"
+              :alt="node.attrs.alt"
+              class="preview-image"
+              @click.stop
+            />
+            <button class="preview-close" @click="closePreview">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+            <div v-if="node.attrs.alt" class="preview-caption">{{ node.attrs.alt }}</div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
@@ -59,9 +89,36 @@ const props = defineProps<{
 const fileStore = useFileStore();
 const error = ref(false);
 const isEditing = ref(false);
+const showPreview = ref(false);
 const altText = ref('');
 const srcText = ref('');
 const srcRef = ref<HTMLInputElement | null>(null);
+
+/**
+ * 规范化路径分隔符
+ */
+function normalizePath(path: string): string {
+  // 统一使用正斜杠
+  return path.replace(/\\/g, '/');
+}
+
+/**
+ * 获取目录路径
+ */
+function getDirectory(filePath: string): string {
+  const normalized = normalizePath(filePath);
+  const lastSlash = normalized.lastIndexOf('/');
+  return lastSlash !== -1 ? normalized.substring(0, lastSlash) : normalized;
+}
+
+/**
+ * 拼接路径
+ */
+function joinPath(dir: string, relativePath: string): string {
+  const normalizedDir = normalizePath(dir);
+  const normalizedRelative = normalizePath(relativePath);
+  return `${normalizedDir}/${normalizedRelative}`;
+}
 
 const safeSrc = computed(() => {
   const src = props.node?.attrs?.src;
@@ -78,11 +135,14 @@ const safeSrc = computed(() => {
   }
   
   // 绝对路径（以 / 开头或包含盘符如 C:\）
-  if (src.startsWith('/') || src.includes(':\\')) {
+  if (src.startsWith('/') || /^[a-zA-Z]:/.test(src)) {
     try {
-      return convertFileSrc(src);
+      const normalized = normalizePath(src);
+      const result = convertFileSrc(normalized);
+      console.log('[ImageView] Absolute path converted:', src, '->', result);
+      return result;
     } catch (e) {
-      console.warn('Path conversion failed:', e);
+      console.warn('[ImageView] Path conversion failed:', e);
       return src;
     }
   }
@@ -90,25 +150,50 @@ const safeSrc = computed(() => {
   // 相对路径（如 assets/image-xxx.png）
   // 需要基于当前文件目录解析
   if (fileStore.currentFile.path) {
-    const filePath = fileStore.currentFile.path;
-    const lastSlash = Math.max(filePath.lastIndexOf('/'), filePath.lastIndexOf('\\'));
-    const dir = lastSlash !== -1 ? filePath.substring(0, lastSlash) : filePath;
+    const dir = getDirectory(fileStore.currentFile.path);
+    const absolutePath = joinPath(dir, src);
     
-    // 拼接绝对路径
-    const absolutePath = `${dir}/${src}`;
     try {
-      return convertFileSrc(absolutePath);
+      const result = convertFileSrc(absolutePath);
+      console.log('[ImageView] Relative path converted:', src, '->', absolutePath, '->', result);
+      return result;
     } catch (e) {
-      console.warn('Relative path conversion failed:', e);
+      console.warn('[ImageView] Relative path conversion failed:', e);
       return src;
     }
   }
   
+  console.warn('[ImageView] No file path available for relative path:', src);
   return src;
 });
 
 const handleError = () => {
   error.value = true;
+  console.error('[ImageView] Image load failed:', props.node?.attrs?.src);
+};
+
+const handleLoad = () => {
+  error.value = false;
+};
+
+const truncatePath = (path: string | undefined): string => {
+  if (!path) return '';
+  if (path.length <= 50) return path;
+  return '...' + path.slice(-47);
+};
+
+const handleClick = () => {
+  if (error.value) {
+    // 错误状态点击进入编辑模式
+    startEditing();
+  } else {
+    // 正常状态点击预览
+    showPreview.value = true;
+  }
+};
+
+const closePreview = () => {
+  showPreview.value = false;
 };
 
 const startEditing = () => {
@@ -182,6 +267,16 @@ const onBlur = () => {
   color: #9ca3af;
   font-size: 0.625rem;
 }
+.error-path {
+  margin-top: 0.5rem;
+  font-size: 0.5rem;
+  color: #9ca3af;
+  max-width: 90%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  word-break: break-all;
+}
 
 /* 源码区 */
 .image-source {
@@ -222,5 +317,84 @@ const onBlur = () => {
 .image-source-src {
   flex: 1;
   min-width: 8em;
+}
+
+/* 图片预览弹窗 */
+.image-preview-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(4px);
+}
+
+.image-preview-container {
+  position: relative;
+  max-width: 90vw;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.preview-image {
+  max-width: 90vw;
+  max-height: 85vh;
+  object-fit: contain;
+  border-radius: 0.5rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+.preview-close {
+  position: absolute;
+  top: -40px;
+  right: -40px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  border-radius: 50%;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.preview-close:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.1);
+}
+
+.preview-caption {
+  margin-top: 1rem;
+  padding: 0.5rem 1rem;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 0.25rem;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.875rem;
+  max-width: 80vw;
+  text-align: center;
+}
+
+/* 预览动画 */
+.preview-fade-enter-active,
+.preview-fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+.preview-fade-enter-active .preview-image,
+.preview-fade-leave-active .preview-image {
+  transition: transform 0.2s ease;
+}
+.preview-fade-enter-from,
+.preview-fade-leave-to {
+  opacity: 0;
+}
+.preview-fade-enter-from .preview-image,
+.preview-fade-leave-to .preview-image {
+  transform: scale(0.95);
 }
 </style>
