@@ -14,6 +14,7 @@ import StatusBar from './components/Layout/StatusBar.vue';
 import Sidebar, { OutlineItem, FileInfo } from './components/Editor/Sidebar.vue';
 import SettingsModal from './components/Settings/SettingsModal.vue';
 import CommandPalette from './components/Editor/CommandPalette.vue';
+import TitleBar from './components/Layout/TitleBar.vue';
 import { renderToWechatHtml } from './utils/wechat-renderer';
 import { serializeMarkdown } from './components/Editor/core/markdown';
 import { isModKey, isMac } from './utils/platform';
@@ -72,11 +73,6 @@ async function loadFiles(folderPath: string) {
     console.error('Failed to list directory:', error);
   }
 }
-
-// 窗口控制
-const minimizeWindow = () => appWindow.minimize();
-const maximizeWindow = () => appWindow.toggleMaximize();
-const closeWindow = () => appWindow.destroy();
 
 // 检查未保存的更改
 async function checkUnsavedChanges() {
@@ -563,26 +559,11 @@ onUnmounted(() => {
 
 <template>
   <div 
-    class="h-screen flex flex-col bg-white overflow-hidden font-sans select-none"
+    class="h-screen flex flex-col bg-white dark:bg-zinc-900 overflow-hidden font-sans select-none"
     :class="{ 'focus-mode': settingsStore.isFocusMode }"
   >
-    <!-- Windows/Linux 自定义标题栏 -->
-    <div v-if="!isMac" class="custom-titlebar flex-shrink-0 h-8 bg-gray-50 border-b border-gray-200 flex items-center justify-between px-3 select-none">
-      <div class="custom-titlebar-drag-area flex-1 h-full flex items-center" data-tauri-drag-region>
-        <span class="text-xs text-gray-500 font-medium">{{ fileStore.currentFile.path?.split(/[/\\]/).pop() || '未命名' }}{{ fileStore.currentFile.isDirty ? ' ●' : '' }} - MarkLight</span>
-      </div>
-      <div class="flex items-center gap-1 ml-2">
-        <button @click="minimizeWindow" class="w-6 h-6 flex items-center justify-center rounded hover:bg-gray-200 transition-colors text-gray-600">
-          <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/></svg>
-        </button>
-        <button @click="maximizeWindow" class="w-6 h-6 flex items-center justify-center rounded hover:bg-gray-200 transition-colors text-gray-600">
-          <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/></svg>
-        </button>
-        <button @click="closeWindow" class="w-6 h-6 flex items-center justify-center rounded hover:bg-red-500 hover:text-white transition-colors text-gray-600">
-          <svg class="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
-        </button>
-      </div>
-    </div>
+    <!-- Windows/Linux 自定义标题栏 (沉浸式且带菜单) -->
+    <TitleBar v-if="!isMac" />
 
     <!-- 工具栏 - 焦点模式下隐藏，但悬停顶部时显示 -->
     <div 

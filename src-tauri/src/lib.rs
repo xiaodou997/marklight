@@ -163,6 +163,11 @@ async fn open_new_window(app: tauri::AppHandle, path: Option<String>) -> Result<
     .center();
     
     let window = builder.build().map_err(|e| e.to_string())?;
+
+    // Windows 和 Linux 下禁用原生边框
+    #[cfg(any(target_os = "windows", target_os = "linux"))]
+    window.set_decorations(false).map_err(|e| e.to_string())?;
+
     if let Some(file_path) = path {
         window.emit("open-file-in-new-window", file_path).map_err(|e| e.to_string())?;
     }
