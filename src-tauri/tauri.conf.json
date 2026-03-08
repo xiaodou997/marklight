@@ -18,8 +18,7 @@
         "minWidth": 800,
         "minHeight": 600,
         "center": true,
-        "decorations": true,
-        "devtools": true
+        "decorations": true
       }
     ],
     "security": {

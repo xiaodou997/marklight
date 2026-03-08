@@ -93,6 +93,22 @@ export class VueNodeView implements NodeView {
     return true;
   }
 
+  stopEvent(event: Event): boolean {
+    // 如果点击的是输入框或处于编辑模式，停止事件冒泡到 ProseMirror
+    const isEditing = this.dom.querySelector('.is-editing') !== null;
+    const target = event.target as HTMLElement;
+    const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA';
+    
+    if (isEditing || isInput) {
+      return true;
+    }
+    return false;
+  }
+
+  ignoreMutation(): boolean {
+    return true;
+  }
+
   destroy() {
     this.vm.unmount();
   }

@@ -1,43 +1,28 @@
 <template>
   <div
+    ref="wrapperRef"
     class="math-view-wrapper"
     :class="[
       isBlock ? 'math-view-block' : 'math-view-inline',
       isEditing ? 'is-editing' : '',
+      hasError ? 'has-error' : '',
     ]"
     tabindex="0"
-    @click.stop="startEditing()"
+    @mousedown.stop="startEditing()"
     @keydown="handleKeyDown"
-    @mouseenter="showPreview"
-    @mouseleave="hidePreview"
   >
-    <!-- 渲染模式 -->
-    <div v-show="!isEditing" ref="renderRef" class="math-render"></div>
-    <span v-if="!latex && !isEditing" class="math-placeholder">空公式</span>
-
-    <!-- 预览气泡 -->
-    <div
-      v-if="showPreviewBubble && !isEditing && latex"
-      ref="previewRef"
-      class="math-preview-bubble"
-      :class="{ 'math-preview-bubble-visible': previewReady }"
-    >
-      <div class="math-preview-content" v-html="previewHtml"></div>
-      <div class="math-preview-source">{{ latex }}</div>
-    </div>
-
-    <!-- 编辑模式：Typora 风格源码展示 -->
-    <div v-if="isEditing" class="math-source" @click.stop>
-      <span class="math-delimiter">{{ isBlock ? '$$' : '$' }}</span>
+    <!-- 编辑模式：显示源码 -->
+    <div v-if="isEditing" class="math-source" @click.stop="focusInput">
+      <span class="math-delimiter" @click.stop="focusInput('start')">{{ isBlock ? '$$' : '$' }}</span>
       <textarea
         v-if="isBlock"
         ref="inputRef"
         v-model="latex"
         class="math-source-input math-source-textarea"
         spellcheck="false"
-        @blur="stopEditing"
-        @keydown.esc="stopEditing"
+        @keydown.esc.prevent="stopEditing"
         @input="autoResize"
+        @click.stop
       ></textarea>
       <input
         v-else
@@ -46,17 +31,32 @@
         class="math-source-input math-source-inline-input"
         spellcheck="false"
         :size="Math.max(latex.length, 1)"
-        @blur="stopEditing"
         @keydown.enter.prevent="stopEditing"
-        @keydown.esc="stopEditing"
+        @keydown.esc.prevent="stopEditing"
+        @click.stop
       />
-      <span class="math-delimiter">{{ isBlock ? '$$' : '$' }}</span>
+      <span class="math-delimiter" @click.stop="focusInput('end')">{{ isBlock ? '$$' : '$' }}</span>
     </div>
+
+    <!-- 渲染模式 -->
+    <template v-else>
+      <!-- 渲染成功 -->
+      <div v-if="!hasError" ref="renderRef" class="math-render"></div>
+      <!-- 渲染失败：显示源码 -->
+      <div v-else class="math-fallback">
+        <span class="math-delimiter">{{ isBlock ? '$$' : '$' }}</span>
+        <code class="math-fallback-code">{{ latex }}</code>
+        <span class="math-delimiter">{{ isBlock ? '$$' : '$' }}</span>
+        <span class="math-error-badge">渲染错误</span>
+      </div>
+      <!-- 空公式提示 -->
+      <span v-if="!latex" class="math-placeholder">空公式</span>
+    </template>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch, nextTick } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import katex from 'katex';
 import 'katex/dist/katex.min.css';
 
@@ -65,47 +65,98 @@ const props = defineProps<{
   updateAttributes: (attrs: any) => void;
 }>();
 
+const wrapperRef = ref<HTMLElement | null>(null);
 const isBlock = computed(() => props.node.type.name === 'math_block');
 const isEditing = ref(false);
 const latex = ref(props.node.attrs.latex || '');
 const renderRef = ref<HTMLElement | null>(null);
 const inputRef = ref<HTMLTextAreaElement | HTMLInputElement | null>(null);
+const hasError = ref(false);
+
+const handleClickOutside = (e: MouseEvent) => {
+  if (isEditing.value && wrapperRef.value && !wrapperRef.value.contains(e.target as Node)) {
+    stopEditing();
+  }
+};
+
+const focusInput = (pos?: 'start' | 'end') => {
+  if (inputRef.value) {
+    inputRef.value.focus();
+    if (pos === 'start') {
+      inputRef.value.setSelectionRange(0, 0);
+    } else if (pos === 'end') {
+      const len = latex.value.length;
+      inputRef.value.setSelectionRange(len, len);
+    }
+  }
+};
+
+onMounted(() => {
+  renderMath();
+  document.addEventListener('mousedown', handleClickOutside);
+});
+
+onUnmounted(() => {
+  document.removeEventListener('mousedown', handleClickOutside);
+});
 
 const handleKeyDown = (e: KeyboardEvent) => {
-  if (e.key === 'Backspace' && !isEditing.value) {
+  // 如果正在编辑，按回车或 ESC 退出编辑
+  if (isEditing.value) {
+    if (e.key === 'Enter' && !isBlock.value) {
+      e.preventDefault();
+      stopEditing();
+    }
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      stopEditing();
+    }
+    // 在编辑模式下，如果 latex 为空且按退格，则删除整个节点
+    if (e.key === 'Backspace' && latex.value === '') {
+      // 交给 ProseMirror 处理删除
+      return;
+    }
+    // 允许在编辑框内自由移动和操作
+    e.stopPropagation();
+    return;
+  }
+
+  // 非编辑模式下的按键处理
+  if (e.key === 'Backspace') {
+    // 非编辑模式下按退格，直接进入编辑模式并把光标放在最后
     e.preventDefault();
-    startEditing(true);
+    e.stopPropagation();
+    startEditing('end');
+  } else if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault();
+    e.stopPropagation();
+    startEditing();
+  } else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+    // 允许方向键在 ProseMirror 中移动选中节点
+    return;
   }
 };
-
-// 预览气泡状态
-const showPreviewBubble = ref(false);
-const previewReady = ref(false);
-const previewHtml = ref('');
 
 const renderMath = () => {
-  if (renderRef.value && latex.value) {
-    try {
-      katex.render(latex.value, renderRef.value, {
-        throwOnError: false,
-        displayMode: isBlock.value,
-      });
-    } catch (e) {
-      console.error(e);
-    }
+  if (!renderRef.value) return;
+  
+  if (!latex.value) {
+    hasError.value = false;
+    renderRef.value.innerHTML = '';
+    return;
   }
-};
-
-const renderPreview = () => {
-  if (latex.value) {
-    try {
-      previewHtml.value = katex.renderToString(latex.value, {
-        throwOnError: false,
-        displayMode: true, // 预览始终用块级模式
-      });
-    } catch (e) {
-      previewHtml.value = '<span style="color: red;">渲染错误</span>';
-    }
+  
+  try {
+    katex.render(latex.value, renderRef.value, {
+      throwOnError: true,
+      displayMode: isBlock.value,
+      trust: true,
+      strict: false
+    });
+    hasError.value = false;
+  } catch (e) {
+    console.warn('[MathView] Render error:', e);
+    hasError.value = true;
   }
 };
 
@@ -117,20 +168,22 @@ const autoResize = () => {
   }
 };
 
-const startEditing = (isFromBackspace = false) => {
-  if (isFromBackspace && latex.value.length > 0) {
-    latex.value = latex.value.slice(0, -1);
-    props.updateAttributes({ latex: latex.value });
-  }
+const startEditing = (pos: 'start' | 'end' | 'none' = 'none') => {
+  if (isEditing.value) return;
   isEditing.value = true;
-  showPreviewBubble.value = false;
+  
   nextTick(() => {
     const el = inputRef.value;
     if (el) {
       el.focus();
-      // Place cursor at end
-      const len = latex.value.length;
-      el.setSelectionRange(len, len);
+      if (pos === 'end') {
+        const len = latex.value.length;
+        el.setSelectionRange(len, len);
+      } else if (pos === 'start') {
+        el.setSelectionRange(0, 0);
+      }
+      // 如果是 none，保持默认 focus 行为（通常是全选或起始位，取决于浏览器）
+      
       if (el instanceof HTMLTextAreaElement) {
         autoResize();
       }
@@ -140,41 +193,23 @@ const startEditing = (isFromBackspace = false) => {
 
 const stopEditing = () => {
   isEditing.value = false;
+  // 更新属性
+  props.updateAttributes({ latex: latex.value });
+  // 重新渲染
   nextTick(renderMath);
-};
-
-const showPreview = () => {
-  if (isEditing.value || !latex.value) return;
-  
-  showPreviewBubble.value = true;
-  renderPreview();
-  
-  nextTick(() => {
-    // 延迟显示动画
-    setTimeout(() => {
-      previewReady.value = true;
-    }, 10);
-  });
-};
-
-const hidePreview = () => {
-  previewReady.value = false;
-  // 延迟隐藏，让动画完成
-  setTimeout(() => {
-    showPreviewBubble.value = false;
-  }, 150);
 };
 
 onMounted(renderMath);
 
 watch(() => props.node.attrs.latex, (newVal) => {
   if (newVal !== latex.value) {
-    latex.value = newVal;
+    latex.value = newVal || '';
     nextTick(renderMath);
   }
 });
 
 watch(latex, (newVal) => {
+  // 实时更新属性
   props.updateAttributes({ latex: newVal });
 });
 </script>
@@ -186,9 +221,13 @@ watch(latex, (newVal) => {
   border-radius: 4px;
   transition: background-color 0.15s ease;
   position: relative;
+  outline: none;
 }
 .math-view-wrapper:hover {
   background-color: rgba(59, 130, 246, 0.06);
+}
+.math-view-wrapper:focus {
+  background-color: rgba(59, 130, 246, 0.1);
 }
 
 .math-placeholder {
@@ -202,7 +241,7 @@ watch(latex, (newVal) => {
   display: inline-block;
   vertical-align: baseline;
   margin: 0 2px;
-  padding: 0 2px;
+  padding: 0 4px;
 }
 
 /* === Block 模式 === */
@@ -219,44 +258,34 @@ watch(latex, (newVal) => {
   border-radius: 6px;
 }
 
-/* === 预览气泡 === */
-.math-preview-bubble {
-  position: absolute;
-  left: 50%;
-  bottom: calc(100% + 8px);
-  transform: translateX(-50%) translateY(4px);
-  z-index: 100;
-  background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  padding: 12px 16px;
-  min-width: 120px;
-  max-width: 400px;
-  opacity: 0;
-  transition: opacity 0.15s ease, transform 0.15s ease;
-  pointer-events: none;
-}
-.math-preview-bubble-visible {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
-}
-
-.math-preview-content {
-  text-align: center;
-  font-size: 1.1em;
-  overflow-x: auto;
-}
-
-.math-preview-source {
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px solid #f3f4f6;
+/* === 渲染失败时的回退样式 === */
+.math-fallback {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-size: 0.75rem;
-  color: #6b7280;
-  text-align: center;
+  font-size: 0.9em;
+  color: #dc2626;
+  background: #fef2f2;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.math-view-block .math-fallback {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.math-fallback-code {
+  color: #991b1b;
   word-break: break-all;
+}
+.math-error-badge {
+  font-size: 0.65rem;
+  background: #fecaca;
+  color: #991b1b;
+  padding: 1px 4px;
+  border-radius: 3px;
+  margin-left: 4px;
 }
 
 /* === 源码区 === */

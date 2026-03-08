@@ -1,4 +1,5 @@
 import type { EditorState, Transaction } from 'prosemirror-state';
+import { NodeSelection } from 'prosemirror-state';
 
 import { mySchema } from '../schema';
 
@@ -6,12 +7,30 @@ import { mySchema } from '../schema';
 export const backspaceCommand = (state: EditorState, dispatch?: (tr: Transaction) => void): boolean => {
   const { selection, tr } = state;
 
+  // 如果选中了整个节点（如数学公式），阻止删除，让组件自己处理
+  if (selection instanceof NodeSelection) {
+    const node = selection.node;
+    if (node.type.name === 'math_inline' || node.type.name === 'math_block') {
+      // 不执行任何操作，让 MathView 组件处理
+      return true;
+    }
+  }
+
   // 如果有选中内容，使用默认删除行为
   if (!selection.empty) {
     return false;
   }
 
   const $from = selection.$from;
+
+  // 检查光标是否在数学公式节点内部
+  for (let d = $from.depth; d > 0; d--) {
+    const node = $from.node(d);
+    if (node.type.name === 'math_inline' || node.type.name === 'math_block') {
+      // 在数学公式节点内，不处理，让组件自己处理
+      return true;
+    }
+  }
 
   // 遍历深度，找到 list_item
   for (let d = $from.depth; d > 0; d--) {
