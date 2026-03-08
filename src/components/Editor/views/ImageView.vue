@@ -31,15 +31,24 @@
 
     <!-- 图片展示 -->
     <div class="image-display">
+      <!-- 加载中状态 -->
+      <div v-if="isLoading" class="image-loading">
+        <div class="loading-spinner"></div>
+        <span class="loading-text">加载中...</span>
+      </div>
+      
+      <!-- 图片 -->
       <img
-        v-if="!error"
-        :src="safeSrc"
+        v-else-if="!error && loadedSrc"
+        :src="loadedSrc"
         :alt="node.attrs.alt"
         class="image-el"
         @error="handleError"
         @load="handleLoad"
       />
-      <div v-if="error" class="image-error">
+      
+      <!-- 错误状态 -->
+      <div v-else-if="error" class="image-error">
         <span class="text-xl">🖼️</span>
         <p>图片无法加载</p>
         <p class="error-path" :title="node?.attrs?.src">{{ truncatePath(node?.attrs?.src) }}</p>
@@ -57,7 +66,7 @@
         >
           <div class="image-preview-container">
             <img
-              :src="safeSrc"
+              :src="loadedSrc"
               :alt="node.attrs.alt"
               class="preview-image"
               @click.stop
@@ -77,9 +86,12 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick } from 'vue';
-import { convertFileSrc } from '@tauri-apps/api/core';
+import { ref, computed, watch, nextTick, onMounted } from 'vue';
+import { convertFileSrc, invoke } from '@tauri-apps/api/core';
 import { useFileStore } from '../../../stores/file';
+
+// 图片缓存
+const imageCache = new Map<string, string>();
 
 const props = defineProps<{
   node: any;
@@ -88,6 +100,8 @@ const props = defineProps<{
 
 const fileStore = useFileStore();
 const error = ref(false);
+const isLoading = ref(false);
+const loadedSrc = ref('');
 const isEditing = ref(false);
 const showPreview = ref(false);
 const altText = ref('');
@@ -98,7 +112,6 @@ const srcRef = ref<HTMLInputElement | null>(null);
  * 规范化路径分隔符
  */
 function normalizePath(path: string): string {
-  // 统一使用正斜杠
   return path.replace(/\\/g, '/');
 }
 
@@ -120,75 +133,103 @@ function joinPath(dir: string, relativePath: string): string {
   return `${normalizedDir}/${normalizedRelative}`;
 }
 
-const safeSrc = computed(() => {
-  const src = props.node?.attrs?.src;
-  if (!src) return '';
-  
-  // 网络图片使用 proxy:// 协议绕过防盗链
-  if (src.startsWith('http://') || src.startsWith('https://')) {
-    // 对 URL 进行编码，避免解析问题
-    return `proxy://image?u=${encodeURIComponent(src)}`;
-  }
-  
-  // data URL 直接返回
-  if (src.startsWith('data:')) {
-    return src;
-  }
-  
-  // 绝对路径（以 / 开头或包含盘符如 C:\）
-  if (src.startsWith('/') || /^[a-zA-Z]:/.test(src)) {
-    try {
-      const normalized = normalizePath(src);
-      const result = convertFileSrc(normalized);
-      console.log('[ImageView] Absolute path converted:', src, '->', result);
-      return result;
-    } catch (e) {
-      console.warn('[ImageView] Path conversion failed:', e);
-      return src;
-    }
-  }
-  
-  // 相对路径（如 assets/image-xxx.png）
-  // 需要基于当前文件目录解析
-  if (fileStore.currentFile.path) {
-    const dir = getDirectory(fileStore.currentFile.path);
-    const absolutePath = joinPath(dir, src);
-    
-    try {
-      const result = convertFileSrc(absolutePath);
-      console.log('[ImageView] Relative path converted:', src, '->', absolutePath, '->', result);
-      return result;
-    } catch (e) {
-      console.warn('[ImageView] Relative path conversion failed:', e);
-      return src;
-    }
-  }
-  
-  console.warn('[ImageView] No file path available for relative path:', src);
-  return src;
-});
-
-const handleError = () => {
-  error.value = true;
-  console.error('[ImageView] Image load failed:', props.node?.attrs?.src);
-};
-
-const handleLoad = () => {
-  error.value = false;
-};
-
 const truncatePath = (path: string | undefined): string => {
   if (!path) return '';
   if (path.length <= 50) return path;
   return '...' + path.slice(-47);
 };
 
+/**
+ * 加载图片
+ */
+async function loadImage(src: string) {
+  if (!src) return;
+  
+  // 检查缓存
+  if (imageCache.has(src)) {
+    loadedSrc.value = imageCache.get(src)!;
+    return;
+  }
+  
+  // 网络图片 - 异步加载
+  if (src.startsWith('http://') || src.startsWith('https://')) {
+    isLoading.value = true;
+    error.value = false;
+    
+    try {
+      const dataUrl = await invoke<string>('fetch_remote_image', { url: src });
+      loadedSrc.value = dataUrl;
+      imageCache.set(src, dataUrl);
+    } catch (e) {
+      console.error('[ImageView] Failed to load remote image:', e);
+      error.value = true;
+    } finally {
+      isLoading.value = false;
+    }
+    return;
+  }
+  
+  // data URL 直接使用
+  if (src.startsWith('data:')) {
+    loadedSrc.value = src;
+    return;
+  }
+  
+  // 本地文件路径
+  let localSrc = src;
+  
+  // 绝对路径
+  if (src.startsWith('/') || /^[a-zA-Z]:/.test(src)) {
+    localSrc = normalizePath(src);
+    try {
+      loadedSrc.value = convertFileSrc(localSrc);
+    } catch (e) {
+      console.warn('[ImageView] Path conversion failed:', e);
+      loadedSrc.value = src;
+    }
+    return;
+  }
+  
+  // 相对路径
+  if (fileStore.currentFile.path) {
+    const dir = getDirectory(fileStore.currentFile.path);
+    const absolutePath = joinPath(dir, src);
+    try {
+      loadedSrc.value = convertFileSrc(absolutePath);
+    } catch (e) {
+      console.warn('[ImageView] Relative path conversion failed:', e);
+      loadedSrc.value = src;
+    }
+  }
+}
+
+// 监听 src 变化
+watch(
+  () => props.node?.attrs?.src,
+  (newSrc) => {
+    if (newSrc) {
+      loadImage(newSrc);
+    }
+  },
+  { immediate: true }
+);
+
+const handleError = () => {
+  error.value = true;
+  isLoading.value = false;
+};
+
+const handleLoad = () => {
+  error.value = false;
+  isLoading.value = false;
+};
+
 const handleClick = () => {
+  if (isLoading.value) return;
+  
   if (error.value) {
-    // 错误状态点击进入编辑模式
     startEditing();
   } else {
-    // 正常状态点击预览
     showPreview.value = true;
   }
 };
@@ -208,12 +249,13 @@ const startEditing = () => {
 
 const stopEditing = () => {
   if (!isEditing.value) return;
-  // 将修改写回节点
   const newAlt = altText.value;
   const newSrc = srcText.value;
   if (newAlt !== (props.node.attrs.alt || '') || newSrc !== (props.node.attrs.src || '')) {
     props.updateAttributes({ alt: newAlt, src: newSrc });
     error.value = false;
+    // 重新加载图片
+    loadImage(newSrc);
   }
   isEditing.value = false;
 };
@@ -246,15 +288,47 @@ const onBlur = () => {
 .image-display {
   overflow: hidden;
   border-radius: 0.5rem;
+  min-height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f9fafb;
 }
 .image-el {
   display: block;
   height: auto;
   max-width: 100%;
-  background: #f9fafb;
   min-width: 32px;
   min-height: 32px;
 }
+
+/* 加载中状态 */
+.image-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  color: #6b7280;
+}
+.loading-spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid #e5e7eb;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.loading-text {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+/* 错误状态 */
 .image-error {
   display: flex;
   flex-direction: column;
