@@ -1,9 +1,31 @@
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu, CheckMenuItem};
-use tauri::{Emitter, WebviewUrl, WebviewWindowBuilder, Manager};
+use tauri::{Emitter, WebviewUrl, WebviewWindowBuilder, Manager, http};
 use std::fs;
 use std::path::Path;
 use std::time::SystemTime;
 use notify::{Watcher, RecursiveMode, Config, RecommendedWatcher};
+
+/// URL 解码
+fn urlencoding_decode(s: &str) -> Option<String> {
+    let mut result = String::new();
+    let chars: Vec<char> = s.chars().collect();
+    let mut i = 0;
+    
+    while i < chars.len() {
+        if chars[i] == '%' && i + 2 < chars.len() {
+            let hex: String = chars[i+1..=i+2].iter().collect();
+            if let Ok(byte) = u8::from_str_radix(&hex, 16) {
+                result.push(byte as char);
+                i += 3;
+                continue;
+            }
+        }
+        result.push(chars[i]);
+        i += 1;
+    }
+    
+    Some(result)
+}
 
 #[tauri::command]
 fn read_file(path: String) -> Result<String, String> {
@@ -372,6 +394,115 @@ pub fn run() {
             }
 
             Ok(())
+        })
+        // 注册自定义协议代理网络图片（绕过防盗链）
+        .register_uri_scheme_protocol("proxy", |_app, request| {
+            let url = request.uri().to_string();
+            println!("[proxy] Received request: {}", url);
+            
+            // 解析 URL: proxy://image?u=encoded_url 或 proxy://image/?u=encoded_url
+            let actual_url = if url.contains("?u=") {
+                // 查找 u= 参数
+                if let Some(idx) = url.find("?u=") {
+                    let encoded = &url[idx + 3..];
+                    match urlencoding_decode(encoded) {
+                        Some(u) => u,
+                        None => {
+                            println!("[proxy] Failed to decode URL: {}", encoded);
+                            return http::Response::builder()
+                                .status(400)
+                                .body::<Vec<u8>>(b"Failed to decode URL".to_vec())
+                                .unwrap();
+                        }
+                    }
+                } else {
+                    println!("[proxy] No u= parameter found: {}", url);
+                    return http::Response::builder()
+                        .status(400)
+                        .body::<Vec<u8>>(b"No URL parameter".to_vec())
+                        .unwrap();
+                }
+            } else {
+                println!("[proxy] Invalid URL format: {}", url);
+                return http::Response::builder()
+                    .status(400)
+                    .body::<Vec<u8>>(b"Invalid URL format".to_vec())
+                    .unwrap();
+            };
+            
+            println!("[proxy] Fetching: {}", actual_url);
+            
+            // 构建 HTTP 请求
+            let client = match reqwest::blocking::Client::builder()
+                .user_agent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
+                .timeout(std::time::Duration::from_secs(30))
+                .build()
+            {
+                Ok(c) => c,
+                Err(e) => {
+                    println!("[proxy] Failed to create client: {}", e);
+                    return http::Response::builder()
+                        .status(500)
+                        .body::<Vec<u8>>(format!("Client error: {}", e).as_bytes().to_vec())
+                        .unwrap();
+                }
+            };
+            
+            let response = client
+                .get(&actual_url)
+                .header("Referer", &actual_url)
+                .header("Accept", "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8")
+                .send();
+            
+            match response {
+                Ok(resp) => {
+                    let status = resp.status();
+                    println!("[proxy] Response status: {}", status);
+                    
+                    if !status.is_success() {
+                        return http::Response::builder()
+                            .status(status.as_u16())
+                            .body::<Vec<u8>>(format!("HTTP error: {}", status).as_bytes().to_vec())
+                            .unwrap();
+                    }
+                    
+                    let headers = resp.headers().clone();
+                    let body = resp.bytes();
+                    
+                    match body {
+                        Ok(bytes) => {
+                            let content_type = headers
+                                .get("content-type")
+                                .and_then(|v| v.to_str().ok())
+                                .unwrap_or("image/png");
+                            
+                            println!("[proxy] Success! Content-Type: {}, size: {} bytes", content_type, bytes.len());
+                            
+                            http::Response::builder()
+                                .status(200)
+                                .header("Content-Type", content_type)
+                                .header("Access-Control-Allow-Origin", "*")
+                                .header("Cache-Control", "max-age=86400")
+                                .body::<Vec<u8>>(bytes.to_vec())
+                                .unwrap()
+                        }
+                        Err(e) => {
+                            println!("[proxy] Failed to read body: {}", e);
+                            http::Response::builder()
+                                .status(500)
+                                .body::<Vec<u8>>(format!("Failed to read response: {}", e).as_bytes().to_vec())
+                                .unwrap()
+                        }
+                    }
+                }
+                Err(e) => {
+                    println!("[proxy] Request failed: {}", e);
+                    http::Response::builder()
+                        .status(500)
+                        .body::<Vec<u8>>(format!("Request failed: {}", e).as_bytes().to_vec())
+                        .unwrap()
+                }
+            }
         })
         .invoke_handler(tauri::generate_handler![read_file, save_file, list_directory, save_image, resolve_image_path, open_new_window, print_document, rename_file, delete_file, create_file, create_folder, reveal_in_finder, get_file_modified_time, watch_directory])
         .run(tauri::generate_context!())

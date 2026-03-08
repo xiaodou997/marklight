@@ -18,11 +18,12 @@
         "minWidth": 800,
         "minHeight": 600,
         "center": true,
-        "decorations": true
+        "decorations": true,
+        "devtools": true
       }
     ],
     "security": {
-      "csp": "default-src 'self'; img-src 'self' asset: http://asset.localhost https: http: data: blob:; style-src 'self' 'unsafe-inline' https:; font-src 'self' https: data:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; connect-src 'self' https: http:;",
+      "csp": null,
       "assetProtocol": {
         "enable": true,
         "scope": ["**"]

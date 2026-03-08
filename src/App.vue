@@ -387,6 +387,13 @@ onMounted(() => {
   
   // 快捷键处理
   const handleKeyDown = (e: KeyboardEvent) => {
+    // F12 打开开发者工具
+    if (e.key === 'F12') {
+      // Tauri 2.x 中，devtools: true 时 F12 应该自动工作
+      // 如果没有工作，提示用户使用右键菜单
+      console.log('F12 pressed - developer tools should open');
+    }
+    
     // 命令面板快捷键: Cmd+Shift+P
     if (isModKey(e) && e.shiftKey && e.key === 'P') {
       e.preventDefault();

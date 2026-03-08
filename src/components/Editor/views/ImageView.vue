@@ -124,9 +124,10 @@ const safeSrc = computed(() => {
   const src = props.node?.attrs?.src;
   if (!src) return '';
   
-  // 网络图片直接返回
+  // 网络图片使用 proxy:// 协议绕过防盗链
   if (src.startsWith('http://') || src.startsWith('https://')) {
-    return src;
+    // 对 URL 进行编码，避免解析问题
+    return `proxy://image?u=${encodeURIComponent(src)}`;
   }
   
   // data URL 直接返回
