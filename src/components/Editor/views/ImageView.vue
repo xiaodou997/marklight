@@ -86,7 +86,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onMounted } from 'vue';
+import { ref, watch, nextTick } from 'vue';
 import { convertFileSrc, invoke } from '@tauri-apps/api/core';
 import { useFileStore } from '../../../stores/file';
 

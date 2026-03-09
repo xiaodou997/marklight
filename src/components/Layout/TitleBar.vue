@@ -25,16 +25,16 @@
           >
             <template v-for="(item, idx) in menu.items" :key="idx">
               <div 
-                v-if="item.type === 'separator'" 
+                v-if="'type' in item && item.type === 'separator'" 
                 class="my-1 border-t border-zinc-200 dark:border-zinc-700"
               ></div>
               <div 
-                v-else 
+                v-else-if="'id' in item"
                 class="flex items-center justify-between px-3 py-1.5 text-xs text-zinc-700 dark:text-zinc-300 hover:bg-blue-600 hover:text-white cursor-default group"
                 @click="handleMenuClick(item.id)"
               >
                 <span>{{ item.label }}</span>
-                <span class="text-[10px] text-zinc-400 group-hover:text-blue-100 ml-4">{{ item.shortcut }}</span>
+                <span class="text-[10px] text-zinc-400 group-hover:text-blue-100 ml-4">{{ item.shortcut || '' }}</span>
               </div>
             </template>
           </div>
@@ -70,8 +70,8 @@ const appWindow = getCurrentWindow();
 
 // 检测是否为 macOS
 onMounted(async () => {
-  const platform = await import('@tauri-apps/plugin-os').then(m => m.platform());
-  isMacOS.value = platform() === 'macos';
+  const { platform } = await import('@tauri-apps/plugin-os');
+  isMacOS.value = (await platform()) === 'macos';
   
   // 点击外部关闭菜单
   window.addEventListener('mousedown', closeAllMenus);
@@ -111,8 +111,27 @@ const minimize = () => appWindow.minimize();
 const toggleMaximize = () => appWindow.toggleMaximize();
 const close = () => emit('window-close-requested');
 
+// 菜单项类型定义
+interface MenuItem {
+  id: string;
+  label: string;
+  shortcut?: string;
+}
+
+interface MenuSeparator {
+  type: 'separator';
+}
+
+type MenuItemOrSeparator = MenuItem | MenuSeparator;
+
+interface Menu {
+  id: string;
+  label: string;
+  items: MenuItemOrSeparator[];
+}
+
 // 菜单数据定义 (对齐 macOS)
-const menus = [
+const menus: Menu[] = [
   {
     id: 'file',
     label: '文件',

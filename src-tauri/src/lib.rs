@@ -306,8 +306,25 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_cli::init())
         .setup(|app| {
             let handle = app.handle().clone();
+            
+            // 处理命令行参数（文件关联打开）
+            // macOS 通过 open-url 事件，Windows/Linux 通过命令行参数
+            #[cfg(any(target_os = "windows", target_os = "linux"))]
+            {
+                use tauri_plugin_cli::CliExt;
+                if let Ok(matches) = app.cli().matches() {
+                    if let Some(args) = matches.args.as_ref() {
+                        if let Some(file_arg) = args.get("file") {
+                            if let Some(file_path) = file_arg.value.as_str() {
+                                let _ = app.emit("open-file-args", file_path.to_string());
+                            }
+                        }
+                    }
+                }
+            }
             
             // 设置文件监听器
             let (tx, rx) = std::sync::mpsc::channel();

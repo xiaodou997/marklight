@@ -12,8 +12,8 @@
     @keydown="handleKeyDown"
   >
     <!-- 编辑模式：显示源码 -->
-    <div v-if="isEditing" class="math-source" @click.stop="focusInput">
-      <span class="math-delimiter" @click.stop="focusInput('start')">{{ isBlock ? '$$' : '$' }}</span>
+    <div v-if="isEditing" class="math-source" @click.stop="focusInput()">
+      <span class="math-delimiter" @click.stop.prevent="focusInput('start')">{{ isBlock ? '$$' : '$' }}</span>
       <textarea
         v-if="isBlock"
         ref="inputRef"
@@ -35,7 +35,7 @@
         @keydown.esc.prevent="stopEditing"
         @click.stop
       />
-      <span class="math-delimiter" @click.stop="focusInput('end')">{{ isBlock ? '$$' : '$' }}</span>
+      <span class="math-delimiter" @click.stop="$event.preventDefault(); focusInput('end')">{{ isBlock ? '$$' : '$' }}</span>
     </div>
 
     <!-- 渲染模式 -->
@@ -79,7 +79,11 @@ const handleClickOutside = (e: MouseEvent) => {
   }
 };
 
-const focusInput = (pos?: 'start' | 'end') => {
+const focusInput = (pos?: 'start' | 'end' | Event) => {
+  // 如果传入的是事件对象，忽略它
+  if (pos instanceof Event) {
+    pos = undefined;
+  }
   if (inputRef.value) {
     inputRef.value.focus();
     if (pos === 'start') {

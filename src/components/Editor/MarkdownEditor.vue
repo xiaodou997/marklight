@@ -36,9 +36,9 @@ import { onMounted, onUnmounted, ref, nextTick } from 'vue';
 import { debounce } from 'lodash-es';
 import { EditorState, TextSelection } from 'prosemirror-state';
 import { EditorView } from 'prosemirror-view';
-import { history, undo, redo } from 'prosemirror-history';
+import { history } from 'prosemirror-history';
 import { keymap } from 'prosemirror-keymap';
-import { baseKeymap, toggleMark, selectAll, deleteSelection } from 'prosemirror-commands';
+import { baseKeymap, selectAll, deleteSelection } from 'prosemirror-commands';
 import { inputRules, wrappingInputRule, textblockTypeInputRule, InputRule } from 'prosemirror-inputrules';
 import { tableEditing, columnResizing } from 'prosemirror-tables';
 

@@ -523,6 +523,8 @@ async function handleOpenNewWindow(path?: string) {
 let unlistenOpenFile: (() => void) | null = null;
 let unlistenCloseRequest: (() => void) | null = null;
 let unlistenFileChanged: (() => void) | null = null;
+let unlistenFileArgs: (() => void) | null = null;
+let unlistenTauriOpen: (() => void) | null = null;
 
 onMounted(async () => {
   unlistenOpenFile = await listen<string>('open-file-in-new-window', (event) => {
@@ -548,12 +550,26 @@ onMounted(async () => {
     // 销毁窗口
     await appWindow.destroy();
   });
+  
+  // Windows/Linux: 监听命令行参数打开文件
+  unlistenFileArgs = await listen<string>('open-file-args', (event) => {
+    const path = event.payload;
+    handleOpenFile(path);
+  });
+  
+  // macOS: 监听文件关联打开
+  unlistenTauriOpen = await listen<string>('tauri://open', (event) => {
+    const path = event.payload;
+    handleOpenFile(path);
+  });
 });
 
 onUnmounted(() => {
   if (unlistenOpenFile) unlistenOpenFile();
   if (unlistenCloseRequest) unlistenCloseRequest();
   if (unlistenFileChanged) unlistenFileChanged();
+  if (unlistenFileArgs) unlistenFileArgs();
+  if (unlistenTauriOpen) unlistenTauriOpen();
 });
 
 onUnmounted(() => {
