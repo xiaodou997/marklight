@@ -5,6 +5,52 @@ use std::path::Path;
 use std::time::SystemTime;
 use notify::{Watcher, RecursiveMode, Config, RecommendedWatcher};
 use base64::{Engine as _, engine::general_purpose};
+use serde_json::Value;
+
+/// 获取配置文件路径
+fn get_config_path(app: &tauri::AppHandle) -> Result<std::path::PathBuf, String> {
+    let config_dir = app.path().app_config_dir()
+        .map_err(|e| format!("获取配置目录失败: {}", e))?;
+    
+    // 确保配置目录存在
+    if !config_dir.exists() {
+        fs::create_dir_all(&config_dir).map_err(|e| format!("创建配置目录失败: {}", e))?;
+    }
+    
+    Ok(config_dir.join("settings.json"))
+}
+
+/// 读取配置文件
+#[tauri::command]
+fn read_config(app: tauri::AppHandle) -> Result<Value, String> {
+    let config_path = get_config_path(&app)?;
+    
+    if !config_path.exists() {
+        return Ok(serde_json::json!({}));
+    }
+    
+    let content = fs::read_to_string(&config_path)
+        .map_err(|e| format!("读取配置文件失败: {}", e))?;
+    
+    let config: Value = serde_json::from_str(&content)
+        .map_err(|e| format!("解析配置文件失败: {}", e))?;
+    
+    Ok(config)
+}
+
+/// 写入配置文件
+#[tauri::command]
+fn write_config(app: tauri::AppHandle, config: Value) -> Result<(), String> {
+    let config_path = get_config_path(&app)?;
+    
+    let content = serde_json::to_string_pretty(&config)
+        .map_err(|e| format!("序列化配置失败: {}", e))?;
+    
+    fs::write(&config_path, content)
+        .map_err(|e| format!("写入配置文件失败: {}", e))?;
+    
+    Ok(())
+}
 
 #[tauri::command]
 fn read_file(path: String) -> Result<String, String> {
@@ -357,6 +403,8 @@ pub fn run() {
             let help_menu = Submenu::with_items(
                 handle, "帮助", true,
                 &[
+                    &MenuItem::with_id(handle, "shortcuts", "快捷键", true, Some("CmdOrCtrl+K CmdOrCtrl+S"))?,
+                    &PredefinedMenuItem::separator(handle)?,
                     &MenuItem::with_id(handle, "github", "项目主页 (GitHub)", true, None::<&str>)?,
                     &MenuItem::with_id(handle, "gitee", "项目主页 (Gitee)", true, None::<&str>)?,
                     &MenuItem::with_id(handle, "issues", "报告问题", true, None::<&str>)?,
@@ -370,6 +418,7 @@ pub fn run() {
 
             app.on_menu_event(move |app, event| {
                 match event.id().as_ref() {
+                    "shortcuts" => { let _ = app.emit("menu-event", "shortcuts"); }
                     "github" => { let _ = app.emit("menu-event", "github"); }
                     "gitee" => { let _ = app.emit("menu-event", "gitee"); }
                     "issues" => { let _ = app.emit("menu-event", "issues"); }
@@ -435,7 +484,9 @@ pub fn run() {
             create_folder, 
             reveal_in_finder, 
             get_file_modified_time, 
-            watch_directory
+            watch_directory,
+            read_config,
+            write_config
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

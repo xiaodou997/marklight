@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref, watch } from 'vue';
+import { invoke } from '@tauri-apps/api/core';
 
 export type Theme = 'light' | 'dark' | 'system';
 
@@ -26,6 +27,10 @@ export interface Settings {
   lineHeight: number;
   /** 微信导出主题 */
   wechatTheme: string;
+  /** 自定义快捷键 */
+  customShortcuts: Record<string, string>;
+  /** 配置版本号 (用于迁移) */
+  configVersion: number;
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -40,40 +45,105 @@ const DEFAULT_SETTINGS: Settings = {
   outlineExpanded: true,
   lineHeight: 1.6,
   wechatTheme: 'blue',
+  customShortcuts: {},
+  configVersion: 1,
 };
 
-const STORAGE_KEY = 'marklight-settings';
+const LEGACY_STORAGE_KEY = 'marklight-settings';
 const FOCUS_MODE_KEY = 'marklight-focus-mode';
+const CURRENT_CONFIG_VERSION = 1;
 
-function loadSettings(): Settings {
+/**
+ * 从 localStorage 迁移旧配置
+ */
+function migrateFromLocalStorage(): Partial<Settings> | null {
   try {
-    const saved = localStorage.getItem(STORAGE_KEY);
+    const saved = localStorage.getItem(LEGACY_STORAGE_KEY);
     if (saved) {
       const parsed = JSON.parse(saved);
-      return { ...DEFAULT_SETTINGS, ...parsed };
+      console.log('[Settings] 发现 localStorage 配置，正在迁移...');
+      // 迁移完成后删除旧数据
+      localStorage.removeItem(LEGACY_STORAGE_KEY);
+      return parsed;
     }
   } catch (e) {
-    console.error('Failed to load settings:', e);
+    console.error('[Settings] 迁移 localStorage 配置失败:', e);
   }
-  return { ...DEFAULT_SETTINGS };
-}
-
-function saveSettings(settings: Settings): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-  } catch (e) {
-    console.error('Failed to save settings:', e);
-  }
+  return null;
 }
 
 export const useSettingsStore = defineStore('settings', () => {
-  const settings = ref<Settings>(loadSettings());
+  const settings = ref<Settings>({ ...DEFAULT_SETTINGS });
   const isModalOpen = ref(false);
   const isFocusMode = ref(localStorage.getItem(FOCUS_MODE_KEY) === 'true');
+  const isLoaded = ref(false);
+
+  // 保存配置到文件（防抖）
+  let saveTimeout: ReturnType<typeof setTimeout> | null = null;
+  
+  async function saveSettingsToFile(newSettings: Settings) {
+    if (!isLoaded.value) return; // 未加载完成不保存
+    
+    if (saveTimeout) {
+      clearTimeout(saveTimeout);
+    }
+    
+    saveTimeout = setTimeout(async () => {
+      try {
+        await invoke('write_config', { 
+          config: {
+            ...newSettings,
+            configVersion: CURRENT_CONFIG_VERSION
+          }
+        });
+      } catch (e) {
+        console.error('[Settings] 保存配置失败:', e);
+      }
+    }, 300);
+  }
+
+  // 从文件加载配置
+  async function loadSettingsFromFile(): Promise<void> {
+    try {
+      const config = await invoke<Record<string, unknown>>('read_config');
+      
+      if (Object.keys(config).length > 0) {
+        // 已有配置文件
+        settings.value = { ...DEFAULT_SETTINGS, ...config as Partial<Settings> };
+        console.log('[Settings] 已从配置文件加载');
+      } else {
+        // 配置文件不存在，尝试迁移 localStorage
+        const legacySettings = migrateFromLocalStorage();
+        if (legacySettings) {
+          settings.value = { ...DEFAULT_SETTINGS, ...legacySettings };
+          console.log('[Settings] localStorage 配置已迁移到文件');
+        } else {
+          console.log('[Settings] 首次启动，使用默认配置');
+        }
+        // 保存当前配置到文件（包括默认配置）
+        await invoke('write_config', { config: settings.value });
+      }
+    } catch (e) {
+      console.error('[Settings] 加载配置失败:', e);
+      // 尝试从 localStorage 恢复
+      const legacySettings = migrateFromLocalStorage();
+      if (legacySettings) {
+        settings.value = { ...DEFAULT_SETTINGS, ...legacySettings };
+      }
+      // 尝试保存配置
+      try {
+        await invoke('write_config', { config: settings.value });
+      } catch (saveError) {
+        console.error('[Settings] 保存配置失败:', saveError);
+      }
+    }
+    
+    isLoaded.value = true;
+  }
 
   // 监听设置变化，自动保存
   watch(settings, (newSettings) => {
-    saveSettings(newSettings);
+    saveSettingsToFile(newSettings);
     applyTheme(newSettings.theme);
   }, { deep: true });
 
@@ -153,10 +223,18 @@ export const useSettingsStore = defineStore('settings', () => {
     applyFocusMode(isFocusMode.value);
   }
 
+  // 初始化：加载配置
+  async function init() {
+    await loadSettingsFromFile();
+    initTheme();
+    initFocusMode();
+  }
+
   return {
     settings,
     isModalOpen,
     isFocusMode,
+    isLoaded,
     updateSetting,
     updateSettings,
     resetSettings,
@@ -165,5 +243,6 @@ export const useSettingsStore = defineStore('settings', () => {
     initTheme,
     initFocusMode,
     toggleFocusMode,
+    init,
   };
 });
