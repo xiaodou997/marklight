@@ -57,6 +57,7 @@ import { createSmartPastePlugin } from './core/plugins/smart-paste';
 import { createSearchPlugin, getSearchState, setQuery, setCaseSensitive, nextMatch, prevMatch, replaceCurrent, replaceAll, scrollToCurrentMatch, resetSearch } from './core/plugins/search';
 import { createLinkTooltipPlugin } from './core/plugins/link-tooltip';
 import { createMathPreviewPlugin } from './core/plugins/math-preview';
+import { createShortcutsPlugin } from './core/plugins/shortcuts';
 
 import CodeBlockView from './views/CodeBlockView.vue';
 import ImageView from './views/ImageView.vue';
@@ -100,20 +101,16 @@ const myInputRules = inputRules({
   rules: [headingRule, blockquoteRule, codeBlockRule, mathInlineRule, mathBlockRule]
 });
 
-// 快捷键映射
+// 基础快捷键（保留 Backspace 和基础命令）
 const myKeymap = keymap({
   "Backspace": backspaceCommand,
-  "Mod-z": undo,
-  "Mod-y": redo,
-  "Mod-Shift-z": redo,
-  "Mod-b": toggleMark(mySchema.marks.strong),
-  "Mod-i": toggleMark(mySchema.marks.em),
-  "Mod-Shift-s": toggleMark(mySchema.marks.strikethrough),
-  "Mod-Shift-h": toggleMark(mySchema.marks.highlight),
   "Mod-a": selectAll,
   "Delete": deleteSelection,
   ...baseKeymap
 });
+
+// 创建快捷键插件
+const shortcutsPlugin = createShortcutsPlugin(mySchema);
 
 const onMenuAction = (type: string, data?: any) => { if (editorView) handleMenuAction(editorView, type, mySchema, data); };
 const onTableAction = (type: string) => { if (editorView) handleTableAction(editorView, type); };
@@ -230,6 +227,7 @@ onMounted(() => {
       schema: mySchema,
       plugins: [
         history(),
+        shortcutsPlugin,
         myKeymap,
         myInputRules,
         highlightPlugin,
