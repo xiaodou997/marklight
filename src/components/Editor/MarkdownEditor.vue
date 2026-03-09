@@ -53,6 +53,7 @@ import { createVueNodeView } from './core/nodeViews';
 import { createBubbleMenuPlugin, handleMenuAction } from './core/plugins/bubble-menu';
 import { createImageHandlePlugin } from './core/plugins/image-handle';
 import { createTableToolbarPlugin, handleTableAction } from './core/plugins/table-toolbar';
+import { createTableNavPlugin } from './core/plugins/table-nav';
 import { createSmartPastePlugin } from './core/plugins/smart-paste';
 import { createSearchPlugin, getSearchState, setQuery, setCaseSensitive, nextMatch, prevMatch, replaceCurrent, replaceAll, scrollToCurrentMatch, resetSearch } from './core/plugins/search';
 import { createLinkTooltipPlugin } from './core/plugins/link-tooltip';
@@ -113,6 +114,7 @@ const myKeymap = keymap({
 
 // 创建快捷键插件（使用自定义快捷键配置）
 const shortcutsPlugin = createShortcutsPlugin(mySchema, settingsStore.settings.customShortcuts);
+const tableNavPlugin = createTableNavPlugin();
 
 const onMenuAction = (type: string, data?: any) => { if (editorView) handleMenuAction(editorView, type, mySchema, data); };
 const onTableAction = (type: string) => { if (editorView) handleTableAction(editorView, type); };
@@ -238,6 +240,7 @@ onMounted(() => {
         createImageHandlePlugin(),
         columnResizing(),
         tableEditing(),
+        tableNavPlugin,
         createSmartPastePlugin(mySchema),
         createBubbleMenuPlugin(mySchema, (show, left, top, marks, linkHref) => {
           bubbleMenuRef.value?.update(show, left, top, marks, linkHref);
