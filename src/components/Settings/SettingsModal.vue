@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, nextTick } from 'vue';
 import { useSettingsStore } from '../../stores/settings';
 import { WECHAT_THEMES } from '../../utils/wechat-themes';
 import { isMac } from '../../utils/platform';
-import { getShortcutDefinitions } from '../Editor/core/plugins/shortcuts';
+import { getShortcutGroups, eventToKeyString, formatShortcutDisplay, checkKeyConflicts, type ShortcutDef, DEFAULT_SHORTCUTS } from '../Editor/core/plugins/shortcuts';
 
 const settingsStore = useSettingsStore();
 const settings = settingsStore.settings;
@@ -11,16 +11,15 @@ const settings = settingsStore.settings;
 // 当前选中的设置分组
 const activeTab = ref<'appearance' | 'editor' | 'shortcuts' | 'save' | 'export'>('appearance');
 
+// 快捷键编辑状态
+const editingId = ref<string | null>(null);
+const editingKey = ref<string>('');
+const conflictWarning = ref<string | null>(null);
+const captureInputRef = ref<HTMLInputElement | null>(null);
+
 // 获取快捷键列表并按分组
 const shortcutGroups = computed(() => {
-  const defs = getShortcutDefinitions();
-  return [
-    { name: '格式化', items: defs.slice(0, 5) },
-    { name: '标题', items: defs.slice(5, 12) },
-    { name: '列表', items: defs.slice(12, 15) },
-    { name: '块级元素', items: defs.slice(15, 17) },
-    { name: '历史', items: defs.slice(17, 19) },
-  ];
+  return getShortcutGroups(settings.customShortcuts);
 });
 
 // 字体选项
@@ -51,6 +50,7 @@ const tabs = [
 // 关闭弹窗
 function close() {
   settingsStore.closeModal();
+  cancelEdit();
 }
 
 // 点击遮罩关闭
@@ -72,6 +72,94 @@ function onKeyDown(e: KeyboardEvent) {
   if (e.key === 'Escape') {
     close();
   }
+}
+
+// 开始编辑快捷键
+function startEdit(item: ShortcutDef) {
+  editingId.value = item.id;
+  editingKey.value = item.key;
+  conflictWarning.value = null;
+  
+  nextTick(() => {
+    captureInputRef.value?.focus();
+  });
+}
+
+// 取消编辑
+function cancelEdit() {
+  editingId.value = null;
+  editingKey.value = '';
+  conflictWarning.value = null;
+}
+
+// 捕获快捷键
+function captureKeydown(event: KeyboardEvent, item: ShortcutDef) {
+  // 忽略单独的修饰键
+  if (['Control', 'Meta', 'Shift', 'Alt'].includes(event.key)) {
+    return;
+  }
+  
+  // Escape 取消编辑
+  if (event.key === 'Escape') {
+    cancelEdit();
+    return;
+  }
+  
+  event.preventDefault();
+  event.stopPropagation();
+  
+  const keyStr = eventToKeyString(event);
+  
+  // 检查是否只是修饰键（没有实际按键）
+  if (keyStr.endsWith('Mod-') || keyStr.endsWith('Shift-') || keyStr.endsWith('Alt-')) {
+    return;
+  }
+  
+  // 检测冲突
+  const newCustom = { ...settings.customShortcuts, [item.id]: keyStr };
+  const conflicts = checkKeyConflicts(newCustom);
+  
+  if (conflicts.length > 0) {
+    const conflictItems = conflicts
+      .filter(c => c.id !== item.id)
+      .map(c => c.description);
+    
+    if (conflictItems.length > 0) {
+      conflictWarning.value = `快捷键冲突: ${conflictItems.join(', ')}`;
+    }
+  } else {
+    conflictWarning.value = null;
+  }
+  
+  // 更新快捷键
+  settings.customShortcuts[item.id] = keyStr;
+  editingKey.value = keyStr;
+}
+
+// 重置单个快捷键
+function resetShortcut(item: ShortcutDef) {
+  const defaultDef = DEFAULT_SHORTCUTS.find(d => d.id === item.id);
+  if (defaultDef) {
+    // 如果是默认值，删除自定义配置
+    if (settings.customShortcuts[item.id]) {
+      delete settings.customShortcuts[item.id];
+    }
+  }
+  conflictWarning.value = null;
+}
+
+// 重置所有快捷键
+function resetAllShortcuts() {
+  if (confirm('确定要重置所有快捷键为默认值吗？')) {
+    settings.customShortcuts = {};
+    conflictWarning.value = null;
+  }
+}
+
+// 判断是否使用默认快捷键
+function isDefaultShortcut(item: ShortcutDef): boolean {
+  const defaultDef = DEFAULT_SHORTCUTS.find(d => d.id === item.id);
+  return !settings.customShortcuts[item.id] || settings.customShortcuts[item.id] === defaultDef?.key;
 }
 </script>
 
@@ -255,25 +343,74 @@ function onKeyDown(e: KeyboardEvent) {
               </div>
 
               <!-- 快捷键设置 -->
-              <div v-show="activeTab === 'shortcuts'" class="space-y-6">
-                <div class="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                  {{ isMac ? 'Mac 使用 ⌘ 键' : 'Windows/Linux 使用 Ctrl 键' }}
+              <div v-show="activeTab === 'shortcuts'" class="space-y-4">
+                <div class="flex items-center justify-between">
+                  <div class="text-sm text-gray-500 dark:text-gray-400">
+                    {{ isMac ? 'Mac 使用 ⌘ 键' : 'Windows/Linux 使用 Ctrl 键' }} · 点击行可修改快捷键
+                  </div>
+                  <button
+                    class="text-xs text-blue-500 hover:text-blue-600"
+                    @click="resetAllShortcuts"
+                  >
+                    重置全部
+                  </button>
                 </div>
                 
-                <div v-for="group in shortcutGroups" :key="group.name" class="space-y-3">
+                <!-- 冲突警告 -->
+                <div v-if="conflictWarning" class="p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg text-sm text-yellow-700 dark:text-yellow-400">
+                  ⚠️ {{ conflictWarning }}
+                </div>
+                
+                <div v-for="group in shortcutGroups" :key="group.name" class="space-y-2">
                   <h3 class="text-sm font-semibold text-gray-800 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 pb-1">
                     {{ group.name }}
                   </h3>
-                  <div class="grid gap-2">
+                  <div class="grid gap-1.5">
                     <div 
                       v-for="item in group.items" 
-                      :key="item.key"
-                      class="flex items-center justify-between py-2 px-3 rounded-lg bg-gray-50 dark:bg-gray-700/50"
+                      :key="item.id"
+                      class="flex items-center justify-between py-2 px-3 rounded-lg cursor-pointer transition-all"
+                      :class="editingId === item.id 
+                        ? 'bg-blue-50 dark:bg-blue-900/20 ring-2 ring-blue-500' 
+                        : 'bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700'"
+                      @click="startEdit(item)"
                     >
                       <span class="text-sm text-gray-700 dark:text-gray-300">{{ item.description }}</span>
-                      <kbd class="px-2 py-1 text-xs font-mono bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded shadow-sm">
-                        {{ isMac ? item.macDisplay : item.winDisplay }}
-                      </kbd>
+                      
+                      <!-- 快捷键显示/编辑 -->
+                      <div class="flex items-center gap-1.5">
+                        <!-- 重置按钮 -->
+                        <button
+                          v-if="!isDefaultShortcut(item)"
+                          class="w-6 h-6 flex items-center justify-center text-xs text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
+                          title="重置为默认"
+                          @click.stop="resetShortcut(item)"
+                        >
+                          ↺
+                        </button>
+                        
+                        <!-- 快捷键输入框（编辑状态） -->
+                        <input
+                          v-if="editingId === item.id"
+                          ref="captureInputRef"
+                          type="text"
+                          readonly
+                          :value="formatShortcutDisplay(editingKey)"
+                          class="shortcut-input editing"
+                          placeholder="按下..."
+                          @keydown="captureKeydown($event, item)"
+                          @blur="cancelEdit"
+                        />
+                        
+                        <!-- 快捷键显示（非编辑状态） -->
+                        <div
+                          v-else
+                          class="shortcut-input"
+                          :class="{ 'custom': !isDefaultShortcut(item) }"
+                        >
+                          {{ formatShortcutDisplay(item.key) }}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -402,6 +539,54 @@ function onKeyDown(e: KeyboardEvent) {
 .modal-leave-to > div {
   transform: scale(0.95);
   opacity: 0;
+}
+
+/* 快捷键输入框样式 */
+.shortcut-input {
+  min-width: 100px;
+  height: 30px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  color: #374151;
+  text-align: center;
+  white-space: nowrap;
+  letter-spacing: 0.5px;
+}
+
+.dark .shortcut-input {
+  background: #1f2937;
+  border-color: #4b5563;
+  color: #d1d5db;
+}
+
+.shortcut-input.custom {
+  color: #2563eb;
+  border-color: #60a5fa;
+}
+
+.dark .shortcut-input.custom {
+  color: #60a5fa;
+  border-color: #3b82f6;
+}
+
+.shortcut-input.editing {
+  background: #eff6ff;
+  border-color: #3b82f6;
+  color: #1d4ed8;
+  outline: none;
+}
+
+.dark .shortcut-input.editing {
+  background: #1e3a5f;
+  border-color: #60a5fa;
+  color: #93c5fd;
 }
 
 /* Range input 样式 */

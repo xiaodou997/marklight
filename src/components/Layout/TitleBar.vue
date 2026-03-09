@@ -162,6 +162,8 @@ const menus = [
     id: 'help',
     label: '帮助',
     items: [
+      { id: 'shortcuts', label: '快捷键', shortcut: 'Ctrl+K Ctrl+S' },
+      { type: 'separator' },
       { id: 'github', label: '项目主页 (GitHub)', shortcut: '' },
       { id: 'gitee', label: '项目主页 (Gitee)', shortcut: '' },
       { id: 'issues', label: '报告问题', shortcut: '' },

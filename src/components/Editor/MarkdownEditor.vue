@@ -58,6 +58,7 @@ import { createSearchPlugin, getSearchState, setQuery, setCaseSensitive, nextMat
 import { createLinkTooltipPlugin } from './core/plugins/link-tooltip';
 import { createMathPreviewPlugin } from './core/plugins/math-preview';
 import { createShortcutsPlugin } from './core/plugins/shortcuts';
+import { useSettingsStore } from '../../stores/settings';
 
 import CodeBlockView from './views/CodeBlockView.vue';
 import ImageView from './views/ImageView.vue';
@@ -74,6 +75,7 @@ const props = defineProps<{ initialContent?: string; }>();
 const emit = defineEmits<{ (e: 'update', data: any): void; }>();
 
 const fileStore = useFileStore();
+const settingsStore = useSettingsStore();
 const editorRef = ref<HTMLElement | null>(null);
 const bubbleMenuRef = ref<InstanceType<typeof BubbleMenu> | null>(null);
 const tableToolbarRef = ref<InstanceType<typeof TableToolbar> | null>(null);
@@ -109,8 +111,8 @@ const myKeymap = keymap({
   ...baseKeymap
 });
 
-// 创建快捷键插件
-const shortcutsPlugin = createShortcutsPlugin(mySchema);
+// 创建快捷键插件（使用自定义快捷键配置）
+const shortcutsPlugin = createShortcutsPlugin(mySchema, settingsStore.settings.customShortcuts);
 
 const onMenuAction = (type: string, data?: any) => { if (editorView) handleMenuAction(editorView, type, mySchema, data); };
 const onTableAction = (type: string) => { if (editorView) handleTableAction(editorView, type); };

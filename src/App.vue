@@ -13,6 +13,7 @@ import MarkdownEditor from './components/Editor/MarkdownEditor.vue';
 import StatusBar from './components/Layout/StatusBar.vue';
 import Sidebar, { OutlineItem, FileInfo } from './components/Editor/Sidebar.vue';
 import SettingsModal from './components/Settings/SettingsModal.vue';
+import ShortcutsModal from './components/Editor/ShortcutsModal.vue';
 import CommandPalette from './components/Editor/CommandPalette.vue';
 import TitleBar from './components/Layout/TitleBar.vue';
 import { renderToWechatHtml } from './utils/wechat-renderer';
@@ -42,6 +43,9 @@ const imagePasteWarning = ref<string | null>(null);
 
 // 命令面板
 const isCommandPaletteOpen = ref(false);
+
+// 快捷键弹窗
+const isShortcutsModalOpen = ref(false);
 
 // 统计与大纲数据
 const stats = reactive({
@@ -362,10 +366,9 @@ watch(() => [fileStore.currentFile, activeViewMode.value, imagePreviewUrl.value]
 }, { deep: true });
 
 // 初始化
-onMounted(() => {
+onMounted(async () => {
   updateWindowTitle();
-  settingsStore.initTheme();
-  settingsStore.initFocusMode();
+  await settingsStore.init();
   document.addEventListener('copy', onCopy);
   
   // 设置自动保存
@@ -463,6 +466,7 @@ onMounted(async () => {
       case 'gitee': openUrl('https://gitee.com/xiaodou997/marklight'); break;
       case 'issues': openUrl('https://github.com/xiaodou997/marklight/issues'); break;
       case 'check_updates': openUrl('https://github.com/xiaodou997/marklight/releases'); break;
+      case 'shortcuts': isShortcutsModalOpen.value = true; break;
       case 'about': showAbout(); break;
       case 'fullscreen': toggleFullscreen(); break;
       case 'quit': handleQuit(); break;
@@ -668,6 +672,12 @@ onUnmounted(() => {
 
     <!-- 设置弹窗 -->
     <SettingsModal />
+
+    <!-- 快捷键弹窗 -->
+    <ShortcutsModal
+      :visible="isShortcutsModalOpen"
+      @close="isShortcutsModalOpen = false"
+    />
 
     <!-- 命令面板 -->
     <CommandPalette
