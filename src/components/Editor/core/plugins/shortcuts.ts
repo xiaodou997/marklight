@@ -6,6 +6,7 @@ import { Plugin, PluginKey } from 'prosemirror-state';
 import { toggleMark, setBlockType, wrapIn } from 'prosemirror-commands';
 import { wrapInList } from 'prosemirror-schema-list';
 import { redo, undo } from 'prosemirror-history';
+import { isMac, isModKey } from '../../../../utils/platform';
 import type { Schema } from 'prosemirror-model';
 import type { EditorState } from 'prosemirror-state';
 
@@ -19,11 +20,6 @@ interface ShortcutDef {
   winDisplay: string;
   action: (schema: Schema) => (state: EditorState, dispatch?: any, view?: any) => boolean;
 }
-
-// 判断是否按下修饰键 (Mac: Cmd, Win/Linux: Ctrl)
-const isMod = (event: KeyboardEvent): boolean => {
-  return navigator.platform.toUpperCase().indexOf('MAC') >= 0 ? event.metaKey : event.ctrlKey;
-};
 
 /**
  * 创建快捷键插件
@@ -90,7 +86,7 @@ export function createShortcutsPlugin(schema: Schema): Plugin {
         
         // 构建 ProseMirror 风格的快捷键字符串
         const key = event.key;
-        const mod = isMod(event);
+        const mod = isModKey(event);
         const shift = event.shiftKey;
         const alt = event.altKey;
         
@@ -155,7 +151,6 @@ export function getShortcutDefinitions(): ShortcutDef[] {
  * 格式化快捷键显示（根据平台）
  */
 export function formatShortcutDisplay(key: string): string {
-  const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
   const def = getShortcutDefinitions().find(d => d.key === key);
   if (def) {
     return isMac ? def.macDisplay : def.winDisplay;

@@ -1,13 +1,27 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useSettingsStore } from '../../stores/settings';
 import { WECHAT_THEMES } from '../../utils/wechat-themes';
+import { isMac } from '../../utils/platform';
+import { getShortcutDefinitions } from '../Editor/core/plugins/shortcuts';
 
 const settingsStore = useSettingsStore();
 const settings = settingsStore.settings;
 
 // 当前选中的设置分组
-const activeTab = ref<'appearance' | 'editor' | 'save' | 'export'>('appearance');
+const activeTab = ref<'appearance' | 'editor' | 'shortcuts' | 'save' | 'export'>('appearance');
+
+// 获取快捷键列表并按分组
+const shortcutGroups = computed(() => {
+  const defs = getShortcutDefinitions();
+  return [
+    { name: '格式化', items: defs.slice(0, 5) },
+    { name: '标题', items: defs.slice(5, 12) },
+    { name: '列表', items: defs.slice(12, 15) },
+    { name: '块级元素', items: defs.slice(15, 17) },
+    { name: '历史', items: defs.slice(17, 19) },
+  ];
+});
 
 // 字体选项
 const fontOptions = [
@@ -29,6 +43,7 @@ const themeOptions = [
 const tabs = [
   { key: 'appearance', label: '外观', icon: '🎨' },
   { key: 'editor', label: '编辑器', icon: '✏️' },
+  { key: 'shortcuts', label: '快捷键', icon: '⌨️' },
   { key: 'save', label: '保存', icon: '💾' },
   { key: 'export', label: '导出', icon: '📤' },
 ];
@@ -236,6 +251,31 @@ function onKeyDown(e: KeyboardEvent) {
                       :class="settings.outlineExpanded ? 'translate-x-7' : 'translate-x-1'"
                     />
                   </button>
+                </div>
+              </div>
+
+              <!-- 快捷键设置 -->
+              <div v-show="activeTab === 'shortcuts'" class="space-y-6">
+                <div class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                  {{ isMac ? 'Mac 使用 ⌘ 键' : 'Windows/Linux 使用 Ctrl 键' }}
+                </div>
+                
+                <div v-for="group in shortcutGroups" :key="group.name" class="space-y-3">
+                  <h3 class="text-sm font-semibold text-gray-800 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 pb-1">
+                    {{ group.name }}
+                  </h3>
+                  <div class="grid gap-2">
+                    <div 
+                      v-for="item in group.items" 
+                      :key="item.key"
+                      class="flex items-center justify-between py-2 px-3 rounded-lg bg-gray-50 dark:bg-gray-700/50"
+                    >
+                      <span class="text-sm text-gray-700 dark:text-gray-300">{{ item.description }}</span>
+                      <kbd class="px-2 py-1 text-xs font-mono bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded shadow-sm">
+                        {{ isMac ? item.macDisplay : item.winDisplay }}
+                      </kbd>
+                    </div>
+                  </div>
                 </div>
               </div>
 
