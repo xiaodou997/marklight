@@ -316,11 +316,10 @@ pub fn run() {
             {
                 use tauri_plugin_cli::CliExt;
                 if let Ok(matches) = app.cli().matches() {
-                    if let Some(args) = matches.args.as_ref() {
-                        if let Some(file_arg) = args.get("file") {
-                            if let Some(file_path) = file_arg.value.as_str() {
-                                let _ = app.emit("open-file-args", file_path.to_string());
-                            }
+                    // matches.args 在 Tauri v2 中直接就是 HashMap<String, ArgData>
+                    if let Some(file_arg) = matches.args.get("file") {
+                        if let Some(file_path) = file_arg.value.as_str() {
+                            let _ = app.emit("open-file-args", file_path.to_string());
                         }
                     }
                 }
