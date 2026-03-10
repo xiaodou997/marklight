@@ -234,10 +234,36 @@ defineExpose({
 .code-block-wrapper pre {
   margin: 0;
   background: transparent;
-  color: #1f2937;
-}
-.code-block-wrapper code {
+  color: #24292e; /* GitHub 浅色模式基础文字色 */
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+/* 深色模式下的文字基础颜色 */
+.code-block-wrapper.dark pre {
+  color: #d1d5db;
+}
+
+.code-block-wrapper code {
+  font-family: inherit;
   color: inherit;
+}
+
+/* 核心修复：仅针对未被具体高亮命中的 span，或可能导致变白的特殊类提供保底 */
+/* 移除之前的全局 span { color: inherit } 以恢复 github.css 高亮 */
+.code-block-wrapper pre :deep(.hljs-variable),
+.code-block-wrapper pre :deep(.hljs-template-variable) {
+  color: #e36209; /* 保持可见的橙色 */
+}
+
+/* 修复代码块内被误解析的标记样式 */
+.code-block-wrapper pre :deep(strong),
+.code-block-wrapper pre :deep(em),
+.code-block-wrapper pre :deep(s),
+.code-block-wrapper pre :deep(mark) {
+  color: inherit !important;
+  font-weight: normal !important;
+  font-style: normal !important;
+  text-decoration: none !important;
+  background: none !important;
 }
 </style>
