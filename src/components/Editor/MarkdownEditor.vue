@@ -273,7 +273,11 @@ onMounted(() => {
       if (!editorView) return;
       const newState = editorView.state.apply(tr);
       editorView.updateState(newState);
-      if (tr.docChanged || tr.selectionSet) {
+      if (tr.docChanged) {
+        // 文档有实际变化，标记用户编辑
+        fileStore.markUserEdit();
+        debouncedStatsUpdate(newState);
+      } else if (tr.selectionSet) {
         debouncedStatsUpdate(newState);
       }
     }

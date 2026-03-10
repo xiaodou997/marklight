@@ -16,6 +16,9 @@ export const useFileStore = defineStore('file', () => {
     lastModifiedTime: null,
   });
 
+  // 标记用户是否有过编辑操作
+  const hasUserEdit = ref(false);
+
   const isLoading = ref(false);
 
   function setLoading(loading: boolean) {
@@ -23,10 +26,17 @@ export const useFileStore = defineStore('file', () => {
   }
 
   function setContent(content: string) {
-    if (currentFile.value.content !== content) {
-      currentFile.value.content = content;
+    currentFile.value.content = content;
+    // 只有用户有编辑操作时才标记为脏
+    if (hasUserEdit.value) {
       currentFile.value.isDirty = true;
     }
+  }
+
+  // 用户编辑操作时调用
+  function markUserEdit() {
+    hasUserEdit.value = true;
+    currentFile.value.isDirty = true;
   }
 
   function setFile(content: string, path: string | null, lastModifiedTime: number | null = null) {
@@ -36,10 +46,13 @@ export const useFileStore = defineStore('file', () => {
       isDirty: false,
       lastModifiedTime,
     };
+    // 重置编辑标志
+    hasUserEdit.value = false;
   }
 
   function markSaved(lastModifiedTime: number | null = null) {
     currentFile.value.isDirty = false;
+    hasUserEdit.value = false;
     if (lastModifiedTime !== null) {
       currentFile.value.lastModifiedTime = lastModifiedTime;
     }
@@ -52,6 +65,7 @@ export const useFileStore = defineStore('file', () => {
       isDirty: false,
       lastModifiedTime: null,
     };
+    hasUserEdit.value = false;
   }
 
   return {
@@ -59,6 +73,7 @@ export const useFileStore = defineStore('file', () => {
     isLoading,
     setLoading,
     setContent,
+    markUserEdit,
     setFile,
     markSaved,
     reset,
