@@ -59,6 +59,7 @@ import { createSearchPlugin, getSearchState, setQuery, setCaseSensitive, nextMat
 import { createLinkTooltipPlugin } from './core/plugins/link-tooltip';
 import { createMathPreviewPlugin } from './core/plugins/math-preview';
 import { createShortcutsPlugin } from './core/plugins/shortcuts';
+import { headingEditPlugin } from './core/plugins/heading-edit';
 import { useSettingsStore } from '../../stores/settings';
 
 import CodeBlockView from './views/CodeBlockView.vue';
@@ -104,12 +105,12 @@ const myInputRules = inputRules({
   rules: [headingRule, blockquoteRule, codeBlockRule, mathInlineRule, mathBlockRule]
 });
 
-// 基础快捷键（保留 Backspace 和基础命令）
+// 基础快捷键（自定义命令放在后面，覆盖 baseKeymap 中的默认行为）
 const myKeymap = keymap({
+  ...baseKeymap,
   "Backspace": backspaceCommand,
   "Mod-a": selectAll,
   "Delete": deleteSelection,
-  ...baseKeymap
 });
 
 // 创建快捷键插件（使用自定义快捷键配置）
@@ -237,6 +238,7 @@ onMounted(() => {
         highlightPlugin,
         delimNavPlugin,
         sourceRevealPlugin,
+        headingEditPlugin,
         createImageHandlePlugin(),
         columnResizing(),
         tableEditing(),

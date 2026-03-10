@@ -29,8 +29,7 @@ export const sourceRevealPlugin = new Plugin({
       // 检测光标是否在标题开头，显示 # 标记
       if ($from.parent.type.name === 'heading' && $from.parentOffset === 0) {
         const pos = $from.before($from.depth);
-        const node = $from.parent;
-        decorations.push(Decoration.node(pos, pos + node.nodeSize, {
+        decorations.push(Decoration.node(pos, pos + $from.parent.nodeSize, {
           class: 'show-marker'
         }));
       }
