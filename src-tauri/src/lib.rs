@@ -2,7 +2,7 @@ mod commands;
 mod menu;
 
 use commands::*;
-use notify::{Config, RecommendedWatcher};
+use notify::{Config, RecommendedWatcher, Watcher};
 use tauri::{Emitter, Manager};
 
 pub fn run() {

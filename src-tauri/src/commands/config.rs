@@ -1,5 +1,6 @@
 use std::fs;
 use serde_json::Value;
+use tauri::Manager;
 
 /// 获取配置文件路径
 fn get_config_path(app: &tauri::AppHandle) -> Result<std::path::PathBuf, String> {

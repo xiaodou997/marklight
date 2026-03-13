@@ -45,6 +45,8 @@ import { keymap } from 'prosemirror-keymap';
 import { baseKeymap, selectAll, deleteSelection } from 'prosemirror-commands';
 import { inputRules, wrappingInputRule, textblockTypeInputRule, InputRule } from 'prosemirror-inputrules';
 import { tableEditing, columnResizing } from 'prosemirror-tables';
+import { getCurrentWebview } from '@tauri-apps/api/webview';
+import { readFile } from '@tauri-apps/plugin-fs';
 
 import { useFileStore } from '../../stores/file';
 import { mySchema } from './core/schema';
@@ -55,7 +57,7 @@ import { backspaceCommand } from './core/plugins/backspace';
 import { highlightPlugin } from './core/plugins/highlight';
 import { createVueNodeView } from './core/nodeViews';
 import { createBubbleMenuPlugin, handleMenuAction } from './core/plugins/bubble-menu';
-import { createImageHandlePlugin } from './core/plugins/image-handle';
+import { createImageHandlePlugin, saveAndInsertImage } from './core/plugins/image-handle';
 import { createTableToolbarPlugin, handleTableAction } from './core/plugins/table-toolbar';
 import { createTableNavPlugin } from './core/plugins/table-nav';
 import { createSmartPastePlugin } from './core/plugins/smart-paste';
@@ -93,6 +95,21 @@ const searchMatchCount = ref(0);
 const searchCurrentIndex = ref(0);
 
 let editorView: EditorView | null = null;
+let unlistenDragDrop: (() => void) | null = null;
+
+function getMimeFromPath(path: string): string {
+  const ext = path.split('.').pop()?.toLowerCase() || '';
+  switch (ext) {
+    case 'png': return 'image/png';
+    case 'jpg':
+    case 'jpeg': return 'image/jpeg';
+    case 'gif': return 'image/gif';
+    case 'webp': return 'image/webp';
+    case 'svg': return 'image/svg+xml';
+    case 'bmp': return 'image/bmp';
+    default: return 'application/octet-stream';
+  }
+}
 
 // 输入规则
 const mathInlineRule = new InputRule(/\$([^$]+)\$$/, (state, match, start, end) => {
@@ -293,6 +310,38 @@ onMounted(() => {
   debouncedStatsUpdate(editorView.state, false);
   
   nextTick(() => editorView?.focus());
+
+  // 使用 Tauri 原生拖拽事件作为兜底
+  void (async () => {
+    try {
+      const webview = getCurrentWebview();
+      unlistenDragDrop = await webview.onDragDropEvent(async (event) => {
+        if (event.type !== 'drop') return;
+        const lastHtml5Drop = (window as any).__marklightLastHtml5Drop as number | undefined;
+        if (lastHtml5Drop && Date.now() - lastHtml5Drop < 800) {
+          console.log('[MarkdownEditor] tauri drop ignored (html5 handled)');
+          return;
+        }
+        const paths = event.payload?.paths || [];
+        if (!paths.length) return;
+        const imagePath = paths.find((p: string) => /\.(png|jpe?g|gif|webp|svg|bmp)$/i.test(p));
+        if (!imagePath) return;
+        if (!editorView) return;
+        console.log('[MarkdownEditor] tauri drop', { imagePath, position: event.payload?.position });
+        try {
+          const bytes = await readFile(imagePath);
+          const name = imagePath.split(/[/\\]/).pop() || 'image';
+          const mime = getMimeFromPath(imagePath);
+          const file = new File([bytes], name, { type: mime });
+          saveAndInsertImage(editorView, file, fileStore, name);
+        } catch (err) {
+          console.error('[MarkdownEditor] tauri drop read failed', err);
+        }
+      });
+    } catch (err) {
+      console.warn('[MarkdownEditor] onDragDropEvent unavailable', err);
+    }
+  })();
 });
 
 onUnmounted(() => {
@@ -300,6 +349,10 @@ onUnmounted(() => {
   if (editorView) {
     editorView.destroy();
     editorView = null;
+  }
+  if (unlistenDragDrop) {
+    unlistenDragDrop();
+    unlistenDragDrop = null;
   }
 });
 

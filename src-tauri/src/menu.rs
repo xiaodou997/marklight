@@ -1,7 +1,7 @@
 use tauri::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::Emitter;
 
-pub fn setup_menu(app: &tauri::AppHandle) -> Result<(), String> {
+pub fn setup_menu(app: &tauri::AppHandle) -> Result<(), tauri::Error> {
     let handle = app;
 
     // 应用菜单 (MarkLight)

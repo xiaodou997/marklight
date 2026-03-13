@@ -19,7 +19,8 @@
         "minHeight": 600,
         "center": true,
         "decorations": true,
-        "titleBarStyle": "Transparent"
+        "titleBarStyle": "Transparent",
+        "dragDropEnabled": false
       }
     ],
     "security": {

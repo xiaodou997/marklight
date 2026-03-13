@@ -3,6 +3,8 @@
     class="image-view-wrapper"
     :class="{ 'is-editing': isEditing }"
     @click.stop="handleClick"
+    @mousedown.stop="handleMouseDown"
+    ref="wrapperRef"
   >
     <!-- 编辑模式：图片上方显示源码 -->
     <div v-if="isEditing" class="image-source" @click.stop>
@@ -31,6 +33,10 @@
 
     <!-- 图片展示 -->
     <div class="image-display">
+      <div v-if="!isEditing" class="image-actions">
+        <button class="image-action-btn" @click.stop="startEditing">编辑</button>
+        <button class="image-action-btn" @click.stop="openPreview">预览</button>
+      </div>
       <!-- 加载中状态 -->
       <div v-if="isLoading" class="image-loading">
         <div class="loading-spinner"></div>
@@ -107,6 +113,7 @@ const showPreview = ref(false);
 const altText = ref('');
 const srcText = ref('');
 const srcRef = ref<HTMLInputElement | null>(null);
+const wrapperRef = ref<HTMLElement | null>(null);
 
 /**
  * 规范化路径分隔符
@@ -227,11 +234,24 @@ const handleLoad = () => {
 const handleClick = () => {
   if (isLoading.value) return;
   
-  if (error.value) {
-    startEditing();
-  } else {
-    showPreview.value = true;
+  startEditing();
+};
+
+const handleMouseDown = (event: MouseEvent) => {
+  const target = event.target as HTMLElement | null;
+  if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) {
+    return;
   }
+  if (isLoading.value) return;
+  if (!isEditing.value) {
+    event.preventDefault();
+    startEditing();
+  }
+};
+
+const openPreview = () => {
+  if (isLoading.value) return;
+  showPreview.value = true;
 };
 
 const closePreview = () => {
@@ -261,7 +281,13 @@ const stopEditing = () => {
 };
 
 const onBlur = () => {
-  setTimeout(stopEditing, 150);
+  setTimeout(() => {
+    const active = document.activeElement as HTMLElement | null;
+    if (wrapperRef.value && active && wrapperRef.value.contains(active)) {
+      return;
+    }
+    stopEditing();
+  }, 150);
 };
 </script>
 
@@ -293,6 +319,34 @@ const onBlur = () => {
   align-items: center;
   justify-content: center;
   background: #f9fafb;
+}
+.image-actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 6px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+.image-view-wrapper:hover .image-actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+.image-action-btn {
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  background: rgba(255, 255, 255, 0.9);
+  color: #374151;
+  cursor: pointer;
+}
+.image-action-btn:hover {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #2563eb;
 }
 .image-el {
   display: block;

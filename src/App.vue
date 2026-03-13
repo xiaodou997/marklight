@@ -24,12 +24,6 @@ const fileStore = useFileStore();
 const settingsStore = useSettingsStore();
 const { handleNew, handleOpen, handleSave, handleSaveAs, setupAutoSave } = useFileOperations();
 const editorRef = ref<InstanceType<typeof MarkdownEditor> | null>(null);
-const { exportHtml, exportPdf, copyToWechat } = useExportActions({
-  editorRef,
-  activeViewMode,
-  fileStore,
-  settingsStore
-});
 const appWindow = getCurrentWindow();
 const appVersion = pkg.version;
 
@@ -41,6 +35,13 @@ const sidebarMode = ref<'outline' | 'files'>('outline');
 const activeViewMode = ref<'editor' | 'image'>('editor');
 const imagePreviewUrl = ref<string | null>(null);
 const isFullscreenPreview = ref(false);
+
+const { exportHtml, exportPdf, copyToWechat } = useExportActions({
+  editorRef,
+  activeViewMode,
+  fileStore,
+  settingsStore
+});
 
 // 自动保存状态
 const autoSaveStatus = ref<AutoSaveStatus | null>(null);
@@ -72,6 +73,8 @@ const pendingRenamePath = ref<string | null>(null);
 
 // 自动保存清理函数
 let cleanupAutoSave: (() => void) | null = null;
+let onWindowDragOver: ((e: DragEvent) => void) | null = null;
+let onWindowDrop: ((e: DragEvent) => void) | null = null;
 const handleImagePasteWarning = (event: Event) => {
   const detail = (event as CustomEvent).detail as string | undefined;
   if (!detail) return;
@@ -357,6 +360,23 @@ onMounted(async () => {
   updateWindowTitle();
   await settingsStore.init();
   document.addEventListener('copy', onCopy);
+
+  const logDrag = (label: string, e: DragEvent) => {
+    console.log(`[DragDebug] ${label}`, {
+      types: e.dataTransfer?.types,
+      files: e.dataTransfer?.files?.length ?? 0,
+      x: e.clientX,
+      y: e.clientY
+    });
+  };
+  onWindowDragOver = (e: DragEvent) => {
+    logDrag('window dragover', e);
+  };
+  onWindowDrop = (e: DragEvent) => {
+    logDrag('window drop', e);
+  };
+  window.addEventListener('dragover', onWindowDragOver, true);
+  window.addEventListener('drop', onWindowDrop, true);
   
   // 设置自动保存
   cleanupAutoSave = setupAutoSave(autoSaveStatus);
@@ -413,6 +433,15 @@ onUnmounted(() => {
 
   // 移除图片粘贴警告监听
   window.removeEventListener('image-paste-warning', handleImagePasteWarning as EventListener);
+
+  if (onWindowDragOver) {
+    window.removeEventListener('dragover', onWindowDragOver, true);
+    onWindowDragOver = null;
+  }
+  if (onWindowDrop) {
+    window.removeEventListener('drop', onWindowDrop, true);
+    onWindowDrop = null;
+  }
 });
 
 // 监听原生菜单事件

@@ -1,5 +1,4 @@
-use std::path::Path;
-use tauri::{WebviewUrl, WebviewWindow, WebviewWindowBuilder};
+use tauri::{Emitter, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 
 /// 打开新窗口
 #[tauri::command]
@@ -37,6 +36,7 @@ pub async fn reveal_in_finder(app: tauri::AppHandle, path: String) -> Result<(),
     use tauri_plugin_opener::OpenerExt;
     #[cfg(target_os = "linux")]
     {
+        use std::path::Path;
         let path_buf = Path::new(&path);
         let dir = if path_buf.is_dir() {
             path_buf
