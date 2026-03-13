@@ -36,7 +36,16 @@ const themeOptions = [
   { value: 'light', label: '浅色' },
   { value: 'dark', label: '深色' },
   { value: 'system', label: '跟随系统' },
+  { value: 'custom', label: '自定义' },
 ];
+
+const customThemeLabels = {
+  primary: '品牌主色',
+  background: '背景颜色',
+  text: '文字颜色',
+  sidebar: '侧边栏背景',
+  border: '边框颜色',
+};
 
 // Tab 切换动画
 const tabs = [
@@ -222,6 +231,28 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
                       {{ opt.label }}
                     </option>
                   </select>
+                </div>
+
+                <!-- 自定义主题配色 -->
+                <div v-if="settings.theme === 'custom'" class="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-xl border border-gray-200 dark:border-gray-700 space-y-4">
+                  <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider">自定义配色</h4>
+                  <div class="grid grid-cols-2 gap-4">
+                    <div v-for="(label, key) in customThemeLabels" :key="key" class="space-y-1.5">
+                      <label class="text-[11px] font-medium text-gray-500 dark:text-gray-400 ml-1">{{ label }}</label>
+                      <div class="flex items-center gap-2 px-2 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg">
+                        <input
+                          v-model="settings.customTheme[key as keyof typeof settings.customTheme]"
+                          type="color"
+                          class="w-6 h-6 border-0 p-0 bg-transparent cursor-pointer rounded overflow-hidden"
+                        />
+                        <input
+                          v-model="settings.customTheme[key as keyof typeof settings.customTheme]"
+                          type="text"
+                          class="flex-1 min-w-0 bg-transparent border-0 p-0 text-xs font-mono focus:ring-0 uppercase"
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <div class="space-y-2">

@@ -2,11 +2,21 @@ import { defineStore } from 'pinia';
 import { ref, watch } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 
-export type Theme = 'light' | 'dark' | 'system';
+export type Theme = 'light' | 'dark' | 'system' | 'custom';
+
+export interface CustomTheme {
+  primary: string;
+  background: string;
+  text: string;
+  sidebar: string;
+  border: string;
+}
 
 export interface Settings {
   /** 主题 */
   theme: Theme;
+  /** 自定义主题配色 */
+  customTheme: CustomTheme;
   /** 字体大小 (px) */
   fontSize: number;
   /** 字体族 */
@@ -35,6 +45,13 @@ export interface Settings {
 
 const DEFAULT_SETTINGS: Settings = {
   theme: 'system',
+  customTheme: {
+    primary: '#4a90d9',
+    background: '#ffffff',
+    text: '#333333',
+    sidebar: '#f9fafb',
+    border: '#e5e7eb',
+  },
   fontSize: 14,
   fontFamily: 'JetBrains Mono',
   autoSave: false,
@@ -159,10 +176,28 @@ export const useSettingsStore = defineStore('settings', () => {
     const isDark = theme === 'dark' || 
       (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
     
+    // 清除自定义变量
+    if (theme !== 'custom') {
+      root.style.removeProperty('--primary-color');
+      root.style.removeProperty('--bg-color');
+      root.style.removeProperty('--text-color');
+      root.style.removeProperty('--sidebar-bg');
+      root.style.removeProperty('--border-color');
+    }
+
     if (isDark) {
       root.classList.add('dark');
     } else {
       root.classList.remove('dark');
+    }
+
+    if (theme === 'custom') {
+      const ct = settings.value.customTheme;
+      root.style.setProperty('--primary-color', ct.primary);
+      root.style.setProperty('--bg-color', ct.background);
+      root.style.setProperty('--text-color', ct.text);
+      root.style.setProperty('--sidebar-bg', ct.sidebar);
+      root.style.setProperty('--border-color', ct.border);
     }
   }
 

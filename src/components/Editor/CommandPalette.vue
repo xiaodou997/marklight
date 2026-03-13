@@ -270,7 +270,9 @@ watch(searchQuery, () => {
 .command-palette {
   width: 560px;
   max-height: 400px;
-  background: white;
+  background: var(--bg-color);
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
   border-radius: 12px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
   overflow: hidden;
@@ -282,7 +284,7 @@ watch(searchQuery, () => {
   display: flex;
   align-items: center;
   padding: 12px 16px;
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .command-input-icon {
@@ -299,6 +301,7 @@ watch(searchQuery, () => {
   border: none;
   outline: none;
   background: transparent;
+  color: inherit;
 }
 
 .command-list {
@@ -328,7 +331,12 @@ watch(searchQuery, () => {
 
 .command-item:hover,
 .command-item-selected {
-  background: #f3f4f6;
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.dark .command-item:hover,
+.dark .command-item-selected {
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .command-item-icon {
@@ -347,7 +355,7 @@ watch(searchQuery, () => {
 
 .command-item-title {
   font-size: 14px;
-  color: #1f2937;
+  color: inherit;
 }
 
 .command-item-path {

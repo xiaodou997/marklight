@@ -2,12 +2,12 @@
 import { ref, reactive, onMounted, onUnmounted, watch } from 'vue';
 import { listen } from '@tauri-apps/api/event';
 import { open } from '@tauri-apps/plugin-dialog';
-import { openUrl } from '@tauri-apps/plugin-opener';
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useFileStore } from './stores/file';
 import { useSettingsStore } from './stores/settings';
 import { useFileOperations, type AutoSaveStatus } from './composables/useFileOperations';
+import { useMenuEvents } from './composables/useMenuEvents';
 import EditorToolbar from './components/Toolbar/EditorToolbar.vue';
 import MarkdownEditor from './components/Editor/MarkdownEditor.vue';
 import StatusBar from './components/Layout/StatusBar.vue';
@@ -19,12 +19,14 @@ import TitleBar from './components/Layout/TitleBar.vue';
 import { renderToWechatHtml } from './utils/wechat-renderer';
 import { serializeMarkdown } from './components/Editor/core/markdown';
 import { isModKey, isMac } from './utils/platform';
+import pkg from '../package.json';
 
 const fileStore = useFileStore();
 const settingsStore = useSettingsStore();
 const { handleNew, handleOpen, handleSave, handleSaveAs, setupAutoSave } = useFileOperations();
 const editorRef = ref<InstanceType<typeof MarkdownEditor> | null>(null);
 const appWindow = getCurrentWindow();
+const appVersion = pkg.version;
 
 const isSidebarOpen = ref(true);
 const isSourceMode = ref(false);
@@ -58,12 +60,22 @@ const outlineItems = ref<OutlineItem[]>([]);
 // 文件树数据
 const files = ref<FileInfo[]>([]);
 const currentFolder = ref<string | null>(null);
+const watchedFolder = ref<string | null>(null);
 
 // 新建文件后需要重命名的文件路径
 const pendingRenamePath = ref<string | null>(null);
 
 // 自动保存清理函数
 let cleanupAutoSave: (() => void) | null = null;
+const handleImagePasteWarning = (event: Event) => {
+  const detail = (event as CustomEvent).detail as string | undefined;
+  if (!detail) return;
+  imagePasteWarning.value = detail;
+  // 3秒后自动消失
+  setTimeout(() => {
+    imagePasteWarning.value = null;
+  }, 3000);
+};
 
 // 加载文件列表
 async function loadFiles(folderPath: string) {
@@ -72,7 +84,14 @@ async function loadFiles(folderPath: string) {
     files.value = result;
     currentFolder.value = folderPath;
     // 开启监听
-    await invoke('watch_directory', { path: folderPath });
+    if (watchedFolder.value && watchedFolder.value !== folderPath) {
+      await invoke('unwatch_directory', { path: watchedFolder.value });
+      watchedFolder.value = null;
+    }
+    if (watchedFolder.value !== folderPath) {
+      await invoke('watch_directory', { path: folderPath });
+      watchedFolder.value = folderPath;
+    }
   } catch (error) {
     console.error('Failed to list directory:', error);
   }
@@ -375,13 +394,6 @@ onMounted(async () => {
   cleanupAutoSave = setupAutoSave(autoSaveStatus);
   
   // 监听图片粘贴警告事件
-  const handleImagePasteWarning = (e: CustomEvent) => {
-    imagePasteWarning.value = e.detail;
-    // 3秒后自动消失
-    setTimeout(() => {
-      imagePasteWarning.value = null;
-    }, 3000);
-  };
   window.addEventListener('image-paste-warning', handleImagePasteWarning as EventListener);
   
   // 快捷键处理
@@ -425,58 +437,45 @@ onUnmounted(() => {
     cleanupAutoSave();
   }
   
+  // 取消目录监听
+  if (watchedFolder.value) {
+    void invoke('unwatch_directory', { path: watchedFolder.value });
+    watchedFolder.value = null;
+  }
+
   // 移除图片粘贴警告监听
-  window.removeEventListener('image-paste-warning', () => {});
+  window.removeEventListener('image-paste-warning', handleImagePasteWarning as EventListener);
 });
 
 // 监听原生菜单事件
-let unlistenMenu: (() => void) | null = null;
-
-onMounted(async () => {
-  unlistenMenu = await listen('menu-event', (event) => {
-    const action = event.payload as string;
-    switch (action) {
-      case 'new': handleNew(); break;
-      case 'open': handleOpen(); break;
-      case 'open_folder': handleOpenFolder(); break;
-      case 'save': handleSave(); break;
-      case 'save_as': handleSaveAs(); break;
-      case 'export_html': exportHtml(); break;
-      case 'export_pdf': exportPdf(); break;
-      case 'export_wechat': copyToWechat(); break;
-      case 'undo':
-      case 'redo':
-      case 'cut':
-      case 'copy':
-      case 'paste':
-      case 'select_all':
-        editorAction(action);
-        break;
-      case 'toggle_sidebar': toggleSidebar(); break;
-      case 'sidebar_outline': sidebarMode.value = 'outline'; isSidebarOpen.value = true; break;
-      case 'sidebar_files': sidebarMode.value = 'files'; isSidebarOpen.value = true; break;
-      case 'toggle_source': toggleSourceMode(); break;
-      case 'settings': settingsStore.openModal(); break;
-      case 'find': editorRef.value?.openSearch(false); break;
-      case 'replace': editorRef.value?.openSearch(true); break;
-      case 'new_window': handleOpenNewWindow(); break;
-      case 'focus_mode': settingsStore.toggleFocusMode(); break;
-      case 'command_palette': isCommandPaletteOpen.value = true; break;
-      case 'github': openUrl('https://github.com/xiaodou997/marklight'); break;
-      case 'gitee': openUrl('https://gitee.com/xiaodou997/marklight'); break;
-      case 'issues': openUrl('https://github.com/xiaodou997/marklight/issues'); break;
-      case 'check_updates': openUrl('https://github.com/xiaodou997/marklight/releases'); break;
-      case 'shortcuts': isShortcutsModalOpen.value = true; break;
-      case 'about': showAbout(); break;
-      case 'fullscreen': toggleFullscreen(); break;
-      case 'quit': handleQuit(); break;
-    }
-  });
+useMenuEvents({
+  handleNew,
+  handleOpen,
+  handleOpenFolder,
+  handleSave,
+  handleSaveAs,
+  exportHtml,
+  exportPdf,
+  copyToWechat,
+  editorAction,
+  toggleSidebar,
+  setSidebarMode: (mode) => { sidebarMode.value = mode; },
+  setSidebarOpen: (open) => { isSidebarOpen.value = open; },
+  toggleSourceMode,
+  openSettings: () => settingsStore.openModal(),
+  openSearch: (showReplace) => editorRef.value?.openSearch(showReplace),
+  handleOpenNewWindow,
+  toggleFocusMode: () => settingsStore.toggleFocusMode(),
+  openCommandPalette: () => { isCommandPaletteOpen.value = true; },
+  openShortcuts: () => { isShortcutsModalOpen.value = true; },
+  showAbout,
+  toggleFullscreen,
+  handleQuit,
 });
 
 // 显示关于对话框
 function showAbout() {
-  alert('墨光 (MarkLight) v0.2.0\n\n一款高性能、自研内核的 Markdown 编辑器\n\nGitHub: https://github.com/xiaodou997/marklight\nGitee: https://gitee.com/xiaodou997/marklight\n\n© 2026 luoxiaodou');
+  alert(`墨光 (MarkLight) v${appVersion}\n\n一款高性能、自研内核的 Markdown 编辑器\n\nGitHub: https://github.com/xiaodou997/marklight\nGitee: https://gitee.com/xiaodou997/marklight\n\n© 2026 luoxiaodou`);
 }
 
 // 切换全屏
@@ -572,15 +571,13 @@ onUnmounted(() => {
   if (unlistenTauriOpen) unlistenTauriOpen();
 });
 
-onUnmounted(() => {
-  if (unlistenMenu) unlistenMenu();
-});
 </script>
 
 <template>
   <div 
-    class="h-screen flex flex-col bg-white dark:bg-zinc-900 overflow-hidden font-sans select-none"
+    class="h-screen flex flex-col overflow-hidden font-sans select-none"
     :class="{ 'focus-mode': settingsStore.isFocusMode }"
+    style="background-color: var(--bg-color); color: var(--text-color);"
   >
     <!-- Windows/Linux 自定义标题栏 (沉浸式且带菜单) -->
     <TitleBar v-if="!isMac" />

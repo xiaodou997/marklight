@@ -1,6 +1,10 @@
 <template>
   <!-- macOS 上完全隐藏工具栏，使用原生菜单 -->
-  <div v-if="!isMac" class="h-10 bg-white border-b border-gray-100 flex items-center px-4 shadow-sm select-none z-10">
+  <div 
+    v-if="!isMac" 
+    class="h-10 border-b flex items-center px-4 shadow-sm select-none z-10 transition-colors"
+    style="background-color: var(--bg-color); border-color: var(--border-color);"
+  >
     <div class="flex items-center space-x-2">
       <button @click="handleNew" class="px-3 py-1 text-sm hover:bg-gray-100 rounded text-gray-600 font-medium">新建</button>
       <button @click="handleOpen" class="px-3 py-1 text-sm hover:bg-gray-100 rounded text-gray-600 font-medium">打开</button>

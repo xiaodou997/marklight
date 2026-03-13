@@ -114,14 +114,15 @@ export function useFileOperations() {
             const success = await handleSave();
             if (success) {
               // 设置自动保存状态，供状态栏显示
+              const ts = Date.now();
               autoSaveStatusRef.value = {
                 message: '已自动保存',
-                timestamp: Date.now()
+                timestamp: ts
               };
               
               // 2秒后清除提示
               setTimeout(() => {
-                if (autoSaveStatusRef.value?.timestamp === Date.now()) {
+                if (autoSaveStatusRef.value?.timestamp === ts) {
                   autoSaveStatusRef.value = null;
                 }
               }, 2000);

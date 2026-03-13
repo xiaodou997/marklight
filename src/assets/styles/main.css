@@ -4,6 +4,8 @@
   --primary-color: #4a90d9;
   --bg-color: #ffffff;
   --text-color: #333333;
+  --sidebar-bg: #f9fafb;
+  --border-color: #e5e7eb;
 }
 
 html, body, #app {

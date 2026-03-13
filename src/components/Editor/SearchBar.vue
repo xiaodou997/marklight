@@ -1,7 +1,8 @@
 <template>
   <div
     v-show="visible"
-    class="search-bar fixed top-14 right-4 bg-white dark:bg-gray-800 shadow-lg rounded-lg border border-gray-200 dark:border-gray-700 p-3 z-50 w-80"
+    class="search-bar fixed top-14 right-4 shadow-lg rounded-lg border p-3 z-50 w-80 transition-colors"
+    style="background-color: var(--bg-color); color: var(--text-color); border-color: var(--border-color);"
   >
     <!-- 搜索输入行 -->
     <div class="flex items-center gap-2">

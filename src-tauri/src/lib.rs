@@ -291,6 +291,13 @@ fn watch_directory(state: tauri::State<std::sync::Mutex<RecommendedWatcher>>, pa
     Ok(())
 }
 
+#[tauri::command]
+fn unwatch_directory(state: tauri::State<std::sync::Mutex<RecommendedWatcher>>, path: String) -> Result<(), String> {
+    let mut watcher = state.lock().map_err(|e| e.to_string())?;
+    watcher.unwatch(Path::new(&path)).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 #[derive(serde::Serialize, Clone)]
 struct FileInfo {
     name: String,
@@ -501,6 +508,7 @@ pub fn run() {
             reveal_in_finder, 
             get_file_modified_time, 
             watch_directory,
+            unwatch_directory,
             read_config,
             write_config
         ])

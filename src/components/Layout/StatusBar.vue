@@ -1,5 +1,8 @@
 <template>
-  <div class="h-6 bg-gray-50 border-t border-gray-200 flex items-center px-4 text-[11px] text-gray-500 justify-between select-none">
+  <div 
+    class="h-6 flex items-center px-4 text-[11px] justify-between select-none border-t transition-colors"
+    style="background-color: var(--sidebar-bg); color: var(--text-color); border-color: var(--border-color); opacity: 0.8;"
+  >
     <div class="flex items-center space-x-4">
       <div class="flex items-center space-x-1">
         <span>行 {{ cursor.line }}, 列 {{ cursor.col }}</span>

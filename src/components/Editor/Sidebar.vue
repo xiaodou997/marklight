@@ -1,7 +1,13 @@
 <template>
-  <div class="sidebar-container h-full flex flex-col bg-gray-50 border-r border-gray-100 select-none">
+  <div 
+    class="sidebar-container h-full flex flex-col select-none border-r"
+    style="background-color: var(--sidebar-bg); border-color: var(--border-color);"
+  >
     <!-- 标签切换 -->
-    <div class="flex border-b border-gray-200 bg-white">
+    <div 
+      class="flex border-b"
+      style="border-color: var(--border-color);"
+    >
       <button 
         @click="$emit('update:mode', 'outline')"
         class="flex-1 py-2 text-xs font-medium transition-colors"
@@ -488,12 +494,13 @@ onUnmounted(() => {
 .context-menu {
   position: fixed;
   z-index: 1000;
-  background: white;
-  border: 1px solid #e5e7eb;
+  background: var(--bg-color);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   min-width: 140px;
   padding: 4px 0;
+  color: var(--text-color);
 }
 
 .context-menu-items {
@@ -506,13 +513,17 @@ onUnmounted(() => {
   align-items: center;
   padding: 8px 12px;
   font-size: 13px;
-  color: #374151;
+  color: inherit;
   cursor: pointer;
   transition: background-color 0.1s;
 }
 
 .context-menu-item:hover {
-  background-color: #f3f4f6;
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.dark .context-menu-item:hover {
+  background-color: rgba(255, 255, 255, 0.1);
 }
 
 .context-menu-item-danger {
@@ -521,6 +532,10 @@ onUnmounted(() => {
 
 .context-menu-item-danger:hover {
   background-color: #fef2f2;
+}
+
+.dark .context-menu-item-danger:hover {
+  background-color: #450a0a;
 }
 
 .context-menu-icon {
@@ -540,7 +555,9 @@ onUnmounted(() => {
 }
 
 .dialog {
-  background: white;
+  background: var(--bg-color);
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 20px;
   min-width: 300px;
@@ -551,13 +568,15 @@ onUnmounted(() => {
   font-size: 16px;
   font-weight: 600;
   margin-bottom: 16px;
-  color: #1f2937;
+  color: inherit;
 }
 
 .dialog-input {
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #e5e7eb;
+  background: var(--sidebar-bg);
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
   border-radius: 6px;
   font-size: 14px;
   outline: none;
@@ -565,7 +584,7 @@ onUnmounted(() => {
 }
 
 .dialog-input:focus {
-  border-color: #3b82f6;
+  border-color: var(--primary-color);
 }
 
 .dialog-buttons {
@@ -584,20 +603,25 @@ onUnmounted(() => {
 }
 
 .dialog-btn-cancel {
-  background: #f3f4f6;
-  color: #6b7280;
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--text-color);
+  opacity: 0.8;
+}
+
+.dark .dialog-btn-cancel {
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .dialog-btn-cancel:hover {
-  background: #e5e7eb;
+  opacity: 1;
 }
 
 .dialog-btn-confirm {
-  background: #3b82f6;
+  background: var(--primary-color);
   color: white;
 }
 
 .dialog-btn-confirm:hover {
-  background: #2563eb;
+  filter: brightness(1.1);
 }
 </style>

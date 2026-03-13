@@ -1,12 +1,16 @@
 <template>
   <div
-    class="editor-shell h-full w-full bg-white cursor-text"
+    class="editor-shell h-full w-full cursor-text transition-colors"
+    style="background-color: var(--bg-color);"
     @click="handleContainerClick"
   >
     <div ref="editorRef" class="prosemirror-editor h-full px-12 py-8 overflow-y-auto outline-none"></div>
     
     <!-- 加载中遮罩 -->
-    <div v-if="fileStore.isLoading" class="absolute inset-0 bg-white/80 flex flex-col items-center justify-center z-50">
+    <div v-if="fileStore.isLoading" 
+      class="absolute inset-0 flex flex-col items-center justify-center z-50 backdrop-blur-sm"
+      style="background-color: var(--bg-color); opacity: 0.8;"
+    >
       <div class="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
       <div class="mt-4 text-xs text-gray-500 font-medium">正在处理文档...</div>
     </div>
@@ -125,7 +129,7 @@ let cachedOutline: any[] = [];
 let cachedOutlineVersion = 0;
 
 // 防抖更新统计信息
-const debouncedStatsUpdate = debounce((state: EditorState) => {
+const debouncedStatsUpdate = debounce((state: EditorState, shouldSyncContent: boolean) => {
   if (!editorView) return;
 
   const { doc, selection } = state;
@@ -184,7 +188,9 @@ const debouncedStatsUpdate = debounce((state: EditorState) => {
   });
 
   emit('update', { wordCount, outline, selectionText, cursor });
-  fileStore.setContent(serializeMarkdown(doc));
+  if (shouldSyncContent) {
+    fileStore.setContent(serializeMarkdown(doc));
+  }
 }, 400);
 
 const handleContainerClick = (event: MouseEvent) => {
@@ -276,15 +282,15 @@ onMounted(() => {
       if (tr.docChanged) {
         // 文档有实际变化，标记用户编辑
         fileStore.markUserEdit();
-        debouncedStatsUpdate(newState);
+        debouncedStatsUpdate(newState, true);
       } else if (tr.selectionSet) {
-        debouncedStatsUpdate(newState);
+        debouncedStatsUpdate(newState, false);
       }
     }
   });
 
   // 立即触发一次统计更新，发送初始大纲数据
-  debouncedStatsUpdate(editorView.state);
+  debouncedStatsUpdate(editorView.state, false);
   
   nextTick(() => editorView?.focus());
 });
