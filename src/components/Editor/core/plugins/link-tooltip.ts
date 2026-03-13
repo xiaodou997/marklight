@@ -1,6 +1,7 @@
 import { Plugin, PluginKey } from 'prosemirror-state';
 import { EditorView } from 'prosemirror-view';
 import { openUrl } from '@tauri-apps/plugin-opener';
+import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 
 export const linkTooltipKey = new PluginKey('link-tooltip');
 
@@ -62,7 +63,7 @@ function showTooltip(view: EditorView, href: string, from: number, to: number) {
   copyBtn?.addEventListener('click', async (e) => {
     e.stopPropagation();
     try {
-      await navigator.clipboard.writeText(href);
+      await writeText(href);
       copyBtn.textContent = '已复制!';
       setTimeout(() => {
         copyBtn.textContent = '复制链接';

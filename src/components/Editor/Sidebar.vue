@@ -223,6 +223,7 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue';
+import { confirm } from '@tauri-apps/plugin-dialog';
 import { getFileManagerName } from '../../utils/platform';
 
 export interface OutlineItem {
@@ -404,14 +405,18 @@ function confirmRename() {
 }
 
 // 删除
-function handleDelete() {
+async function handleDelete() {
   if (!contextMenu.value.file) return;
   const file = contextMenu.value.file;
   const message = file.is_dir 
     ? `确定删除文件夹 "${file.name}" 及其所有内容？`
     : `确定删除文件 "${file.name}"？`;
   
-  if (confirm(message)) {
+  const confirmed = await confirm(message, {
+    title: '删除确认',
+    kind: 'warning'
+  });
+  if (confirmed) {
     emit('file-deleted', file.path);
   }
   contextMenu.value.visible = false;

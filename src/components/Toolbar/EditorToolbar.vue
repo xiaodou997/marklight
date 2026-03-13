@@ -32,15 +32,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
 import { useFileStore } from '../../stores/file';
 import { useFileOperations } from '../../composables/useFileOperations';
+import { isMac as isMacPlatform } from '../../utils/platform';
 
 const fileStore = useFileStore();
 
-// 同步检测 macOS（通过 userAgent 或平台）
-const isMac = ref(navigator.platform.toLowerCase().includes('mac') || 
-                  navigator.userAgent.toLowerCase().includes('mac'));
+const isMac = isMacPlatform;
 
 defineProps<{ isSourceMode: boolean; }>();
 defineEmits<{ (e: 'toggle-sidebar'): void; (e: 'toggle-source'): void; (e: 'copy-wechat'): void; }>();

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, nextTick } from 'vue';
+import { confirm } from '@tauri-apps/plugin-dialog';
 import { useSettingsStore } from '../../stores/settings';
 import { WECHAT_THEMES } from '../../utils/wechat-themes';
 import { isMac } from '../../utils/platform';
@@ -70,8 +71,12 @@ function onOverlayClick(e: MouseEvent) {
 }
 
 // 重置设置
-function handleReset() {
-  if (confirm('确定要恢复默认设置吗？')) {
+async function handleReset() {
+  const confirmed = await confirm('确定要恢复默认设置吗？', {
+    title: '恢复默认',
+    kind: 'warning'
+  });
+  if (confirmed) {
     settingsStore.resetSettings();
   }
 }
@@ -158,8 +163,12 @@ function resetShortcut(item: ShortcutDef) {
 }
 
 // 重置所有快捷键
-function resetAllShortcuts() {
-  if (confirm('确定要重置所有快捷键为默认值吗？')) {
+async function resetAllShortcuts() {
+  const confirmed = await confirm('确定要重置所有快捷键为默认值吗？', {
+    title: '重置快捷键',
+    kind: 'warning'
+  });
+  if (confirmed) {
     settings.customShortcuts = {};
     conflictWarning.value = null;
   }

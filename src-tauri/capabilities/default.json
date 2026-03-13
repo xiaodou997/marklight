@@ -26,9 +26,11 @@
     "fs:allow-rename",
     "fs:allow-remove",
     "fs:allow-watch",
+    "clipboard-manager:allow-write-text",
+    "clipboard-manager:allow-write-html",
     {
       "identifier": "fs:scope",
-      "allow": [{ "path": "**" }]
+      "allow": [{ "path": "$HOME/**" }]
     }
   ]
 }

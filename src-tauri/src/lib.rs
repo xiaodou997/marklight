@@ -1,322 +1,20 @@
-use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu, CheckMenuItem};
-use tauri::{Emitter, WebviewUrl, WebviewWindowBuilder, Manager};
-use std::fs;
-use std::path::Path;
-use std::time::SystemTime;
-use notify::{Watcher, RecursiveMode, Config, RecommendedWatcher};
-use base64::{Engine as _, engine::general_purpose};
-use serde_json::Value;
+mod commands;
+mod menu;
 
-/// 获取配置文件路径
-fn get_config_path(app: &tauri::AppHandle) -> Result<std::path::PathBuf, String> {
-    let config_dir = app.path().app_config_dir()
-        .map_err(|e| format!("获取配置目录失败: {}", e))?;
-    
-    // 确保配置目录存在
-    if !config_dir.exists() {
-        fs::create_dir_all(&config_dir).map_err(|e| format!("创建配置目录失败: {}", e))?;
-    }
-    
-    Ok(config_dir.join("settings.json"))
-}
-
-/// 读取配置文件
-#[tauri::command]
-fn read_config(app: tauri::AppHandle) -> Result<Value, String> {
-    let config_path = get_config_path(&app)?;
-    
-    if !config_path.exists() {
-        return Ok(serde_json::json!({}));
-    }
-    
-    let content = fs::read_to_string(&config_path)
-        .map_err(|e| format!("读取配置文件失败: {}", e))?;
-    
-    let config: Value = serde_json::from_str(&content)
-        .map_err(|e| format!("解析配置文件失败: {}", e))?;
-    
-    Ok(config)
-}
-
-/// 写入配置文件
-#[tauri::command]
-fn write_config(app: tauri::AppHandle, config: Value) -> Result<(), String> {
-    let config_path = get_config_path(&app)?;
-    
-    let content = serde_json::to_string_pretty(&config)
-        .map_err(|e| format!("序列化配置失败: {}", e))?;
-    
-    fs::write(&config_path, content)
-        .map_err(|e| format!("写入配置文件失败: {}", e))?;
-    
-    Ok(())
-}
-
-#[tauri::command]
-fn read_file(path: String) -> Result<String, String> {
-    fs::read_to_string(&path).map_err(|e| e.to_string())
-}
-
-#[tauri::command]
-fn save_file(path: String, content: String) -> Result<(), String> {
-    fs::write(&path, content).map_err(|e| e.to_string())
-}
-
-#[tauri::command]
-fn list_directory(path: String) -> Result<Vec<FileInfo>, String> {
-    let entries = fs::read_dir(&path).map_err(|e| e.to_string())?;
-    let mut files = Vec::new();
-    
-    // 定义支持的扩展名
-    let md_exts = ["md", "markdown"];
-    let txt_exts = ["txt"];
-    let img_exts = ["png", "jpg", "jpeg", "gif", "webp", "svg"];
-
-    for entry in entries {
-        if let Ok(entry) = entry {
-            let path_buf = entry.path();
-            let metadata = entry.metadata().ok();
-            let is_dir = metadata.as_ref().map(|m| m.is_dir()).unwrap_or(false);
-            
-            if is_dir {
-                files.push(FileInfo {
-                    name: entry.file_name().to_string_lossy().to_string(),
-                    path: path_buf.to_string_lossy().to_string(),
-                    is_dir: true,
-                    is_md: false,
-                    is_txt: false,
-                    is_image: false,
-                });
-                continue;
-            }
-
-            let ext = path_buf.extension()
-                .and_then(|s| s.to_str())
-                .map(|s| s.to_lowercase())
-                .unwrap_or_default();
-
-            let is_md = md_exts.contains(&ext.as_str());
-            let is_txt = txt_exts.contains(&ext.as_str());
-            let is_image = img_exts.contains(&ext.as_str());
-
-            // 只添加支持的文件类型
-            if is_md || is_txt || is_image {
-                files.push(FileInfo {
-                    name: entry.file_name().to_string_lossy().to_string(),
-                    path: path_buf.to_string_lossy().to_string(),
-                    is_dir: false,
-                    is_md,
-                    is_txt,
-                    is_image,
-                });
-            }
-        }
-    }
-    // 排序：文件夹在前，然后按名称排序
-    files.sort_by(|a, b| {
-        match (a.is_dir, b.is_dir) {
-            (true, false) => std::cmp::Ordering::Less,
-            (false, true) => std::cmp::Ordering::Greater,
-            _ => a.name.to_lowercase().cmp(&b.name.to_lowercase()),
-        }
-    });
-    Ok(files)
-}
-
-#[tauri::command]
-fn get_file_modified_time(path: String) -> Result<u64, String> {
-    let metadata = fs::metadata(&path).map_err(|e| e.to_string())?;
-    let modified = metadata.modified().map_err(|e| e.to_string())?;
-    let duration = modified.duration_since(SystemTime::UNIX_EPOCH).map_err(|e| e.to_string())?;
-    Ok(duration.as_secs())
-}
-
-/// 保存图片到指定目录的 assets 子目录中
-#[tauri::command]
-fn save_image(dir: String, filename: String, data: Vec<u8>) -> Result<String, String> {
-    let assets_dir = Path::new(&dir).join("assets");
-    if !assets_dir.exists() {
-        fs::create_dir_all(&assets_dir).map_err(|e| format!("创建 assets 目录失败: {}", e))?;
-    }
-    let file_path = assets_dir.join(&filename);
-    fs::write(&file_path, data).map_err(|e| format!("保存图片失败: {}", e))?;
-    Ok(format!("assets/{}", filename))
-}
-
-/// 获取文件的绝对路径
-#[tauri::command]
-fn resolve_image_path(file_dir: String, relative_path: String) -> Result<String, String> {
-    let absolute_path = Path::new(&file_dir).join(&relative_path);
-    absolute_path
-        .to_str()
-        .map(|s| s.to_string())
-        .ok_or_else(|| "无法解析图片路径".to_string())
-}
-
-/// 异步获取网络图片并返回 base64 数据 URL
-#[tauri::command]
-async fn fetch_remote_image(url: String) -> Result<String, String> {
-    println!("[fetch_image] Fetching: {}", url);
-    
-    let client = reqwest::Client::builder()
-        .user_agent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-        .timeout(std::time::Duration::from_secs(30))
-        .build()
-        .map_err(|e| format!("创建客户端失败: {}", e))?;
-    
-    let response = client
-        .get(&url)
-        .header("Referer", &url)
-        .header("Accept", "image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8")
-        .send()
-        .await
-        .map_err(|e| format!("请求失败: {}", e))?;
-    
-    let status = response.status();
-    if !status.is_success() {
-        return Err(format!("HTTP 错误: {}", status));
-    }
-    
-    let content_type = response.headers()
-        .get("content-type")
-        .and_then(|v| v.to_str().ok())
-        .unwrap_or("image/png")
-        .to_string();
-    
-    let bytes = response.bytes().await
-        .map_err(|e| format!("读取响应失败: {}", e))?;
-    
-    // 转换为 base64 data URL
-    let base64_data = general_purpose::STANDARD.encode(&bytes);
-    let data_url = format!("data:{};base64,{}", content_type, base64_data);
-    
-    println!("[fetch_image] Success! Size: {} bytes", bytes.len());
-    Ok(data_url)
-}
-
-/// 打开新窗口
-#[tauri::command]
-async fn open_new_window(app: tauri::AppHandle, path: Option<String>) -> Result<(), String> {
-    let window_label = format!("main-{}", std::process::id());
-    let builder = WebviewWindowBuilder::new(
-        &app,
-        &window_label,
-        WebviewUrl::App("index.html".into())
-    )
-    .title("未命名")
-    .inner_size(1200.0, 800.0)
-    .min_inner_size(800.0, 600.0)
-    .center();
-    
-    let window = builder.build().map_err(|e| e.to_string())?;
-
-    // Windows 和 Linux 下禁用原生边框
-    #[cfg(any(target_os = "windows", target_os = "linux"))]
-    window.set_decorations(false).map_err(|e| e.to_string())?;
-
-    if let Some(file_path) = path {
-        window.emit("open-file-in-new-window", file_path).map_err(|e| e.to_string())?;
-    }
-    Ok(())
-}
-
-/// 打印当前文档
-#[tauri::command]
-fn print_document(window: tauri::WebviewWindow) -> Result<(), String> {
-    window.print().map_err(|e| e.to_string())
-}
-
-/// 重命名文件或文件夹
-#[tauri::command]
-fn rename_file(old_path: String, new_name: String) -> Result<String, String> {
-    let path = Path::new(&old_path);
-    let parent = path.parent().ok_or("无法获取父目录")?;
-    let new_path = parent.join(&new_name);
-    if new_path.exists() {
-        return Err("目标名称已存在".to_string());
-    }
-    fs::rename(&old_path, &new_path).map_err(|e| e.to_string())?;
-    Ok(new_path.to_string_lossy().to_string())
-}
-
-/// 删除文件或文件夹（移到回收站）
-#[tauri::command]
-fn delete_file(path: String) -> Result<(), String> {
-    trash::delete(&path).map_err(|e| e.to_string())
-}
-
-/// 新建文件
-#[tauri::command]
-fn create_file(dir: String, name: String) -> Result<String, String> {
-    let path = Path::new(&dir).join(&name);
-    if path.exists() {
-        return Err("文件已存在".to_string());
-    }
-    fs::write(&path, "").map_err(|e| e.to_string())?;
-    Ok(path.to_string_lossy().to_string())
-}
-
-/// 新建文件夹
-#[tauri::command]
-fn create_folder(dir: String, name: String) -> Result<String, String> {
-    let path = Path::new(&dir).join(&name);
-    if path.exists() {
-        return Err("文件夹已存在".to_string());
-    }
-    fs::create_dir(&path).map_err(|e| e.to_string())?;
-    Ok(path.to_string_lossy().to_string())
-}
-
-/// 在 Finder/资源管理器 中显示文件
-#[tauri::command]
-async fn reveal_in_finder(app: tauri::AppHandle, path: String) -> Result<(), String> {
-    use tauri_plugin_opener::OpenerExt;
-    #[cfg(target_os = "linux")]
-    {
-        let path_buf = Path::new(&path);
-        let dir = if path_buf.is_dir() { path_buf } else { path_buf.parent().unwrap_or(Path::new("/")) };
-        app.opener().open_path(dir.to_string_lossy().to_string(), None::<String>).map_err(|e| e.to_string())
-    }
-    #[cfg(not(target_os = "linux"))]
-    {
-        app.opener().reveal_item_in_dir(path).map_err(|e| e.to_string())
-    }
-}
-
-/// 监听指定目录
-#[tauri::command]
-fn watch_directory(state: tauri::State<std::sync::Mutex<RecommendedWatcher>>, path: String) -> Result<(), String> {
-    let mut watcher = state.lock().map_err(|e| e.to_string())?;
-    watcher.watch(Path::new(&path), RecursiveMode::Recursive).map_err(|e| e.to_string())?;
-    Ok(())
-}
-
-#[tauri::command]
-fn unwatch_directory(state: tauri::State<std::sync::Mutex<RecommendedWatcher>>, path: String) -> Result<(), String> {
-    let mut watcher = state.lock().map_err(|e| e.to_string())?;
-    watcher.unwatch(Path::new(&path)).map_err(|e| e.to_string())?;
-    Ok(())
-}
-
-#[derive(serde::Serialize, Clone)]
-struct FileInfo {
-    name: String,
-    path: String,
-    is_dir: bool,
-    is_md: bool,
-    is_txt: bool,
-    is_image: bool,
-}
+use commands::*;
+use notify::{Config, RecommendedWatcher};
+use tauri::{Emitter, Manager};
 
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_cli::init())
         .setup(|app| {
             let handle = app.handle().clone();
-            
+
             // 处理命令行参数（文件关联打开）
             // macOS 通过 open-url 事件，Windows/Linux 通过命令行参数
             #[cfg(any(target_os = "windows", target_os = "linux"))]
@@ -331,11 +29,12 @@ pub fn run() {
                     }
                 }
             }
-            
+
             // 设置文件监听器
             let (tx, rx) = std::sync::mpsc::channel();
-            let watcher = RecommendedWatcher::new(tx, Config::default()).map_err(|e: notify::Error| e.to_string())?;
-            
+            let watcher =
+                RecommendedWatcher::new(tx, Config::default()).map_err(|e: notify::Error| e.to_string())?;
+
             // 在后台线程处理监听事件
             std::thread::spawn(move || {
                 for res in rx {
@@ -351,130 +50,7 @@ pub fn run() {
             // 将 watcher 存储在状态中，防止被销毁
             app.manage(std::sync::Mutex::new(watcher));
 
-            let handle = app.handle();
-            // 应用菜单 (MarkLight)
-            let app_menu = Submenu::with_items(
-                handle, "MarkLight", true,
-                &[
-                    &MenuItem::with_id(handle, "about", "关于 MarkLight", true, None::<&str>)?,
-                    &PredefinedMenuItem::separator(handle)?,
-                    &MenuItem::with_id(handle, "settings", "设置...", true, Some("CmdOrCtrl+,"))?,
-                    &PredefinedMenuItem::separator(handle)?,
-                    &PredefinedMenuItem::services(handle, Some("服务"))?,
-                    &PredefinedMenuItem::separator(handle)?,
-                    &MenuItem::with_id(handle, "hide", "隐藏 MarkLight", true, Some("CmdOrCtrl+H"))?,
-                    &MenuItem::with_id(handle, "hide_others", "隐藏其他", true, Some("CmdOrCtrl+Alt+H"))?,
-                    &MenuItem::with_id(handle, "show_all", "显示全部", true, None::<&str>)?,
-                    &PredefinedMenuItem::separator(handle)?,
-                    &MenuItem::with_id(handle, "quit", "退出 MarkLight", true, Some("CmdOrCtrl+Q"))?,
-                ],
-            )?;
-
-            // 文件菜单
-            let file_menu = Submenu::with_items(
-                handle, "文件", true,
-                &[
-                    &MenuItem::with_id(handle, "new", "新建", true, Some("CmdOrCtrl+N"))?,
-                    &MenuItem::with_id(handle, "new_window", "新建窗口", true, Some("CmdOrCtrl+Alt+N"))?,
-                    &MenuItem::with_id(handle, "open", "打开...", true, Some("CmdOrCtrl+O"))?,
-                    &MenuItem::with_id(handle, "open_folder", "打开文件夹...", true, None::<&str>)?,
-                    &PredefinedMenuItem::separator(handle)?,
-                    &MenuItem::with_id(handle, "save", "保存", true, Some("CmdOrCtrl+S"))?,
-                    &MenuItem::with_id(handle, "save_as", "另存为...", true, Some("CmdOrCtrl+Shift+S"))?,
-                    &PredefinedMenuItem::separator(handle)?,
-                    &MenuItem::with_id(handle, "export_html", "导出为 HTML", true, None::<&str>)?,
-                    &MenuItem::with_id(handle, "export_pdf", "导出为 PDF...", true, Some("CmdOrCtrl+Shift+P"))?,
-                    &MenuItem::with_id(handle, "export_wechat", "微信导出", true, Some("CmdOrCtrl+E"))?,
-                ],
-            )?;
-
-            // 编辑菜单
-            let edit_menu = Submenu::with_items(
-                handle, "编辑", true,
-                &[
-                    &PredefinedMenuItem::undo(handle, Some("撤销"))?,
-                    &PredefinedMenuItem::redo(handle, Some("重做"))?,
-                    &PredefinedMenuItem::separator(handle)?,
-                    &PredefinedMenuItem::cut(handle, Some("剪切"))?,
-                    &PredefinedMenuItem::copy(handle, Some("复制"))?,
-                    &PredefinedMenuItem::paste(handle, Some("粘贴"))?,
-                    &PredefinedMenuItem::select_all(handle, Some("全选"))?,
-                    &PredefinedMenuItem::separator(handle)?,
-                    &MenuItem::with_id(handle, "find", "查找", true, Some("CmdOrCtrl+F"))?,
-                    &MenuItem::with_id(handle, "replace", "替换", true, Some("CmdOrCtrl+H"))?,
-                    &PredefinedMenuItem::separator(handle)?,
-                    &MenuItem::with_id(handle, "command_palette", "命令面板", true, Some("CmdOrCtrl+K"))?,
-                ],
-            )?;
-
-            // 视图菜单
-            let view_menu = Submenu::with_items(
-                handle, "视图", true,
-                &[
-                    &CheckMenuItem::with_id(handle, "toggle_sidebar", "侧边栏", true, true, Some("CmdOrCtrl+\\"))?,
-                    &MenuItem::with_id(handle, "sidebar_outline", "  └ 大纲", true, Some("CmdOrCtrl+1"))?,
-                    &MenuItem::with_id(handle, "sidebar_files", "  └ 文件树", true, Some("CmdOrCtrl+2"))?,
-                    &PredefinedMenuItem::separator(handle)?,
-                    &CheckMenuItem::with_id(handle, "toggle_source", "源码模式", true, false, Some("CmdOrCtrl+/"))?,
-                    &MenuItem::with_id(handle, "focus_mode", "焦点模式", true, Some("CmdOrCtrl+Shift+F"))?,
-                    &PredefinedMenuItem::separator(handle)?,
-                    &MenuItem::with_id(handle, "fullscreen", "全屏", true, Some("CmdOrCtrl+Ctrl+F"))?,
-                ],
-            )?;
-
-            // 帮助菜单
-            let help_menu = Submenu::with_items(
-                handle, "帮助", true,
-                &[
-                    &MenuItem::with_id(handle, "shortcuts", "快捷键", true, Some("CmdOrCtrl+K CmdOrCtrl+S"))?,
-                    &PredefinedMenuItem::separator(handle)?,
-                    &MenuItem::with_id(handle, "github", "项目主页 (GitHub)", true, None::<&str>)?,
-                    &MenuItem::with_id(handle, "gitee", "项目主页 (Gitee)", true, None::<&str>)?,
-                    &MenuItem::with_id(handle, "issues", "报告问题", true, None::<&str>)?,
-                    &PredefinedMenuItem::separator(handle)?,
-                    &MenuItem::with_id(handle, "check_updates", "检查更新...", true, None::<&str>)?,
-                ],
-            )?;
-
-            let menu = Menu::with_items(handle, &[&app_menu, &file_menu, &edit_menu, &view_menu, &help_menu])?;
-            app.set_menu(menu)?;
-
-            app.on_menu_event(move |app, event| {
-                match event.id().as_ref() {
-                    "shortcuts" => { let _ = app.emit("menu-event", "shortcuts"); }
-                    "github" => { let _ = app.emit("menu-event", "github"); }
-                    "gitee" => { let _ = app.emit("menu-event", "gitee"); }
-                    "issues" => { let _ = app.emit("menu-event", "issues"); }
-                    "check_updates" => { let _ = app.emit("menu-event", "check_updates"); }
-                    "about" => { let _ = app.emit("menu-event", "about"); }
-                    "settings" => { let _ = app.emit("menu-event", "settings"); }
-                    "quit" => { let _ = app.emit("menu-event", "quit"); }
-                    "new" => { let _ = app.emit("menu-event", "new"); }
-                    "new_window" => { let _ = app.emit("menu-event", "new_window"); }
-                    "open" => { let _ = app.emit("menu-event", "open"); }
-                    "open_folder" => { let _ = app.emit("menu-event", "open_folder"); }
-                    "save" => { let _ = app.emit("menu-event", "save"); }
-                    "save_as" => { let _ = app.emit("menu-event", "save_as"); }
-                    "export_html" => { let _ = app.emit("menu-event", "export_html"); }
-                    "export_pdf" => { let _ = app.emit("menu-event", "export_pdf"); }
-                    "export_wechat" => { let _ = app.emit("menu-event", "export_wechat"); }
-                    "undo" => { let _ = app.emit("menu-event", "undo"); }
-                    "redo" => { let _ = app.emit("menu-event", "redo"); }
-                    "cut" => { let _ = app.emit("menu-event", "cut"); }
-                    "copy" => { let _ = app.emit("menu-event", "copy"); }
-                    "paste" => { let _ = app.emit("menu-event", "paste"); }
-                    "select_all" => { let _ = app.emit("menu-event", "select_all"); }
-                    "find" => { let _ = app.emit("menu-event", "find"); }
-                    "replace" => { let _ = app.emit("menu-event", "replace"); }
-                    "toggle_sidebar" => { let _ = app.emit("menu-event", "toggle_sidebar"); }
-                    "sidebar_outline" => { let _ = app.emit("menu-event", "sidebar_outline"); }
-                    "sidebar_files" => { let _ = app.emit("menu-event", "sidebar_files"); }
-                    "toggle_source" => { let _ = app.emit("menu-event", "toggle_source"); }
-                    "focus_mode" => { let _ = app.emit("menu-event", "focus_mode"); }
-                    "fullscreen" => { let _ = app.emit("menu-event", "fullscreen"); }
-                    _ => {}
-                }
-            });
+            menu::setup_menu(&app.handle()).map_err(|e| e.to_string())?;
 
             if let Some(main_window) = app.get_webview_window("main") {
                 // Windows 和 Linux 下禁用原生边框以使用自定义标题栏
@@ -493,20 +69,20 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            read_file, 
-            save_file, 
-            list_directory, 
-            save_image, 
-            resolve_image_path, 
+            read_file,
+            save_file,
+            list_directory,
+            save_image,
+            resolve_image_path,
             fetch_remote_image,
-            open_new_window, 
-            print_document, 
-            rename_file, 
-            delete_file, 
-            create_file, 
-            create_folder, 
-            reveal_in_finder, 
-            get_file_modified_time, 
+            open_new_window,
+            print_document,
+            rename_file,
+            delete_file,
+            create_file,
+            create_folder,
+            reveal_in_finder,
+            get_file_modified_time,
             watch_directory,
             unwatch_directory,
             read_config,

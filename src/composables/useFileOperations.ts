@@ -1,4 +1,4 @@
-import { open, save } from '@tauri-apps/plugin-dialog';
+import { open, save, confirm } from '@tauri-apps/plugin-dialog';
 import { invoke } from '@tauri-apps/api/core';
 import { watch, type Ref } from 'vue';
 import { useFileStore } from '../stores/file';
@@ -15,8 +15,11 @@ export function useFileOperations() {
 
   async function handleNew() {
     if (fileStore.currentFile.isDirty) {
-      const confirm = await window.confirm('当前更改尚未保存，确定要新建吗？');
-      if (!confirm) return;
+      const confirmed = await confirm('当前更改尚未保存，确定要新建吗？', {
+        title: '未保存的更改',
+        kind: 'warning'
+      });
+      if (!confirmed) return;
     }
     fileStore.reset();
   }
@@ -48,7 +51,10 @@ export function useFileOperations() {
         if (file.lastModifiedTime) {
           const currentMtime = await invoke<number>('get_file_modified_time', { path: file.path });
           if (currentMtime > file.lastModifiedTime) {
-            const confirmed = await window.confirm('文件已被外部程序修改，是否覆盖？');
+            const confirmed = await confirm('文件已被外部程序修改，是否覆盖？', {
+              title: '检测到冲突',
+              kind: 'warning'
+            });
             if (!confirmed) return false;
           }
         }

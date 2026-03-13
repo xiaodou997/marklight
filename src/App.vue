@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, onUnmounted, watch } from 'vue';
 import { listen } from '@tauri-apps/api/event';
-import { open } from '@tauri-apps/plugin-dialog';
+import { open, confirm, message } from '@tauri-apps/plugin-dialog';
 import { invoke, convertFileSrc } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { useFileStore } from './stores/file';
 import { useSettingsStore } from './stores/settings';
 import { useFileOperations, type AutoSaveStatus } from './composables/useFileOperations';
+import { useExportActions } from './composables/useExportActions';
 import { useMenuEvents } from './composables/useMenuEvents';
 import EditorToolbar from './components/Toolbar/EditorToolbar.vue';
 import MarkdownEditor from './components/Editor/MarkdownEditor.vue';
@@ -16,8 +17,6 @@ import SettingsModal from './components/Settings/SettingsModal.vue';
 import ShortcutsModal from './components/Editor/ShortcutsModal.vue';
 import CommandPalette from './components/Editor/CommandPalette.vue';
 import TitleBar from './components/Layout/TitleBar.vue';
-import { renderToWechatHtml } from './utils/wechat-renderer';
-import { serializeMarkdown } from './components/Editor/core/markdown';
 import { isModKey, isMac } from './utils/platform';
 import pkg from '../package.json';
 
@@ -25,6 +24,12 @@ const fileStore = useFileStore();
 const settingsStore = useSettingsStore();
 const { handleNew, handleOpen, handleSave, handleSaveAs, setupAutoSave } = useFileOperations();
 const editorRef = ref<InstanceType<typeof MarkdownEditor> | null>(null);
+const { exportHtml, exportPdf, copyToWechat } = useExportActions({
+  editorRef,
+  activeViewMode,
+  fileStore,
+  settingsStore
+});
 const appWindow = getCurrentWindow();
 const appVersion = pkg.version;
 
@@ -100,7 +105,10 @@ async function loadFiles(folderPath: string) {
 // 检查未保存的更改
 async function checkUnsavedChanges() {
   if (fileStore.currentFile.isDirty) {
-    const confirmed = confirm('当前文件有未保存的更改，是否放弃更改？');
+    const confirmed = await confirm('当前文件有未保存的更改，是否放弃更改？', {
+      title: '未保存的更改',
+      kind: 'warning'
+    });
     return confirmed;
   }
   return true;
@@ -164,7 +172,7 @@ async function handleFileRenamed(oldPath: string, newName: string) {
       fileStore.currentFile.path = newPath;
     }
   } catch (error) {
-    alert('重命名失败: ' + error);
+    await message(`重命名失败: ${error}`, { title: '错误', kind: 'error' });
   }
 }
 
@@ -179,7 +187,7 @@ async function handleFileDeleted(path: string) {
       activeViewMode.value = 'editor';
     }
   } catch (error) {
-    alert('删除失败: ' + error);
+    await message(`删除失败: ${error}`, { title: '错误', kind: 'error' });
   }
 }
 
@@ -204,7 +212,7 @@ async function handleFileCreated(name: string, isFolder: boolean) {
       handleOpenFile(path);
     }
   } catch (error) {
-    alert('创建失败: ' + error);
+    await message(`创建失败: ${error}`, { title: '错误', kind: 'error' });
   }
 }
 
@@ -224,7 +232,7 @@ async function handleNewFileWithRename() {
     // 设置待重命名路径，触发 Sidebar 打开重命名对话框
     pendingRenamePath.value = path;
   } catch (error) {
-    alert('创建失败: ' + error);
+    await message(`创建失败: ${error}`, { title: '错误', kind: 'error' });
   }
 }
 
@@ -255,35 +263,10 @@ async function handleRevealInFinder(path: string) {
   try {
     await invoke('reveal_in_finder', { path });
   } catch (error) {
-    alert('无法在 Finder 中显示: ' + error);
+    await message(`无法在 Finder 中显示: ${error}`, { title: '错误', kind: 'error' });
   }
 }
 
-// 导出为 HTML
-async function exportHtml() {
-  if (!editorRef.value || activeViewMode.value !== 'editor') return;
-  const doc = editorRef.value.getDoc();
-  if (!doc) return;
-  const html = renderToWechatHtml(doc);
-  const blob = new Blob([html], { type: 'text/html' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = (fileStore.currentFile.path?.split('/').pop()?.replace(/\.md$/, '') || 'document') + '.html';
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-// 导出为 PDF
-async function exportPdf() {
-  if (activeViewMode.value !== 'editor') return;
-  try {
-    await invoke('print_document');
-  } catch (error) {
-    console.error('PDF 导出失败:', error);
-    alert('PDF 导出失败: ' + error);
-  }
-}
 
 function handleEditorUpdate(data: any) {
   if (data.wordCount !== undefined) stats.wordCount = data.wordCount;
@@ -304,21 +287,6 @@ function toggleSourceMode() {
   isSourceMode.value = !isSourceMode.value;
 }
 
-async function copyToWechat() {
-  if (!editorRef.value || activeViewMode.value !== 'editor') return;
-  const doc = editorRef.value.getDoc();
-  if (!doc) return;
-  const html = renderToWechatHtml(doc, settingsStore.settings.wechatTheme);
-  try {
-    const type = 'text/html';
-    const blob = new Blob([html], { type });
-    const data = [new ClipboardItem({ [type]: blob })];
-    await navigator.clipboard.write(data);
-    alert('🎉 已转换并复制到剪贴板！');
-  } catch (err) {
-    alert('复制失败');
-  }
-}
 
 // 编辑器操作
 function editorAction(_action: string) {
@@ -475,7 +443,10 @@ useMenuEvents({
 
 // 显示关于对话框
 function showAbout() {
-  alert(`墨光 (MarkLight) v${appVersion}\n\n一款高性能、自研内核的 Markdown 编辑器\n\nGitHub: https://github.com/xiaodou997/marklight\nGitee: https://gitee.com/xiaodou997/marklight\n\n© 2026 luoxiaodou`);
+  message(`墨光 (MarkLight) v${appVersion}\n\n一款高性能、自研内核的 Markdown 编辑器\n\nGitHub: https://github.com/xiaodou997/marklight\nGitee: https://gitee.com/xiaodou997/marklight\n\n© 2026 luoxiaodou`, {
+    title: '关于',
+    kind: 'info'
+  });
 }
 
 // 切换全屏
@@ -486,7 +457,10 @@ async function toggleFullscreen() {
 // 处理退出
 async function handleQuit() {
   if (fileStore.currentFile.isDirty) {
-    const confirmed = confirm('文件未保存，是否保存？');
+    const confirmed = await confirm('文件未保存，是否保存？', {
+      title: '未保存的更改',
+      kind: 'warning'
+    });
     if (confirmed) {
       await handleSave();
     }
@@ -539,7 +513,10 @@ onMounted(async () => {
   // 监听窗口关闭请求
   unlistenCloseRequest = await listen('window-close-requested', async () => {
     if (fileStore.currentFile.isDirty) {
-      const confirmed = confirm('文件未保存，是否保存？\n\n选择"确定"保存并关闭\n选择"取消"放弃关闭');
+    const confirmed = await confirm('文件未保存，是否保存？\n\n选择"确定"保存并关闭\n选择"取消"放弃关闭', {
+      title: '未保存的更改',
+      kind: 'warning'
+    });
       if (confirmed) {
         await handleSave();
       } else {

@@ -2,9 +2,27 @@
  * 跨平台适配工具类
  */
 
-export const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
-export const isWindows = navigator.platform.toUpperCase().indexOf('WIN') >= 0;
-export const isLinux = !isMac && !isWindows && navigator.platform.toUpperCase().indexOf('LINUX') >= 0;
+import { platform as tauriPlatform } from '@tauri-apps/plugin-os';
+
+type OsPlatform = 'macos' | 'windows' | 'linux' | 'ios' | 'android' | 'freebsd' | 'dragonfly' | 'netbsd' | 'openbsd' | 'solaris' | 'unknown';
+
+function resolvePlatform(): OsPlatform {
+  try {
+    return tauriPlatform() as OsPlatform;
+  } catch {
+    const nav = typeof navigator !== 'undefined' ? navigator.platform.toUpperCase() : '';
+    if (nav.includes('MAC')) return 'macos';
+    if (nav.includes('WIN')) return 'windows';
+    if (nav.includes('LINUX')) return 'linux';
+    return 'unknown';
+  }
+}
+
+const currentPlatform = resolvePlatform();
+
+export const isMac = currentPlatform === 'macos';
+export const isWindows = currentPlatform === 'windows';
+export const isLinux = currentPlatform === 'linux';
 
 /**
  * 判断是否按下了平台对应的修饰键 (Mac: Command, Win/Linux: Ctrl)

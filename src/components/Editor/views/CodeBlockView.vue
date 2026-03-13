@@ -73,6 +73,7 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick, watch } from 'vue';
+import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 
 const props = defineProps<{
   node: any;
@@ -189,7 +190,7 @@ const scrollToHighlighted = () => {
 const copyCode = async () => {
   const text = props.node.textContent;
   try {
-    await navigator.clipboard.writeText(text);
+    await writeText(text);
     copied.value = true;
     setTimeout(() => {
       copied.value = false;
