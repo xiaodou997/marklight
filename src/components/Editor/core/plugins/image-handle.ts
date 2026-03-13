@@ -1,7 +1,7 @@
 import { Plugin } from 'prosemirror-state';
-import { schema } from 'prosemirror-markdown';
 import { invoke } from '@tauri-apps/api/core';
 import { useFileStore } from '../../../../stores/file';
+import { mySchema } from '../schema';
 
 /**
  * 尝试从 File 对象获取路径 (Tauri 特有)
@@ -61,7 +61,7 @@ async function saveAndInsertImage(
     // 文件未保存，使用 data URL 并提示
     const reader = new FileReader();
     reader.onload = (e) => {
-      const node = schema.nodes.image.create({
+      const node = mySchema.nodes.image.create({
         src: e.target?.result,
         alt
       });
@@ -97,7 +97,7 @@ async function saveAndInsertImage(
     });
     
     // 插入相对路径
-    const node = schema.nodes.image.create({
+    const node = mySchema.nodes.image.create({
       src: relativePath,
       alt
     });
@@ -107,7 +107,7 @@ async function saveAndInsertImage(
     // 失败时回退到 data URL
     const reader = new FileReader();
     reader.onload = (e) => {
-      const node = schema.nodes.image.create({
+      const node = mySchema.nodes.image.create({
         src: e.target?.result,
         alt
       });
@@ -130,20 +130,9 @@ export const createImageHandlePlugin = () => {
 
           event.preventDefault();
 
-          const path = getFilePath(file);
           const fileStore = useFileStore();
-
-          if (path) {
-            // 本地拖入的文件，直接使用绝对路径
-            const node = schema.nodes.image.create({
-              src: path,
-              alt: file.name
-            });
-            view.dispatch(view.state.tr.replaceSelectionWith(node));
-          } else {
-            // 异步保存图片
-            saveAndInsertImage(view, file, fileStore, file.name);
-          }
+          // 无论是否有本地路径，都统一执行本地化保存逻辑
+          saveAndInsertImage(view, file, fileStore, file.name);
 
           return true;
         },
