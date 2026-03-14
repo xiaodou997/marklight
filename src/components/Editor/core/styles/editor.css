@@ -34,6 +34,33 @@
   font-size: 0.6em;
   white-space: pre;
 }
+.ProseMirror .heading-marker-editor {
+  color: #9ca3af;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-weight: normal;
+  font-size: 0.6em;
+  white-space: pre;
+  outline: none;
+  border: 1px dashed transparent;
+  border-radius: 4px;
+  padding: 0 2px;
+  margin-right: 4px;
+}
+.ProseMirror .heading-marker-input {
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: none;
+  outline: none;
+  width: 3em;
+  padding: 0;
+  margin: 0;
+}
+.ProseMirror .heading-marker-editor.is-active {
+  border-color: #bfdbfe;
+  background: #eff6ff;
+  color: #2563eb;
+}
 .ProseMirror blockquote { border-left: 4px solid var(--border-color); padding-left: 1em; margin: 1em 0; color: #6b7280; position: relative; }
 /* 光标在引用开头时显示 > 标记 */
 .ProseMirror blockquote.show-marker::before {
