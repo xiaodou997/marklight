@@ -18,6 +18,7 @@ import ShortcutsModal from './components/Editor/ShortcutsModal.vue';
 import CommandPalette from './components/Editor/CommandPalette.vue';
 import TitleBar from './components/Layout/TitleBar.vue';
 import { isModKey, isMac } from './utils/platform';
+import { serializeMarkdown } from './components/Editor/core/markdown';
 import pkg from '../package.json';
 
 const fileStore = useFileStore();

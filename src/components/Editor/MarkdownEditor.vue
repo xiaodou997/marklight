@@ -316,18 +316,19 @@ onMounted(() => {
     try {
       const webview = getCurrentWebview();
       unlistenDragDrop = await webview.onDragDropEvent(async (event) => {
-        if (event.type !== 'drop') return;
+        const payload = event.payload as { type: string; paths?: string[]; position?: { x: number; y: number } } | undefined;
+        if (!payload || payload.type !== 'drop') return;
         const lastHtml5Drop = (window as any).__marklightLastHtml5Drop as number | undefined;
         if (lastHtml5Drop && Date.now() - lastHtml5Drop < 800) {
           console.log('[MarkdownEditor] tauri drop ignored (html5 handled)');
           return;
         }
-        const paths = event.payload?.paths || [];
+        const paths = payload.paths || [];
         if (!paths.length) return;
         const imagePath = paths.find((p: string) => /\.(png|jpe?g|gif|webp|svg|bmp)$/i.test(p));
         if (!imagePath) return;
         if (!editorView) return;
-        console.log('[MarkdownEditor] tauri drop', { imagePath, position: event.payload?.position });
+        console.log('[MarkdownEditor] tauri drop', { imagePath, position: payload.position });
         try {
           const bytes = await readFile(imagePath);
           const name = imagePath.split(/[/\\]/).pop() || 'image';

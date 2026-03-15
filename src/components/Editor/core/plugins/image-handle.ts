@@ -4,13 +4,6 @@ import { useFileStore } from '../../../../stores/file';
 import { mySchema } from '../schema';
 
 /**
- * 尝试从 File 对象获取路径 (Tauri 特有)
- */
-function getFilePath(file: File): string | null {
-  return (file as any).path || null;
-}
-
-/**
  * 生成图片文件名
  * 格式: image-{timestamp}-{random4}.{ext}
  */

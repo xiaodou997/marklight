@@ -1,4 +1,4 @@
-import { Plugin, PluginKey, TextSelection } from 'prosemirror-state';
+import { Plugin, PluginKey, TextSelection, type EditorState, type Transaction } from 'prosemirror-state';
 import { Decoration, DecorationSet, EditorView } from 'prosemirror-view';
 import { Slice } from 'prosemirror-model';
 import { liftListItem } from 'prosemirror-schema-list';
@@ -133,7 +133,7 @@ function unwrapBlockquote(tr: any, pos: number) {
 }
 
 // 高亮当前节点 + 显示定界符的插件
-export const sourceRevealPlugin = new Plugin<SourceRevealState>({
+export const sourceRevealPlugin: Plugin<SourceRevealState> = new Plugin<SourceRevealState>({
   key: new PluginKey('source-reveal'),
   view(view) {
     currentView = view;
@@ -149,7 +149,7 @@ export const sourceRevealPlugin = new Plugin<SourceRevealState>({
     init() {
       return { markerEdit: false, kind: null, nodePos: null, textFrom: null, level: 0, checked: false };
     },
-    apply(tr, prev, _old, next) {
+    apply(tr, prev) {
       const meta = tr.getMeta(sourceRevealPlugin);
       if (meta) {
         return { ...prev, ...meta };
@@ -327,11 +327,13 @@ export const sourceRevealPlugin = new Plugin<SourceRevealState>({
       return DecorationSet.create(doc, decorations);
     }
   },
-  appendTransaction(transactions, oldState, newState) {
+  appendTransaction(_transactions: readonly Transaction[], _oldState: EditorState, newState: EditorState): Transaction | void {
+    void _transactions;
+    void _oldState;
     const pluginState = sourceRevealPlugin.getState(newState);
     if (!pluginState) return;
-    const { markerEdit, kind, nodePos, textFrom, level, checked } = pluginState;
-    const tr = newState.tr;
+    const { markerEdit, kind, nodePos, textFrom } = pluginState;
+    const tr: Transaction = newState.tr;
 
     // 光标到标题首字符前时，自动显示真实前缀并进入编辑态
     if (!markerEdit && newState.selection.empty) {
