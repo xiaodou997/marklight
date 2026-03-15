@@ -246,8 +246,6 @@ export const sourceRevealPlugin: Plugin<SourceRevealState> = new Plugin<SourceRe
         } else if (ctx.kind === 'blockquote') {
           text = `> `;
         } else if (ctx.kind === 'ordered') {
-          text = `${ctx.order || 1}. `;
-        } else if (ctx.kind === 'ordered') {
           text = `${ctx.order || 1}${ctx.delimiter || '.'} `;
         } else if (ctx.kind === 'bullet') {
           text = `${ctx.marker || '-'} `;
@@ -369,7 +367,7 @@ export const sourceRevealPlugin: Plugin<SourceRevealState> = new Plugin<SourceRe
       return DecorationSet.create(doc, decorations);
     }
   },
-  appendTransaction(_transactions: readonly Transaction[], _oldState: EditorState, newState: EditorState): Transaction | void {
+  appendTransaction(_transactions: readonly Transaction[], _oldState: EditorState, newState: EditorState): Transaction | null | undefined {
     void _transactions;
     void _oldState;
     const pluginState = sourceRevealPlugin.getState(newState);
