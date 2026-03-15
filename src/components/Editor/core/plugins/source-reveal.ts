@@ -252,38 +252,12 @@ export const sourceRevealPlugin = new Plugin<SourceRevealState>({
 
       // 标题标记交由真实文本插入处理
 
-      // 检测光标是否在引用块第一个段落开头，显示 > 标记
-      for (let d = $from.depth; d > 0; d--) {
-        const node = $from.node(d);
-        if (node.type.name === 'blockquote') {
-          if ($from.parentOffset === 0 && $from.index(d) === 0) {
-            const pos = $from.before(d);
-            decorations.push(Decoration.node(pos, pos + node.nodeSize, {
-              class: 'show-marker'
-            }));
-          }
-          break;
-        }
-      }
-
-      // 检测光标是否在列表项开头，显示列表标记
-      if ($from.parent.type.name === 'task_item' && $from.parentOffset === 0) {
-        const d = $from.depth;
-        const pos = $from.before(d);
-        decorations.push(Decoration.node(pos, pos + $from.parent.nodeSize, {
-          class: 'show-marker'
-        }));
-      }
-      for (let d = $from.depth; d > 0; d--) {
-        const node = $from.node(d);
-        if (node.type.name === 'list_item') {
-          if ($from.parentOffset === 0 && $from.index(d) === 0) {
-            const listItemPos = $from.before(d);
-            decorations.push(Decoration.node(listItemPos, listItemPos + node.nodeSize, {
-              class: 'show-marker'
-            }));
-          }
-          break;
+      if (pluginState?.markerEdit && pluginState.nodePos !== null) {
+        const node = doc.nodeAt(pluginState.nodePos);
+        if (node) {
+          decorations.push(Decoration.node(pluginState.nodePos, pluginState.nodePos + node.nodeSize, {
+            class: 'marker-editing'
+          }));
         }
       }
 

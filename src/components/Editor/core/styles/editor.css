@@ -15,25 +15,6 @@
 .ProseMirror h4 { font-size: 1.25rem; font-weight: 600; margin-top: 1em; margin-bottom: 0.5em; position: relative; }
 .ProseMirror h5 { font-size: 1.125rem; font-weight: 600; margin-top: 1em; margin-bottom: 0.5em; position: relative; }
 .ProseMirror h6 { font-size: 1rem; font-weight: 600; margin-top: 1em; margin-bottom: 0.5em; position: relative; }
-/* 标题在光标位于开头时显示 # 标记 */
-.ProseMirror h1.show-marker::before { content: "# "; }
-.ProseMirror h2.show-marker::before { content: "## "; }
-.ProseMirror h3.show-marker::before { content: "### "; }
-.ProseMirror h4.show-marker::before { content: "#### "; }
-.ProseMirror h5.show-marker::before { content: "##### "; }
-.ProseMirror h6.show-marker::before { content: "###### "; }
-.ProseMirror h1.show-marker::before,
-.ProseMirror h2.show-marker::before,
-.ProseMirror h3.show-marker::before,
-.ProseMirror h4.show-marker::before,
-.ProseMirror h5.show-marker::before,
-.ProseMirror h6.show-marker::before {
-  color: #9ca3af;
-  font-family: ui-monospace, monospace;
-  font-weight: normal;
-  font-size: 0.6em;
-  white-space: pre;
-}
 .ProseMirror .heading-marker-editor {
   color: #9ca3af;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -62,15 +43,6 @@
   color: #2563eb;
 }
 .ProseMirror blockquote { border-left: 4px solid var(--border-color); padding-left: 1em; margin: 1em 0; color: #6b7280; position: relative; }
-/* 光标在引用开头时显示 > 标记 */
-.ProseMirror blockquote.show-marker::before {
-  content: ">";
-  position: absolute;
-  left: -1.2em;
-  color: #9ca3af;
-  font-family: ui-monospace, monospace;
-  font-weight: normal;
-}
 /* 行内标记定界符 */
 .ProseMirror .mark-delimiter {
   color: #9ca3af;
@@ -110,17 +82,8 @@
 .ProseMirror ol > li {
   counter-increment: list-item;
 }
-/* 光标在列表项开头时显示 markdown 标记 */
-.ProseMirror ul > li.show-marker::before {
-  content: "-";
-  left: -1.2em;
-  color: #9ca3af;
-  font-family: ui-monospace, monospace;
-}
-.ProseMirror ol > li.show-marker::before {
-  content: counter(list-item) ".";
-  color: #9ca3af;
-  font-family: ui-monospace, monospace;
+.ProseMirror ul > li.marker-editing::before {
+  content: none;
 }
 .ProseMirror pre { background: var(--sidebar-bg); color: var(--text-color); padding: 1em; border-radius: 0.5em; overflow-x: auto; margin: 1em 0; border: 1px solid var(--border-color); }
 .ProseMirror code { font-family: ui-monospace, monospace; font-size: 0.9em; }
@@ -167,29 +130,8 @@
 .ProseMirror li.task-item::before {
   content: none;
 }
-/* 光标在任务项开头时显示原始语法 */
-.ProseMirror ul.task-list > li.task-item.show-marker .task-checkbox {
+.ProseMirror ul.task-list > li.task-item.marker-editing .task-checkbox {
   display: none;
-}
-.ProseMirror ul.task-list > li.task-item.show-marker::before {
-  content: "- [ ] ";
-  position: static;
-  white-space: pre;
-  color: #9ca3af;
-  font-family: ui-monospace, monospace;
-  font-size: 0.9em;
-  flex-shrink: 0;
-  margin-right: 0.25em;
-}
-.ProseMirror ul.task-list > li.task-item.checked.show-marker::before {
-  content: "- [x] ";
-  position: static;
-  white-space: pre;
-  color: #9ca3af;
-  font-family: ui-monospace, monospace;
-  font-size: 0.9em;
-  flex-shrink: 0;
-  margin-right: 0.25em;
 }
 .ProseMirror .task-checkbox {
   margin-right: 0.5em;
