@@ -20,14 +20,6 @@ type SourceRevealState = {
 
 let currentView: EditorView | null = null;
 
-function moveSelectionToTextStart(pos: number) {
-  if (!currentView) return;
-  const { state, dispatch } = currentView;
-  const sel = TextSelection.create(state.doc, pos);
-  dispatch(state.tr.setSelection(sel));
-  currentView.focus();
-}
-
 function moveSelectionToPrev(pos: number) {
   if (!currentView) return;
   const { state, dispatch } = currentView;
@@ -185,7 +177,6 @@ export const sourceRevealPlugin = new Plugin<SourceRevealState>({
             return true;
           }
           moveSelectionToPrev(state.nodePos);
-          view.dispatch(view.state.tr.setMeta(sourceRevealPlugin, { markerEdit: false, kind: null, nodePos: null, textFrom: null, level: 0, checked: false }));
           return true;
         }
         if (event.key === 'ArrowRight') {
@@ -196,8 +187,10 @@ export const sourceRevealPlugin = new Plugin<SourceRevealState>({
             view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, nextPos)));
             return true;
           }
-          moveSelectionToTextStart(state.textFrom + prefix.len);
-          view.dispatch(view.state.tr.setMeta(sourceRevealPlugin, { markerEdit: false, kind: null, nodePos: null, textFrom: null, level: 0, checked: false }));
+          const $from = view.state.selection.$from;
+          const blockEnd = $from.end();
+          const target = Math.min(end + 1, blockEnd);
+          view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, target)));
           return true;
         }
         // 其他按键退出编辑态，交给编辑器处理
@@ -398,7 +391,11 @@ export const sourceRevealPlugin = new Plugin<SourceRevealState>({
       const prefix = readPrefix(newState, ctx);
 
       const offset = newState.selection.$from.parentOffset;
-      const shouldExit = offset > prefix.len || prefix.len === 0;
+      const node = newState.doc.nodeAt(nodePos);
+      const blockFrom = node ? nodePos + 1 : 0;
+      const blockTo = node ? nodePos + node.nodeSize - 1 : 0;
+      const outsideBlock = node ? (newState.selection.from < blockFrom || newState.selection.from > blockTo) : true;
+      const shouldExit = outsideBlock || offset > prefix.len || prefix.len === 0;
 
       // 光标离开前缀区，退出编辑并清理前缀
       if (shouldExit) {
