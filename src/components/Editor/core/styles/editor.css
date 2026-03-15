@@ -85,6 +85,9 @@
 .ProseMirror ul > li.marker-editing::before {
   content: none;
 }
+.ProseMirror ol > li.marker-editing::before {
+  content: none;
+}
 .ProseMirror pre { background: var(--sidebar-bg); color: var(--text-color); padding: 1em; border-radius: 0.5em; overflow-x: auto; margin: 1em 0; border: 1px solid var(--border-color); }
 .ProseMirror code { font-family: ui-monospace, monospace; font-size: 0.9em; }
 .ProseMirror table {
