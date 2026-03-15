@@ -1,36 +1,29 @@
 import { Plugin, PluginKey, TextSelection } from 'prosemirror-state';
 import { Decoration, DecorationSet, EditorView } from 'prosemirror-view';
+import { Slice } from 'prosemirror-model';
+import { liftListItem } from 'prosemirror-schema-list';
 
 import { markDelimiters, findMarkRange, getMarkBoundaries } from '../utils/marks';
 import { delimNavKey, type DelimNav } from './delim-nav';
 import { mySchema } from '../schema';
 
+type MarkerKind = 'heading' | 'blockquote' | 'bullet' | 'task';
+
 type SourceRevealState = {
   markerEdit: boolean;
-  headingPos: number | null;
+  kind: MarkerKind | null;
+  nodePos: number | null;
+  textFrom: number | null;
   level: number;
+  checked: boolean;
 };
 
 let currentView: EditorView | null = null;
 
-function applyHeadingLevel(level: number) {
+function moveSelectionToTextStart(pos: number) {
   if (!currentView) return;
   const { state, dispatch } = currentView;
-  const { $from } = state.selection;
-  const from = $from.start($from.depth);
-  const to = $from.end($from.depth);
-  if (level <= 0) {
-    dispatch(state.tr.setBlockType(from, to, mySchema.nodes.paragraph));
-    return;
-  }
-  const safeLevel = Math.min(Math.max(level, 1), 6);
-  dispatch(state.tr.setBlockType(from, to, mySchema.nodes.heading, { level: safeLevel }));
-}
-
-function moveSelectionToHeadingStart(pos: number) {
-  if (!currentView) return;
-  const { state, dispatch } = currentView;
-  const sel = TextSelection.create(state.doc, pos + 1);
+  const sel = TextSelection.create(state.doc, pos);
   dispatch(state.tr.setSelection(sel));
   currentView.focus();
 }
@@ -43,24 +36,108 @@ function moveSelectionToPrev(pos: number) {
   currentView.focus();
 }
 
-function getHeadingInfo(state: any, pos: number) {
-  const node = state.doc.nodeAt(pos);
-  if (!node || node.type.name !== 'heading') return null;
-  return {
-    node,
-    from: pos + 1,
-    to: pos + node.nodeSize - 1
-  };
+function setBlockTypeForNode(tr: any, nodePos: number, type: any, attrs?: Record<string, any>) {
+  const node = tr.doc.nodeAt(nodePos);
+  if (!node) return tr;
+  const from = nodePos + 1;
+  const to = nodePos + node.nodeSize - 1;
+  tr.setBlockType(from, to, type, attrs);
+  return tr;
 }
 
-function readHeadingPrefix(state: any, pos: number) {
-  const info = getHeadingInfo(state, pos);
-  if (!info) return { level: 0, len: 0 };
-  const to = Math.min(info.from + 16, info.to);
-  const text = state.doc.textBetween(info.from, to, '\n', '\n');
-  const match = text.match(/^(#{1,6})(\s?)/);
-  if (!match) return { level: 0, len: 0 };
-  return { level: match[1].length, len: match[0].length };
+function liftListItemAt(state: any, itemType: any) {
+  let liftedTr: any = null;
+  const lifted = liftListItem(itemType)(state, (nextTr: any) => {
+    liftedTr = nextTr;
+  });
+  if (!lifted || !liftedTr) return null;
+  return liftedTr;
+}
+
+function findMarkerContext(state: any) {
+  const { $from } = state.selection;
+  if (!$from || $from.parentOffset !== 0) return null;
+
+  if ($from.parent.type.name === 'heading') {
+    return {
+      kind: 'heading' as MarkerKind,
+      nodePos: $from.before($from.depth),
+      textFrom: $from.start($from.depth),
+      level: $from.parent.attrs.level || 1,
+      checked: false
+    };
+  }
+
+  if ($from.parent.type.name === 'task_item') {
+    return {
+      kind: 'task' as MarkerKind,
+      nodePos: $from.before($from.depth),
+      textFrom: $from.start($from.depth),
+      level: 0,
+      checked: Boolean($from.parent.attrs.checked)
+    };
+  }
+
+  for (let d = $from.depth; d > 0; d--) {
+    const node = $from.node(d);
+    if (node.type.name === 'list_item') {
+      return {
+        kind: 'bullet' as MarkerKind,
+        nodePos: $from.before(d),
+        textFrom: $from.start($from.depth),
+        level: 0,
+        checked: false
+      };
+    }
+    if (node.type.name === 'blockquote') {
+      if ($from.index(d) === 0) {
+        return {
+          kind: 'blockquote' as MarkerKind,
+          nodePos: $from.before(d),
+          textFrom: $from.start($from.depth),
+          level: 0,
+          checked: false
+        };
+      }
+      break;
+    }
+  }
+  return null;
+}
+
+function readPrefix(state: any, ctx: { kind: MarkerKind; nodePos: number; textFrom: number }) {
+  const from = ctx.textFrom;
+  const to = Math.min(from + 16, state.doc.content.size);
+  const text = state.doc.textBetween(from, to, '\n', '\n');
+  if (ctx.kind === 'heading') {
+    const match = text.match(/^(#{1,6})(\s?)/);
+    if (!match) return { len: 0, level: 0, checked: false };
+    return { len: match[0].length, level: match[1].length, checked: false };
+  }
+  if (ctx.kind === 'blockquote') {
+    const match = text.match(/^(>+)(\s?)/);
+    if (!match) return { len: 0, level: 0, checked: false };
+    return { len: match[0].length, level: match[1].length, checked: false };
+  }
+  if (ctx.kind === 'task') {
+    const match = text.match(/^[-*+]\s+\[([ xX])\]\s?/);
+    if (!match) return { len: 0, level: 0, checked: false };
+    return { len: match[0].length, level: 0, checked: match[1].toLowerCase() === 'x' };
+  }
+  if (ctx.kind === 'bullet') {
+    const match = text.match(/^[-*+](\s?)/);
+    if (!match) return { len: 0, level: 0, checked: false };
+    return { len: match[0].length, level: 0, checked: false };
+  }
+  return { len: 0, level: 0, checked: false };
+}
+
+function unwrapBlockquote(tr: any, pos: number) {
+  const node = tr.doc.nodeAt(pos);
+  if (!node || node.type.name !== 'blockquote') return tr;
+  const slice = new Slice(node.content, 0, 0);
+  tr.replaceRange(pos, pos + node.nodeSize, slice);
+  return tr;
 }
 
 // 高亮当前节点 + 显示定界符的插件
@@ -78,15 +155,16 @@ export const sourceRevealPlugin = new Plugin<SourceRevealState>({
   },
   state: {
     init() {
-      return { markerEdit: false, headingPos: null, level: 0 };
+      return { markerEdit: false, kind: null, nodePos: null, textFrom: null, level: 0, checked: false };
     },
     apply(tr, prev, _old, next) {
       const meta = tr.getMeta(sourceRevealPlugin);
       if (meta) {
         return { ...prev, ...meta };
       }
-      const mappedPos = prev.headingPos !== null ? tr.mapping.map(prev.headingPos) : null;
-      return { ...prev, headingPos: mappedPos };
+      const mappedNodePos = prev.nodePos !== null ? tr.mapping.map(prev.nodePos) : null;
+      const mappedTextFrom = prev.textFrom !== null ? tr.mapping.map(prev.textFrom) : null;
+      return { ...prev, nodePos: mappedNodePos, textFrom: mappedTextFrom };
     }
   },
   props: {
@@ -95,32 +173,31 @@ export const sourceRevealPlugin = new Plugin<SourceRevealState>({
       if (!state) return false;
 
       if (state.markerEdit) {
-        if (state.headingPos === null) return false;
-        const info = getHeadingInfo(view.state, state.headingPos);
-        if (!info) return false;
-        const prefix = readHeadingPrefix(view.state, state.headingPos);
+        if (state.nodePos === null || state.textFrom === null || !state.kind) return false;
+        const ctx = { kind: state.kind, nodePos: state.nodePos, textFrom: state.textFrom };
+        const prefix = readPrefix(view.state, ctx);
         const pos = view.state.selection.from;
         if (event.key === 'ArrowLeft') {
           event.preventDefault();
-          if (pos > info.from) {
-            const nextPos = Math.max(info.from, pos - 1);
+          if (pos > state.textFrom) {
+            const nextPos = Math.max(state.textFrom, pos - 1);
             view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, nextPos)));
             return true;
           }
-          moveSelectionToPrev(state.headingPos);
-          view.dispatch(view.state.tr.setMeta(sourceRevealPlugin, { markerEdit: false }));
+          moveSelectionToPrev(state.nodePos);
+          view.dispatch(view.state.tr.setMeta(sourceRevealPlugin, { markerEdit: false, kind: null, nodePos: null, textFrom: null, level: 0, checked: false }));
           return true;
         }
         if (event.key === 'ArrowRight') {
           event.preventDefault();
-          const end = info.from + prefix.len;
+          const end = state.textFrom + prefix.len;
           if (pos < end) {
             const nextPos = Math.min(end, pos + 1);
             view.dispatch(view.state.tr.setSelection(TextSelection.create(view.state.doc, nextPos)));
             return true;
           }
-          moveSelectionToHeadingStart(state.headingPos);
-          view.dispatch(view.state.tr.setMeta(sourceRevealPlugin, { markerEdit: false }));
+          moveSelectionToTextStart(state.textFrom + prefix.len);
+          view.dispatch(view.state.tr.setMeta(sourceRevealPlugin, { markerEdit: false, kind: null, nodePos: null, textFrom: null, level: 0, checked: false }));
           return true;
         }
         // 其他按键退出编辑态，交给编辑器处理
@@ -129,24 +206,35 @@ export const sourceRevealPlugin = new Plugin<SourceRevealState>({
 
       if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return false;
       if (!view.state.selection.empty) return false;
-      const { $from } = view.state.selection;
-      if ($from.parent.type.name !== 'heading') return false;
-      if ($from.parentOffset !== 0) return false;
-      const pos = $from.before($from.depth);
-      const level = $from.parent.attrs.level || 1;
+      const ctx = findMarkerContext(view.state);
+      if (!ctx) return false;
       event.preventDefault();
-      const info = getHeadingInfo(view.state, pos);
-      if (!info) return false;
-      const prefix = readHeadingPrefix(view.state, pos);
+      const prefix = readPrefix(view.state, ctx);
       let tr = view.state.tr;
-      if (prefix.level === 0) {
-        const text = `${'#'.repeat(level)} `;
-        tr = tr.insertText(text, info.from);
+      if (prefix.len === 0) {
+        let text = '';
+        if (ctx.kind === 'heading') {
+          text = `${'#'.repeat(ctx.level || 1)} `;
+        } else if (ctx.kind === 'blockquote') {
+          text = `> `;
+        } else if (ctx.kind === 'bullet') {
+          text = `- `;
+        } else if (ctx.kind === 'task') {
+          text = `- [${ctx.checked ? 'x' : ' '}] `;
+        }
+        tr = tr.insertText(text, ctx.textFrom);
       }
-      const newPrefix = readHeadingPrefix({ doc: tr.doc } as any, pos);
-      const cursorPos = info.from + newPrefix.len;
+      const newPrefix = readPrefix({ doc: tr.doc } as any, ctx);
+      const cursorPos = ctx.textFrom + newPrefix.len;
       tr = tr.setSelection(TextSelection.create(tr.doc, cursorPos));
-      tr = tr.setMeta(sourceRevealPlugin, { markerEdit: true, headingPos: pos, level });
+      tr = tr.setMeta(sourceRevealPlugin, {
+        markerEdit: true,
+        kind: ctx.kind,
+        nodePos: ctx.nodePos,
+        textFrom: ctx.textFrom,
+        level: ctx.level || newPrefix.level || 0,
+        checked: ctx.checked || newPrefix.checked || false
+      });
       view.dispatch(tr);
       return true;
     },
@@ -275,62 +363,93 @@ export const sourceRevealPlugin = new Plugin<SourceRevealState>({
   appendTransaction(transactions, oldState, newState) {
     const pluginState = sourceRevealPlugin.getState(newState);
     if (!pluginState) return;
-    const { markerEdit, headingPos, level } = pluginState;
+    const { markerEdit, kind, nodePos, textFrom, level, checked } = pluginState;
     const tr = newState.tr;
 
-    // 进入编辑态：在标题开头插入真实的 ## 文本
-    if (markerEdit && headingPos !== null) {
-      const info = getHeadingInfo(newState, headingPos);
-      if (!info) {
-        return tr.setMeta(sourceRevealPlugin, { markerEdit: false, headingPos: null, level: 0 });
-      }
-      const prefix = readHeadingPrefix(newState, headingPos);
-      if (prefix.level === 0) {
-        const text = `${'#'.repeat(level)} `;
-        tr.insertText(text, info.from);
-        tr.setSelection(TextSelection.create(tr.doc, info.from + level));
-        return tr;
-      }
-      // 光标离开前缀区，退出编辑并清理前缀
-      if (newState.selection.$from.parentOffset > prefix.len) {
-        if (prefix.len > 0) {
-          tr.delete(info.from, info.from + prefix.len);
+    // 光标到标题首字符前时，自动显示真实前缀并进入编辑态
+    if (!markerEdit && newState.selection.empty) {
+      const ctx = findMarkerContext(newState);
+      if (ctx) {
+        const prefix = readPrefix(newState, ctx);
+        if (prefix.len === 0) {
+          let text = '';
+          if (ctx.kind === 'heading') text = `${'#'.repeat(ctx.level || 1)} `;
+          if (ctx.kind === 'blockquote') text = `> `;
+          if (ctx.kind === 'bullet') text = `- `;
+          if (ctx.kind === 'task') text = `- [${ctx.checked ? 'x' : ' '}] `;
+          tr.insertText(text, ctx.textFrom);
+          tr.setSelection(TextSelection.create(tr.doc, ctx.textFrom + text.length));
+          tr.setMeta(sourceRevealPlugin, {
+            markerEdit: true,
+            kind: ctx.kind,
+            nodePos: ctx.nodePos,
+            textFrom: ctx.textFrom,
+            level: ctx.level || 0,
+            checked: ctx.checked
+          });
+          return tr;
         }
-        if (prefix.level > 0) {
-          tr.setBlockType(info.from, info.to - prefix.len, mySchema.nodes.heading, { level: prefix.level });
-        } else {
-          tr.setBlockType(info.from, info.to, mySchema.nodes.paragraph);
-        }
-        tr.setMeta(sourceRevealPlugin, { markerEdit: false, headingPos: null, level: 0 });
-        return tr;
-      }
-      // 编辑态下，根据当前前缀实时更新标题级别
-      if (prefix.level > 0 && prefix.level !== info.node.attrs.level) {
-        tr.setBlockType(info.from, info.to, mySchema.nodes.heading, { level: prefix.level });
-        return tr;
-      }
-      if (prefix.level === 0) {
-        tr.setBlockType(info.from, info.to, mySchema.nodes.paragraph);
-        return tr;
       }
     }
 
-    // 离开标题或移动到正文时，清理前缀并更新级别
-    if (headingPos !== null) {
-      const info = getHeadingInfo(newState, headingPos);
-      const inSameHeading = info && newState.selection.$from.parent.type.name === 'heading'
-        && newState.selection.$from.start(newState.selection.$from.depth) === info.from;
-      if (!markerEdit && !inSameHeading) {
-        if (info) {
-          const prefix = readHeadingPrefix(newState, headingPos);
-          if (prefix.level > 0 && prefix.len > 0) {
-            tr.delete(info.from, info.from + prefix.len);
-            tr.setBlockType(info.from, info.to - prefix.len, mySchema.nodes.heading, { level: prefix.level });
-          } else if (prefix.len === 0) {
-            tr.setBlockType(info.from, info.to, mySchema.nodes.paragraph);
+    // 进入编辑态：在标题开头插入真实的 ## 文本
+    if (markerEdit && kind && nodePos !== null && textFrom !== null) {
+      const ctx = { kind, nodePos, textFrom };
+      const prefix = readPrefix(newState, ctx);
+
+      const offset = newState.selection.$from.parentOffset;
+      const shouldExit = offset > prefix.len || prefix.len === 0;
+
+      // 光标离开前缀区，退出编辑并清理前缀
+      if (shouldExit) {
+        if (prefix.len > 0) {
+          tr.delete(textFrom, textFrom + prefix.len);
+        }
+
+        if (kind === 'heading') {
+          if (prefix.level > 0) {
+            setBlockTypeForNode(tr, nodePos, mySchema.nodes.heading, { level: prefix.level });
+          } else {
+            setBlockTypeForNode(tr, nodePos, mySchema.nodes.paragraph);
           }
         }
-        tr.setMeta(sourceRevealPlugin, { markerEdit: false, headingPos: null, level: 0 });
+        if (kind === 'blockquote') {
+          if (prefix.level === 0) {
+            unwrapBlockquote(tr, nodePos);
+          }
+        }
+        if (kind === 'task') {
+          if (prefix.len > 0) {
+            tr.setNodeMarkup(nodePos, undefined, { checked: prefix.checked });
+          } else {
+            const liftedTr = liftListItemAt(newState, mySchema.nodes.task_item);
+            if (liftedTr) {
+              liftedTr.setMeta(sourceRevealPlugin, { markerEdit: false, kind: null, nodePos: null, textFrom: null, level: 0, checked: false });
+              return liftedTr;
+            }
+          }
+        }
+        if (kind === 'bullet') {
+          if (prefix.len === 0) {
+            const liftedTr = liftListItemAt(newState, mySchema.nodes.list_item);
+            if (liftedTr) {
+              liftedTr.setMeta(sourceRevealPlugin, { markerEdit: false, kind: null, nodePos: null, textFrom: null, level: 0, checked: false });
+              return liftedTr;
+            }
+          }
+        }
+
+        tr.setMeta(sourceRevealPlugin, { markerEdit: false, kind: null, nodePos: null, textFrom: null, level: 0, checked: false });
+        return tr;
+      }
+
+      // 编辑态下，根据当前前缀实时更新标题级别或任务勾选
+      if (kind === 'heading' && prefix.level > 0) {
+        setBlockTypeForNode(tr, nodePos, mySchema.nodes.heading, { level: prefix.level });
+        return tr;
+      }
+      if (kind === 'task') {
+        tr.setNodeMarkup(nodePos, undefined, { checked: prefix.checked });
         return tr;
       }
     }
