@@ -16,6 +16,8 @@ type SourceRevealState = {
   textFrom: number | null;
   level: number;
   order: number;
+  marker: string;
+  delimiter: string;
   checked: boolean;
 };
 
@@ -58,6 +60,8 @@ function findMarkerContext(state: any) {
       textFrom: $from.start($from.depth),
       level: $from.parent.attrs.level || 1,
       order: 1,
+      marker: '-',
+      delimiter: '.',
       checked: false
     };
   }
@@ -69,6 +73,8 @@ function findMarkerContext(state: any) {
       textFrom: $from.start($from.depth),
       level: 0,
       order: 1,
+      marker: '-',
+      delimiter: '.',
       checked: Boolean($from.parent.attrs.checked)
     };
   }
@@ -86,6 +92,8 @@ function findMarkerContext(state: any) {
           textFrom: $from.start($from.depth),
           level: 0,
           order: base + index,
+          marker: '-',
+          delimiter: listNode.attrs?.delimiter || '.',
           checked: false
         };
       }
@@ -95,6 +103,8 @@ function findMarkerContext(state: any) {
         textFrom: $from.start($from.depth),
         level: 0,
         order: 1,
+        marker: listNode?.attrs?.marker || '-',
+        delimiter: '.',
         checked: false
       };
     }
@@ -106,6 +116,8 @@ function findMarkerContext(state: any) {
           textFrom: $from.start($from.depth),
           level: 0,
           order: 1,
+          marker: '-',
+          delimiter: '.',
           checked: false
         };
       }
@@ -121,30 +133,30 @@ function readPrefix(state: any, ctx: { kind: MarkerKind; nodePos: number; textFr
   const text = state.doc.textBetween(from, to, '\n', '\n');
   if (ctx.kind === 'heading') {
     const match = text.match(/^(#{1,6})(\s?)/);
-    if (!match) return { len: 0, level: 0, order: 1, checked: false };
-    return { len: match[0].length, level: match[1].length, order: 1, checked: false };
+    if (!match) return { len: 0, level: 0, order: 1, marker: '-', delimiter: '.', checked: false };
+    return { len: match[0].length, level: match[1].length, order: 1, marker: '-', delimiter: '.', checked: false };
   }
   if (ctx.kind === 'blockquote') {
     const match = text.match(/^(>+)(\s?)/);
-    if (!match) return { len: 0, level: 0, order: 1, checked: false };
-    return { len: match[0].length, level: match[1].length, order: 1, checked: false };
+    if (!match) return { len: 0, level: 0, order: 1, marker: '-', delimiter: '.', checked: false };
+    return { len: match[0].length, level: match[1].length, order: 1, marker: '-', delimiter: '.', checked: false };
   }
   if (ctx.kind === 'task') {
     const match = text.match(/^[-*+]\s+\[([ xX])\]\s?/);
-    if (!match) return { len: 0, level: 0, order: 1, checked: false };
-    return { len: match[0].length, level: 0, order: 1, checked: match[1].toLowerCase() === 'x' };
+    if (!match) return { len: 0, level: 0, order: 1, marker: '-', delimiter: '.', checked: false };
+    return { len: match[0].length, level: 0, order: 1, marker: '-', delimiter: '.', checked: match[1].toLowerCase() === 'x' };
   }
   if (ctx.kind === 'bullet') {
-    const match = text.match(/^[-*+](\s?)/);
-    if (!match) return { len: 0, level: 0, order: 1, checked: false };
-    return { len: match[0].length, level: 0, order: 1, checked: false };
+    const match = text.match(/^([*+-])(\s?)/);
+    if (!match) return { len: 0, level: 0, order: 1, marker: '-', delimiter: '.', checked: false };
+    return { len: match[0].length, level: 0, order: 1, marker: match[1], delimiter: '.', checked: false };
   }
   if (ctx.kind === 'ordered') {
-    const match = text.match(/^(\d+)\.(\s?)/);
-    if (!match) return { len: 0, level: 0, order: 1, checked: false };
-    return { len: match[0].length, level: 0, order: Number(match[1]) || 1, checked: false };
+    const match = text.match(/^(\d+)([.)])(\s?)/);
+    if (!match) return { len: 0, level: 0, order: 1, marker: '-', delimiter: '.', checked: false };
+    return { len: match[0].length, level: 0, order: Number(match[1]) || 1, marker: '-', delimiter: match[2], checked: false };
   }
-  return { len: 0, level: 0, order: 1, checked: false };
+  return { len: 0, level: 0, order: 1, marker: '-', delimiter: '.', checked: false };
 }
 
 function unwrapBlockquote(tr: any, pos: number) {
@@ -170,7 +182,7 @@ export const sourceRevealPlugin: Plugin<SourceRevealState> = new Plugin<SourceRe
   },
   state: {
     init() {
-      return { markerEdit: false, kind: null, nodePos: null, textFrom: null, level: 0, order: 1, checked: false };
+      return { markerEdit: false, kind: null, nodePos: null, textFrom: null, level: 0, order: 1, marker: '-', delimiter: '.', checked: false };
     },
     apply(tr, prev) {
       const meta = tr.getMeta(sourceRevealPlugin);
@@ -235,8 +247,10 @@ export const sourceRevealPlugin: Plugin<SourceRevealState> = new Plugin<SourceRe
           text = `> `;
         } else if (ctx.kind === 'ordered') {
           text = `${ctx.order || 1}. `;
+        } else if (ctx.kind === 'ordered') {
+          text = `${ctx.order || 1}${ctx.delimiter || '.'} `;
         } else if (ctx.kind === 'bullet') {
-          text = `- `;
+          text = `${ctx.marker || '-'} `;
         } else if (ctx.kind === 'task') {
           text = `- [${ctx.checked ? 'x' : ' '}] `;
         }
@@ -252,6 +266,8 @@ export const sourceRevealPlugin: Plugin<SourceRevealState> = new Plugin<SourceRe
         textFrom: ctx.textFrom,
         level: ctx.level || newPrefix.level || 0,
         order: ctx.order || newPrefix.order || 1,
+        marker: ctx.marker || newPrefix.marker || '-',
+        delimiter: ctx.delimiter || newPrefix.delimiter || '.',
         checked: ctx.checked || newPrefix.checked || false
       });
       view.dispatch(tr);
@@ -370,8 +386,8 @@ export const sourceRevealPlugin: Plugin<SourceRevealState> = new Plugin<SourceRe
           let text = '';
           if (ctx.kind === 'heading') text = `${'#'.repeat(ctx.level || 1)} `;
           if (ctx.kind === 'blockquote') text = `> `;
-          if (ctx.kind === 'ordered') text = `${ctx.order || 1}. `;
-          if (ctx.kind === 'bullet') text = `- `;
+          if (ctx.kind === 'ordered') text = `${ctx.order || 1}${ctx.delimiter || '.'} `;
+          if (ctx.kind === 'bullet') text = `${ctx.marker || '-'} `;
           if (ctx.kind === 'task') text = `- [${ctx.checked ? 'x' : ' '}] `;
           tr.insertText(text, ctx.textFrom);
           tr.setSelection(TextSelection.create(tr.doc, ctx.textFrom + text.length));
@@ -382,10 +398,24 @@ export const sourceRevealPlugin: Plugin<SourceRevealState> = new Plugin<SourceRe
             textFrom: ctx.textFrom,
             level: ctx.level || 0,
             order: ctx.order || 1,
+            marker: ctx.marker || '-',
+            delimiter: ctx.delimiter || '.',
             checked: ctx.checked
           });
           return tr;
         }
+        tr.setMeta(sourceRevealPlugin, {
+          markerEdit: true,
+          kind: ctx.kind,
+          nodePos: ctx.nodePos,
+          textFrom: ctx.textFrom,
+          level: ctx.level || prefix.level || 0,
+          order: ctx.order || prefix.order || 1,
+          marker: ctx.marker || prefix.marker || '-',
+          delimiter: ctx.delimiter || prefix.delimiter || '.',
+          checked: ctx.checked || prefix.checked || false
+        });
+        return tr;
       }
     }
 
@@ -425,7 +455,7 @@ export const sourceRevealPlugin: Plugin<SourceRevealState> = new Plugin<SourceRe
           } else {
             const liftedTr = liftListItemAt(newState, mySchema.nodes.task_item);
             if (liftedTr) {
-              liftedTr.setMeta(sourceRevealPlugin, { markerEdit: false, kind: null, nodePos: null, textFrom: null, level: 0, order: 1, checked: false });
+              liftedTr.setMeta(sourceRevealPlugin, { markerEdit: false, kind: null, nodePos: null, textFrom: null, level: 0, order: 1, marker: '-', delimiter: '.', checked: false });
               return liftedTr;
             }
           }
@@ -434,13 +464,13 @@ export const sourceRevealPlugin: Plugin<SourceRevealState> = new Plugin<SourceRe
           if (prefix.len === 0) {
             const liftedTr = liftListItemAt(newState, mySchema.nodes.list_item);
             if (liftedTr) {
-              liftedTr.setMeta(sourceRevealPlugin, { markerEdit: false, kind: null, nodePos: null, textFrom: null, level: 0, order: 1, checked: false });
+              liftedTr.setMeta(sourceRevealPlugin, { markerEdit: false, kind: null, nodePos: null, textFrom: null, level: 0, order: 1, marker: '-', delimiter: '.', checked: false });
               return liftedTr;
             }
           }
         }
 
-        tr.setMeta(sourceRevealPlugin, { markerEdit: false, kind: null, nodePos: null, textFrom: null, level: 0, order: 1, checked: false });
+        tr.setMeta(sourceRevealPlugin, { markerEdit: false, kind: null, nodePos: null, textFrom: null, level: 0, order: 1, marker: '-', delimiter: '.', checked: false });
         return tr;
       }
 

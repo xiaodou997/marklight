@@ -2,8 +2,25 @@ import { Schema } from 'prosemirror-model';
 import { schema as baseSchema } from 'prosemirror-markdown';
 import { tableNodes } from 'prosemirror-tables';
 
+const baseNodes = baseSchema.spec.nodes
+  .update('bullet_list', {
+    ...baseSchema.spec.nodes.get('bullet_list'),
+    attrs: {
+      ...(baseSchema.spec.nodes.get('bullet_list')?.attrs || {}),
+      marker: { default: '-' }
+    }
+  })
+  .update('ordered_list', {
+    ...baseSchema.spec.nodes.get('ordered_list'),
+    attrs: {
+      ...(baseSchema.spec.nodes.get('ordered_list')?.attrs || {}),
+      order: { default: 1 },
+      delimiter: { default: '.' }
+    }
+  });
+
 export const mySchema = new Schema({
-  nodes: baseSchema.spec.nodes
+  nodes: baseNodes
     .append(tableNodes({ tableGroup: "block", cellContent: "inline*", cellAttributes: {} }))
     .append({
       // 任务列表容器

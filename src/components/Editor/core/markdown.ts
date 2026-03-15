@@ -183,6 +183,20 @@ export function serializeMarkdown(doc: ProsemirrorNode): string {
   const serializer = new MarkdownSerializer(
     {
       ...defaultMarkdownSerializer.nodes,
+      bullet_list(state, node) {
+        const marker = node.attrs.marker || '-';
+        state.renderList(node, '  ', () => `${marker} `);
+      },
+      ordered_list(state, node) {
+        const start = node.attrs.order || 1;
+        const delim = node.attrs.delimiter || '.';
+        const maxW = String(start + node.childCount - 1).length;
+        state.renderList(node, '  ', (i) => {
+          const n = start + i;
+          const s = String(n);
+          return s + delim + ' '.repeat(maxW - s.length + 1);
+        });
+      },
       table(state, node) {
         let rowIndex = 0;
         node.forEach((row: any) => {

@@ -31,12 +31,16 @@ export function buildTokenSpecs(_schema: Schema): Record<string, any> {
     list_item: { block: "list_item" },
     bullet_list: {
       block: "bullet_list",
-      getAttrs: (_tok: any, tokens: any[], i: number) => ({ tight: listIsTight(tokens, i) })
+      getAttrs: (tok: any, tokens: any[], i: number) => ({
+        tight: listIsTight(tokens, i),
+        marker: tok.markup || '-'
+      })
     },
     ordered_list: {
       block: "ordered_list",
       getAttrs: (tok: any, tokens: any[], i: number) => ({
         order: Number(tok.attrGet?.('start') || 1),
+        delimiter: tok.markup || '.',
         tight: listIsTight(tokens, i),
       }),
     },
