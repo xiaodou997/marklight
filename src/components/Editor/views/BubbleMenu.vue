@@ -4,6 +4,8 @@
     ref="menuRef"
     class="fixed z-50 flex flex-col rounded-lg border border-gray-200 bg-white p-1 shadow-xl transition-all duration-200"
     :style="{ left: `${pos.left}px`, top: `${pos.top}px`, transform: 'translate(-50%, -120%)' }"
+    @mousedown.prevent
+    @click.stop
   >
     <!-- 主工具栏 -->
     <div class="flex items-center gap-1">

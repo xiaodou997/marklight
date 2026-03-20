@@ -6,6 +6,7 @@
   >
     <div ref="editorRef" class="cm6-editor h-full px-12 py-8 overflow-y-auto outline-none"></div>
 
+    <BubbleMenu ref="bubbleMenuRef" :on-action="onBubbleMenuAction" />
     <SearchBar
       ref="searchBarRef"
       :visible="isSearchVisible"
@@ -38,9 +39,13 @@ import { useSettingsStore } from '../../stores/settings';
 import { livePreviewExtension } from './cm6/extensions/live-preview';
 import { createCm6ShortcutsExtension } from './cm6/extensions/shortcuts';
 import { createImageDropExtension, saveImageAndInsertMarkdown } from './cm6/extensions/image-drop';
+import { createSmartPasteExtension } from './cm6/extensions/smart-paste';
 import { taskToggleExtension } from './cm6/extensions/task-toggle';
 import { codeBlockWidgetExtension } from './cm6/extensions/code-block-widget';
 import { mathWidgetExtension } from './cm6/extensions/math-widget';
+import { tableWidgetExtension } from './cm6/extensions/table-widget';
+import { getCm6BubbleMenuState, handleCm6BubbleMenuAction } from './cm6/extensions/bubble-menu';
+import BubbleMenu from './views/BubbleMenu.vue';
 import SearchBar from './SearchBar.vue';
 
 const props = defineProps<{ initialContent?: string }>();
@@ -50,6 +55,7 @@ const fileStore = useFileStore();
 const settingsStore = useSettingsStore();
 const editorRef = ref<HTMLElement | null>(null);
 const searchBarRef = ref<InstanceType<typeof SearchBar> | null>(null);
+const bubbleMenuRef = ref<InstanceType<typeof BubbleMenu> | null>(null);
 
 const isSearchVisible = ref(false);
 const searchMatchCount = ref(0);
@@ -92,6 +98,19 @@ const debouncedUpdate = debounce((state: EditorState, shouldSyncContent: boolean
 
 function handleContainerClick() {
   view?.focus();
+}
+
+function syncBubbleMenu() {
+  if (!view || !bubbleMenuRef.value) return;
+  const state = getCm6BubbleMenuState(view);
+  bubbleMenuRef.value.update(state.show, state.left, state.top, state.marks, state.linkHref);
+}
+
+function onBubbleMenuAction(type: string, data?: { href?: string }) {
+  if (!view) return;
+  handleCm6BubbleMenuAction(view, type, data);
+  view.focus();
+  syncBubbleMenu();
 }
 
 function closeSearch() {
@@ -208,9 +227,11 @@ onMounted(() => {
     keymap.of([...defaultKeymap, ...historyKeymap]),
     createCm6ShortcutsExtension(settingsStore.settings.customShortcuts),
     createImageDropExtension(fileStore, lastHtml5Drop),
+    createSmartPasteExtension(),
     taskToggleExtension,
     codeBlockWidgetExtension,
     mathWidgetExtension,
+    tableWidgetExtension,
     EditorView.lineWrapping,
     livePreviewExtension,
     EditorView.updateListener.of((update) => {
@@ -220,8 +241,10 @@ onMounted(() => {
         if (searchQuery.value) {
           rebuildSearchMatches();
         }
+        syncBubbleMenu();
       } else if (update.selectionSet) {
         debouncedUpdate(update.state, false);
+        syncBubbleMenu();
       }
     }),
     EditorView.theme({
@@ -256,6 +279,7 @@ onMounted(() => {
   });
 
   debouncedUpdate(view.state, false);
+  syncBubbleMenu();
   view.focus();
 
   void (async () => {
@@ -288,6 +312,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   debouncedUpdate.cancel();
+  bubbleMenuRef.value?.update(false, 0, 0, { bold: false, italic: false, code: false, link: false });
   if (unlistenDragDrop) {
     unlistenDragDrop();
     unlistenDragDrop = null;

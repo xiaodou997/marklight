@@ -200,11 +200,12 @@ function decorateLine(
   if (bulletMatch) {
     const indentLen = bulletMatch[1].length;
     const markerLen = bulletMatch[2].length;
+    const marker = bulletMatch[2].trim();
     const start = lineFrom + indentLen;
     if (active) {
       addMark(builder, start, start + markerLen, 'cm6-syntax-mark');
     } else {
-      addWidget(builder, start, start + markerLen, '• ', 'cm6-list-prefix');
+      addWidget(builder, start, start + markerLen, `${marker} `, 'cm6-list-prefix');
       addMark(builder, start + markerLen, lineTo, 'cm6-list-item');
     }
     decorateInline(builder, lineFrom, text, active);

@@ -65,13 +65,22 @@ const DEFAULT_SETTINGS: Settings = {
   lineHeight: 1.6,
   wechatTheme: 'blue',
   customShortcuts: {},
-  configVersion: 1,
-  editorEngine: 'prosemirror',
+  configVersion: 2,
+  editorEngine: 'codemirror',
 };
 
 const LEGACY_STORAGE_KEY = 'marklight-settings';
 const FOCUS_MODE_KEY = 'marklight-focus-mode';
-const CURRENT_CONFIG_VERSION = 1;
+const CURRENT_CONFIG_VERSION = 2;
+
+function migrateConfig(config: Partial<Settings>): Partial<Settings> {
+  const next = { ...config };
+  if (!next.editorEngine) {
+    next.editorEngine = 'codemirror';
+  }
+  next.configVersion = CURRENT_CONFIG_VERSION;
+  return next;
+}
 
 /**
  * 从 localStorage 迁移旧配置
@@ -129,13 +138,13 @@ export const useSettingsStore = defineStore('settings', () => {
       
       if (Object.keys(config).length > 0) {
         // 已有配置文件
-        settings.value = { ...DEFAULT_SETTINGS, ...config as Partial<Settings> };
+        settings.value = { ...DEFAULT_SETTINGS, ...migrateConfig(config as Partial<Settings>) };
         console.log('[Settings] 已从配置文件加载');
       } else {
         // 配置文件不存在，尝试迁移 localStorage
         const legacySettings = migrateFromLocalStorage();
         if (legacySettings) {
-          settings.value = { ...DEFAULT_SETTINGS, ...legacySettings };
+          settings.value = { ...DEFAULT_SETTINGS, ...migrateConfig(legacySettings) };
           console.log('[Settings] localStorage 配置已迁移到文件');
         } else {
           console.log('[Settings] 首次启动，使用默认配置');
@@ -148,7 +157,7 @@ export const useSettingsStore = defineStore('settings', () => {
       // 尝试从 localStorage 恢复
       const legacySettings = migrateFromLocalStorage();
       if (legacySettings) {
-        settings.value = { ...DEFAULT_SETTINGS, ...legacySettings };
+        settings.value = { ...DEFAULT_SETTINGS, ...migrateConfig(legacySettings) };
       }
       // 尝试保存配置
       try {

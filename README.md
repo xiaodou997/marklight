@@ -5,7 +5,7 @@
 <h1 align="center">墨光 (MarkLight)</h1>
 
 <p align="center">
-  <strong>一款基于 Tauri 2.0 与 ProseMirror 的高性能、自研内核 Markdown 编辑器</strong>
+  <strong>一款基于 Tauri 2.0 与 CodeMirror 6 Live Preview 的高性能、本地优先 Markdown 编辑器</strong>
 </p>
 
 <p align="center">
@@ -24,7 +24,7 @@
 
 ## ✨ 核心特性
 
-- **🚀 所见即所得**：基于 ProseMirror 自研内核，告别分栏预览，输入即是最终形态。
+- **🚀 实时渲染编辑**：基于 CodeMirror 6 Live Preview，源码与渲染无缝切换，输入即是最终形态。
 - **📦 本地优先**：图片自动本地化存储至 `assets/` 目录，支持拖拽与剪贴板粘贴。
 - **🎯 专注模式**：沉浸式焦点写作模式，隐藏所有干扰，只留思考空间。
 - **⌨️ 效率专家**：全功能命令面板 (`Cmd+K`)，支持快速跳转文件与执行编辑指令。
@@ -37,7 +37,7 @@
 | 模块 | 技术方案 |
 | :--- | :--- |
 | **桌面框架** | [Tauri 2.0](https://tauri.app/) (Rust + Webview2/WebKit) |
-| **编辑器内核** | [ProseMirror](https://prosemirror.net/) (自定义 Schema & 插件) |
+| **编辑器内核** | [CodeMirror 6](https://codemirror.net/)（默认） + ProseMirror（兼容回退） |
 | **前端框架** | Vue 3 (Composition API) + TypeScript |
 | **样式方案** | Tailwind CSS 4.0 |
 | **数据管理** | Pinia + 文件系统实时监听 (notify) |
