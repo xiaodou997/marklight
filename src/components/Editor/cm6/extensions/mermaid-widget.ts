@@ -1,15 +1,26 @@
 import { RangeSetBuilder } from '@codemirror/state';
 import { Decoration, EditorView, ViewPlugin, type DecorationSet, type ViewUpdate, WidgetType } from '@codemirror/view';
-import mermaid from 'mermaid';
+import type mermaidType from 'mermaid';
+
+let mermaidLoader: Promise<typeof mermaidType> | null = null;
+function loadMermaid() {
+  if (!mermaidLoader) {
+    mermaidLoader = import('mermaid').then(mod => mod.default);
+  }
+  return mermaidLoader;
+}
 
 let mermaidInited = false;
-function ensureMermaidInit() {
-  if (mermaidInited) return;
-  mermaid.initialize({
-    startOnLoad: false,
-    theme: 'default',
-  });
-  mermaidInited = true;
+async function ensureMermaidInit() {
+  const mermaid = await loadMermaid();
+  if (!mermaidInited) {
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: 'default',
+    });
+    mermaidInited = true;
+  }
+  return mermaid;
 }
 
 function convertFlowToMermaid(raw: string): string {
@@ -101,7 +112,7 @@ class MermaidWidget extends WidgetType {
 
     void (async () => {
       try {
-        ensureMermaidInit();
+        const mermaid = await ensureMermaidInit();
         const id = `cm6-mermaid-${Math.random().toString(36).slice(2, 11)}`;
         const { svg } = await mermaid.render(id, renderCode);
         container.innerHTML = svg;

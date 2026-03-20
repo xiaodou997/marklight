@@ -44,12 +44,24 @@
 
 <script setup lang="ts">
 import { ref, onMounted, watch, nextTick, computed } from 'vue';
-import mermaid from 'mermaid';
+import type mermaidType from 'mermaid';
 
-mermaid.initialize({
-  startOnLoad: false,
-  theme: 'default',
-});
+let mermaidLoader: Promise<typeof mermaidType> | null = null;
+let mermaidInited = false;
+async function getMermaid() {
+  if (!mermaidLoader) {
+    mermaidLoader = import('mermaid').then(mod => mod.default);
+  }
+  const mermaid = await mermaidLoader;
+  if (!mermaidInited) {
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: 'default',
+    });
+    mermaidInited = true;
+  }
+  return mermaid;
+}
 
 const props = defineProps<{
   node: any;
@@ -146,6 +158,7 @@ const renderChart = async () => {
 
   try {
     isError.value = false;
+    const mermaid = await getMermaid();
     const id = `mermaid-render-${Math.random().toString(36).substring(2, 11)}`;
     const { svg } = await mermaid.render(id, code);
     containerRef.value.innerHTML = svg;
