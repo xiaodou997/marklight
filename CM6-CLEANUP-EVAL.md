@@ -7,11 +7,9 @@
 - `src/App.vue` 已改成编辑器异步分包加载，PM 与 CM6 物理隔离已建立。
 
 ## B. 需先替换再清理（中风险）
-- `src/composables/useExportActions.ts` 仍有 `CM6 markdown -> PM doc` 兜底路径。
-  - 已完成：相关 PM 模块改为按需动态加载，先降低启动耦合。
-  - 下一步：为微信导出新增 Markdown 直出渲染管线，去掉 `parseMarkdown/mySchema` 依赖。
-- `src/utils/wechat-renderer.ts` 当前输入类型为 ProseMirror Node。
-  - 下一步：新增 `renderMarkdownToWechatHtml(markdown)`，并平滑替换调用方。
+- 导出主链路已完成去 PM：`useExportActions` 改为直接走 `renderMarkdownToWechatHtml(markdown)`。
+- `src/utils/wechat-renderer.ts` 已新增 Markdown 直出入口，并完成调用方替换。
+- 下一步：在保留 PM 回退周期内做复杂样式人工验收（列表、代码块、表格、数学、图片、Mermaid）。
 
 ## C. PM 下线时整体删除（高体量）
 - `src/components/Editor/MarkdownEditor.vue`

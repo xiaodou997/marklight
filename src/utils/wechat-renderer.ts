@@ -1,4 +1,12 @@
 import { Node as ProsemirrorNode } from 'prosemirror-model';
+import markdownit from 'markdown-it';
+import markdownItTaskLists from 'markdown-it-task-lists';
+import markdownItFootnote from 'markdown-it-footnote';
+import markdownItSub from 'markdown-it-sub';
+import markdownItSup from 'markdown-it-sup';
+import markdownItMark from 'markdown-it-mark';
+import markdownItDeflist from 'markdown-it-deflist';
+import markdownItAbbr from 'markdown-it-abbr';
 import { WechatTheme, getThemeById } from './wechat-themes';
 
 /**
@@ -25,6 +33,82 @@ function getStyles(theme: WechatTheme) {
     th: `background-color: ${theme.colors.tableHeaderBg}; border: 1px solid ${theme.colors.tableBorder}; padding: 8px 12px; font-weight: bold;`,
     td: `border: 1px solid ${theme.colors.tableBorder}; padding: 8px 12px;`
   };
+}
+
+let markdownRenderer: ReturnType<typeof markdownit> | null = null;
+function getMarkdownRenderer() {
+  if (!markdownRenderer) {
+    markdownRenderer = markdownit({
+      html: false,
+      linkify: true,
+      typographer: true,
+    })
+      .enable('table')
+      .enable('strikethrough')
+      .use(markdownItTaskLists, { enabled: true, label: true, labelAfter: true })
+      .use(markdownItFootnote)
+      .use(markdownItSub)
+      .use(markdownItSup)
+      .use(markdownItMark)
+      .use(markdownItDeflist)
+      .use(markdownItAbbr);
+  }
+  return markdownRenderer;
+}
+
+function withStyle(el: HTMLElement, style: string) {
+  const prev = el.getAttribute('style');
+  if (!prev) {
+    el.setAttribute('style', style);
+    return;
+  }
+  el.setAttribute('style', `${prev}; ${style}`);
+}
+
+function styleRenderedMarkdown(container: HTMLElement, theme: WechatTheme) {
+  const STYLES = getStyles(theme);
+
+  container.querySelectorAll('h1').forEach((el) => withStyle(el as HTMLElement, STYLES.h1));
+  container.querySelectorAll('h2').forEach((el) => withStyle(el as HTMLElement, STYLES.h2));
+  container.querySelectorAll('h3').forEach((el) => withStyle(el as HTMLElement, STYLES.h3));
+  container.querySelectorAll('h4').forEach((el) => withStyle(el as HTMLElement, STYLES.h4));
+  container.querySelectorAll('h5').forEach((el) => withStyle(el as HTMLElement, STYLES.h5));
+  container.querySelectorAll('h6').forEach((el) => withStyle(el as HTMLElement, STYLES.h6));
+  container.querySelectorAll('p').forEach((el) => withStyle(el as HTMLElement, STYLES.p));
+  container.querySelectorAll('blockquote').forEach((el) => withStyle(el as HTMLElement, STYLES.blockquote));
+  container.querySelectorAll('ul').forEach((el) => withStyle(el as HTMLElement, STYLES.ul));
+  container.querySelectorAll('ol').forEach((el) => withStyle(el as HTMLElement, STYLES.ol));
+  container.querySelectorAll('li').forEach((el) => withStyle(el as HTMLElement, STYLES.li));
+  container.querySelectorAll('strong').forEach((el) => withStyle(el as HTMLElement, STYLES.strong));
+  container.querySelectorAll('em').forEach((el) => withStyle(el as HTMLElement, STYLES.em));
+  container.querySelectorAll('mark').forEach((el) => withStyle(el as HTMLElement, 'background-color: #fef08a; padding: 1px 2px; border-radius: 2px;'));
+  container.querySelectorAll('sub').forEach((el) => withStyle(el as HTMLElement, 'font-size: 0.75em; vertical-align: sub;'));
+  container.querySelectorAll('sup').forEach((el) => withStyle(el as HTMLElement, 'font-size: 0.75em; vertical-align: super;'));
+  container.querySelectorAll('a').forEach((el) => withStyle(el as HTMLElement, `color: ${theme.colors.primary}; text-decoration: underline;`));
+  container.querySelectorAll('img').forEach((el) => withStyle(el as HTMLElement, 'max-width: 100%; border-radius: 8px; margin: 1em 0;'));
+  container.querySelectorAll('hr').forEach((el) => withStyle(el as HTMLElement, `border: 0; border-top: 1px solid ${theme.colors.tableBorder}; margin: 1.5em 0;`));
+
+  container.querySelectorAll('pre').forEach((el) => {
+    withStyle(el as HTMLElement, STYLES.pre);
+    const code = el.querySelector('code');
+    if (code) {
+      withStyle(code as HTMLElement, 'background: transparent; color: inherit; padding: 0; border-radius: 0;');
+    }
+  });
+  container.querySelectorAll('code').forEach((el) => {
+    if (el.closest('pre')) return;
+    withStyle(el as HTMLElement, STYLES.code);
+  });
+
+  container.querySelectorAll('table').forEach((el) => withStyle(el as HTMLElement, STYLES.table));
+  container.querySelectorAll('th').forEach((el) => withStyle(el as HTMLElement, STYLES.th));
+  container.querySelectorAll('td').forEach((el) => withStyle(el as HTMLElement, STYLES.td));
+
+  container.querySelectorAll('input[type="checkbox"]').forEach((el) => {
+    const input = el as HTMLInputElement;
+    input.disabled = true;
+    withStyle(input, `margin-right: 8px; transform: scale(1.05); accent-color: ${theme.colors.primary};`);
+  });
 }
 
 /**
@@ -63,13 +147,14 @@ export function renderToWechatHtml(doc: ProsemirrorNode, themeId: string = 'blue
         node.forEach(walk);
         html += `</p>`;
         break;
-      case 'heading':
+      case 'heading': {
         const level = node.attrs.level;
         const hStyle = (STYLES as any)[`h${level}`] || STYLES.h3;
         html += `<h${level} style="${hStyle}">`;
         node.forEach(walk);
         html += `</h${level}>`;
         break;
+      }
       case 'blockquote':
         html += `<blockquote style="${style}">`;
         node.forEach(walk);
@@ -123,4 +208,23 @@ export function renderToWechatHtml(doc: ProsemirrorNode, themeId: string = 'blue
 
   walk(doc);
   return `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 20px;">${html}</div>`;
+}
+
+/**
+ * 将 Markdown 直接渲染为微信 HTML（不经过 ProseMirror 文档树）
+ */
+export async function renderMarkdownToWechatHtml(markdown: string, themeId: string = 'blue'): Promise<string> {
+  const theme = getThemeById(themeId);
+  const renderer = getMarkdownRenderer();
+  const html = renderer.render(markdown || '');
+
+  if (typeof document === 'undefined') {
+    return `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 20px;">${html}</div>`;
+  }
+
+  const wrapper = document.createElement('div');
+  wrapper.innerHTML = html;
+  styleRenderedMarkdown(wrapper, theme);
+
+  return `<div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 20px;">${wrapper.innerHTML}</div>`;
 }
