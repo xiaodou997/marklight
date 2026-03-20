@@ -2,7 +2,7 @@
 
 ## 项目定位
 
-MarkLight 是一款跨平台 Markdown 编辑器，基于 Tauri 2.x + Vue 3 + ProseMirror 构建，专注于提供流畅的写作体验。
+MarkLight 是一款跨平台 Markdown 编辑器，基于 Tauri 2.x + Vue 3 + CodeMirror 6 构建，专注于提供流畅的写作体验。
 
 ---
 

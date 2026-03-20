@@ -37,7 +37,7 @@
 | 模块 | 技术方案 |
 | :--- | :--- |
 | **桌面框架** | [Tauri 2.0](https://tauri.app/) (Rust + Webview2/WebKit) |
-| **编辑器内核** | [CodeMirror 6](https://codemirror.net/)（默认） + ProseMirror（兼容回退） |
+| **编辑器内核** | [CodeMirror 6](https://codemirror.net/) |
 | **前端框架** | Vue 3 (Composition API) + TypeScript |
 | **样式方案** | Tailwind CSS 4.0 |
 | **数据管理** | Pinia + 文件系统实时监听 (notify) |

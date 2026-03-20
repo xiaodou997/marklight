@@ -267,7 +267,7 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
                   <div class="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-700">
                     CodeMirror 6（已启用）
                   </div>
-                  <p class="text-xs text-gray-500">ProseMirror 回退路径已下线。</p>
+                  <p class="text-xs text-gray-500">当前版本仅支持 CodeMirror 6 引擎。</p>
                 </div>
 
                 <div class="flex items-center justify-between">

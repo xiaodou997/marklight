@@ -71,10 +71,7 @@ const FOCUS_MODE_KEY = 'marklight-focus-mode';
 const CURRENT_CONFIG_VERSION = 2;
 
 function migrateConfig(config: Partial<Settings>): Partial<Settings> {
-  const next = { ...config } as Partial<Settings> & Record<string, unknown>;
-  if ('editorEngine' in next) {
-    delete next.editorEngine;
-  }
+  const next = { ...config };
   next.configVersion = CURRENT_CONFIG_VERSION;
   return next;
 }
