@@ -4,9 +4,15 @@ import { save, message } from '@tauri-apps/plugin-dialog';
 import { writeTextFile } from '@tauri-apps/plugin-fs';
 import { writeHtml } from '@tauri-apps/plugin-clipboard-manager';
 import { renderToWechatHtml } from '../utils/wechat-renderer';
+import { parseMarkdown } from '../components/Editor/core/markdown';
+import { mySchema } from '../components/Editor/core/schema';
 import { serializeMarkdown } from '../components/Editor/core/markdown';
 
-type EditorRef = Ref<{ getDoc: () => any } | null>;
+type EditorRefValue = {
+  getDoc?: () => any;
+  getContent?: () => string;
+};
+type EditorRef = Ref<EditorRefValue | null>;
 type ViewModeRef = Ref<'editor' | 'image'>;
 
 type FileStoreLike = {
@@ -29,9 +35,32 @@ export function useExportActions(options: {
 }) {
   const { editorRef, activeViewMode, fileStore, settingsStore } = options;
 
+  function getMarkdown(): string | null {
+    if (!editorRef.value) return null;
+    if (typeof editorRef.value.getContent === 'function') {
+      return editorRef.value.getContent();
+    }
+    if (typeof editorRef.value.getDoc === 'function') {
+      const doc = editorRef.value.getDoc();
+      if (!doc) return null;
+      return serializeMarkdown(doc);
+    }
+    return null;
+  }
+
+  function getDoc() {
+    if (!editorRef.value) return null;
+    if (typeof editorRef.value.getDoc === 'function') {
+      return editorRef.value.getDoc();
+    }
+    const markdown = getMarkdown();
+    if (!markdown) return null;
+    return parseMarkdown(markdown, mySchema);
+  }
+
   async function exportHtml() {
     if (!editorRef.value || activeViewMode.value !== 'editor') return;
-    const doc = editorRef.value.getDoc();
+    const doc = getDoc();
     if (!doc) return;
     const html = renderToWechatHtml(doc);
     const baseName = fileStore.currentFile.path?.split(/[/\\]/).pop()?.replace(/\.md$/, '') || 'document';
@@ -59,11 +88,11 @@ export function useExportActions(options: {
 
   async function copyToWechat() {
     if (!editorRef.value || activeViewMode.value !== 'editor') return;
-    const doc = editorRef.value.getDoc();
+    const doc = getDoc();
     if (!doc) return;
     const html = renderToWechatHtml(doc, settingsStore.settings.wechatTheme);
     try {
-      const plain = serializeMarkdown(doc);
+      const plain = getMarkdown() || '';
       await writeHtml(html, plain);
       await message('已转换并复制到剪贴板', { title: '完成', kind: 'info' });
     } catch (err) {

@@ -32,7 +32,8 @@ const { handleNew, handleOpen, handleSave, handleSaveAs, setupAutoSave } = useFi
 type EditorExpose = {
   scrollToPos: (pos: number) => void;
   openSearch: (showReplace?: boolean) => void;
-  getDoc: () => any;
+  getDoc?: () => any;
+  getContent?: () => string;
   getEditorView: () => any;
 };
 const editorRef = ref<EditorExpose | null>(null);

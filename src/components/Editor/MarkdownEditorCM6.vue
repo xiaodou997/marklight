@@ -35,8 +35,6 @@ import { readFile } from '@tauri-apps/plugin-fs';
 
 import { useFileStore } from '../../stores/file';
 import { useSettingsStore } from '../../stores/settings';
-import { parseMarkdown } from './core/markdown';
-import { mySchema } from './core/schema';
 import { livePreviewExtension } from './cm6/extensions/live-preview';
 import { createCm6ShortcutsExtension } from './cm6/extensions/shortcuts';
 import { createImageDropExtension, saveImageAndInsertMarkdown } from './cm6/extensions/image-drop';
@@ -302,7 +300,6 @@ defineExpose({
     });
   },
   getContent: () => view?.state.doc.toString() ?? '',
-  getDoc: () => parseMarkdown(view?.state.doc.toString() ?? '', mySchema),
   getEditorView: () => view,
   openSearch: (_showReplace = false) => {
     isSearchVisible.value = true;
