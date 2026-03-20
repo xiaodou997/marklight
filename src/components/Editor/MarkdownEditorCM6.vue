@@ -44,6 +44,7 @@ import { taskToggleExtension } from './cm6/extensions/task-toggle';
 import { codeBlockWidgetExtension } from './cm6/extensions/code-block-widget';
 import { mathWidgetExtension } from './cm6/extensions/math-widget';
 import { tableWidgetExtension } from './cm6/extensions/table-widget';
+import { linkTooltipExtension } from './cm6/extensions/link-tooltip';
 import { getCm6BubbleMenuState, handleCm6BubbleMenuAction } from './cm6/extensions/bubble-menu';
 import BubbleMenu from './views/BubbleMenu.vue';
 import SearchBar from './SearchBar.vue';
@@ -232,6 +233,7 @@ onMounted(() => {
     codeBlockWidgetExtension,
     mathWidgetExtension,
     tableWidgetExtension,
+    linkTooltipExtension,
     EditorView.lineWrapping,
     livePreviewExtension,
     EditorView.updateListener.of((update) => {
