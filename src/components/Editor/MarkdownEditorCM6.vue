@@ -308,7 +308,9 @@ onMounted(() => {
         const insertPos = payload.position ? view.posAtCoords({ x: payload.position.x, y: payload.position.y }) ?? undefined : undefined;
         await saveImageAndInsertMarkdown(view, file, fileStore, name, insertPos);
       });
-    } catch {}
+    } catch (error) {
+      console.warn('[CM6] onDragDropEvent unavailable', error);
+    }
   })();
 });
 
