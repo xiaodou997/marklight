@@ -4,7 +4,7 @@ import { confirm } from '@tauri-apps/plugin-dialog';
 import { useSettingsStore } from '../../stores/settings';
 import { WECHAT_THEMES } from '../../utils/wechat-themes';
 import { isMac } from '../../utils/platform';
-import { getShortcutGroups, eventToKeyString, formatShortcutDisplay, checkKeyConflicts, type ShortcutDef, DEFAULT_SHORTCUTS } from '../Editor/core/plugins/shortcuts';
+import { getShortcutGroups, eventToKeyString, formatShortcutDisplay, checkKeyConflicts, type ShortcutDef, DEFAULT_SHORTCUTS } from '../../utils/shortcuts';
 
 const settingsStore = useSettingsStore();
 const settings = settingsStore.settings;

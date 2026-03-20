@@ -1,7 +1,7 @@
 import { EditorSelection, type Extension } from '@codemirror/state';
 import { redo, undo } from '@codemirror/commands';
 import { keymap } from '@codemirror/view';
-import { DEFAULT_SHORTCUTS } from '../../core/plugins/shortcuts';
+import { DEFAULT_SHORTCUTS } from '../../../../utils/shortcuts';
 
 type ShortcutMap = Record<string, string>;
 

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { isMac } from '../../utils/platform';
-import { getShortcutGroups, formatShortcutDisplay } from './core/plugins/shortcuts';
+import { getShortcutGroups, formatShortcutDisplay } from '../../utils/shortcuts';
 import { useSettingsStore } from '../../stores/settings';
 
 const props = defineProps<{
