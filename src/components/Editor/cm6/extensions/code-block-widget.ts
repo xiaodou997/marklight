@@ -54,10 +54,11 @@ function buildDecorations(view: EditorView): DecorationSet {
       const fence = line.text.match(/^```(\w+)?\s*$/);
       if (fence) {
         if (!openLine) {
-          openLine = { from: line.from, lineNo: line.number, lang: fence[1] || '' };
+          openLine = { from: line.from, lineNo: line.number, lang: (fence[1] || '').toLowerCase() };
           content = [];
         } else {
           const closeLineNo = line.number;
+          const skip = ['mermaid', 'flow', 'seq'].includes(openLine.lang);
           let hasActive = false;
           for (let n = openLine.lineNo; n <= closeLineNo; n++) {
             if (activeLines.has(n)) {
@@ -66,7 +67,7 @@ function buildDecorations(view: EditorView): DecorationSet {
             }
           }
 
-          if (!hasActive) {
+          if (!hasActive && !skip) {
             builder.add(
               openLine.from,
               line.to,

@@ -109,6 +109,9 @@ function decorateInline(
   let linkMatch: RegExpExecArray | null;
   const linkRe = /\[([^\]\n]+)\]\(([^)\n]+)\)/g;
   while ((linkMatch = linkRe.exec(text)) !== null) {
+    if (linkMatch.index > 0 && text[linkMatch.index - 1] === '!') {
+      continue;
+    }
     const at = linkMatch.index;
     const label = linkMatch[1] ?? '';
     const url = linkMatch[2] ?? '';

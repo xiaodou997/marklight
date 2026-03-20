@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted, onUnmounted, watch } from 'vue';
+import { ref, reactive, onMounted, onUnmounted, watch, defineAsyncComponent } from 'vue';
 import { confirm, message } from '@tauri-apps/plugin-dialog';
 import { invoke } from '@tauri-apps/api/core';
 import { useFileStore } from './stores/file';
@@ -11,8 +11,6 @@ import { useFileTree } from './composables/useFileTree';
 import { useImagePreview } from './composables/useImagePreview';
 import { useWindowEvents, confirmUnsavedChanges } from './composables/useWindowEvents';
 import EditorToolbar from './components/Toolbar/EditorToolbar.vue';
-import MarkdownEditor from './components/Editor/MarkdownEditor.vue';
-import MarkdownEditorCM6 from './components/Editor/MarkdownEditorCM6.vue';
 import StatusBar from './components/Layout/StatusBar.vue';
 import Sidebar, { OutlineItem } from './components/Editor/Sidebar.vue';
 import SettingsModal from './components/Settings/SettingsModal.vue';
@@ -22,6 +20,9 @@ import TitleBar from './components/Layout/TitleBar.vue';
 import { isModKey, isMac } from './utils/platform';
 import { serializeMarkdown } from './components/Editor/core/markdown';
 import pkg from '../package.json';
+
+const MarkdownEditor = defineAsyncComponent(() => import('./components/Editor/MarkdownEditor.vue'));
+const MarkdownEditorCM6 = defineAsyncComponent(() => import('./components/Editor/MarkdownEditorCM6.vue'));
 
 // --- Stores ---
 const fileStore = useFileStore();

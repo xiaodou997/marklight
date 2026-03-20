@@ -44,6 +44,8 @@ import { taskToggleExtension } from './cm6/extensions/task-toggle';
 import { codeBlockWidgetExtension } from './cm6/extensions/code-block-widget';
 import { mathWidgetExtension } from './cm6/extensions/math-widget';
 import { tableWidgetExtension } from './cm6/extensions/table-widget';
+import { createImageWidgetExtension } from './cm6/extensions/image-widget';
+import { mermaidWidgetExtension } from './cm6/extensions/mermaid-widget';
 import { linkTooltipExtension } from './cm6/extensions/link-tooltip';
 import { getCm6BubbleMenuState, handleCm6BubbleMenuAction } from './cm6/extensions/bubble-menu';
 import BubbleMenu from './views/BubbleMenu.vue';
@@ -230,6 +232,8 @@ onMounted(() => {
     createImageDropExtension(fileStore, lastHtml5Drop),
     createSmartPasteExtension(),
     taskToggleExtension,
+    ...createImageWidgetExtension(fileStore),
+    mermaidWidgetExtension,
     codeBlockWidgetExtension,
     mathWidgetExtension,
     tableWidgetExtension,
