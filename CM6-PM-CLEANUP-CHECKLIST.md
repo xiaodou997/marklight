@@ -13,13 +13,13 @@
 - [x] 清理首批 PM 仅存冗余入口（已删除 `wechat-renderer` 中无调用的 PM 渲染函数）。
 
 ## Phase C：删除 PM 代码目录
-- [ ] 删除文件：`src/components/Editor/MarkdownEditor.vue`
-- [ ] 删除目录：`src/components/Editor/core/`
-- [ ] 删除视图：`src/components/Editor/views/CodeBlockView.vue`
-- [ ] 删除视图：`src/components/Editor/views/ImageView.vue`
-- [ ] 删除视图：`src/components/Editor/views/MathView.vue`
-- [ ] 删除视图：`src/components/Editor/views/MermaidView.vue`
-- [ ] 删除视图：`src/components/Editor/views/TableToolbar.vue`
+- [x] 删除文件：`src/components/Editor/MarkdownEditor.vue`
+- [x] 删除目录：`src/components/Editor/core/`
+- [x] 删除视图：`src/components/Editor/views/CodeBlockView.vue`
+- [x] 删除视图：`src/components/Editor/views/ImageView.vue`
+- [x] 删除视图：`src/components/Editor/views/MathView.vue`
+- [x] 删除视图：`src/components/Editor/views/MermaidView.vue`
+- [x] 删除视图：`src/components/Editor/views/TableToolbar.vue`
 
 ## Phase D：删除 PM 依赖
 - [ ] 移除依赖：
