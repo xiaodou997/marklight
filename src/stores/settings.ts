@@ -41,8 +41,6 @@ export interface Settings {
   customShortcuts: Record<string, string>;
   /** 配置版本号 (用于迁移) */
   configVersion: number;
-  /** 编辑器引擎 */
-  editorEngine: 'prosemirror' | 'codemirror';
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -66,7 +64,6 @@ const DEFAULT_SETTINGS: Settings = {
   wechatTheme: 'blue',
   customShortcuts: {},
   configVersion: 2,
-  editorEngine: 'codemirror',
 };
 
 const LEGACY_STORAGE_KEY = 'marklight-settings';
@@ -74,9 +71,9 @@ const FOCUS_MODE_KEY = 'marklight-focus-mode';
 const CURRENT_CONFIG_VERSION = 2;
 
 function migrateConfig(config: Partial<Settings>): Partial<Settings> {
-  const next = { ...config };
-  if (!next.editorEngine) {
-    next.editorEngine = 'codemirror';
+  const next = { ...config } as Partial<Settings> & Record<string, unknown>;
+  if ('editorEngine' in next) {
+    delete next.editorEngine;
   }
   next.configVersion = CURRENT_CONFIG_VERSION;
   return next;

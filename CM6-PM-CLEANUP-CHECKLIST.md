@@ -22,7 +22,7 @@
 - [x] 删除视图：`src/components/Editor/views/TableToolbar.vue`
 
 ## Phase D：删除 PM 依赖
-- [ ] 移除依赖：
+- [x] 移除依赖：
   - `prosemirror-commands`
   - `prosemirror-history`
   - `prosemirror-inputrules`
@@ -35,14 +35,14 @@
   - `prosemirror-tables`
   - `prosemirror-transform`
   - `prosemirror-view`
-- [ ] 移除开发依赖：`@types/prosemirror-tables`
-- [ ] 重新安装依赖并更新 lockfile。
+- [x] 移除开发依赖：`@types/prosemirror-tables`
+- [x] 重新安装依赖并更新 lockfile。
 
 ## Phase E：下线回退开关
-- [ ] 删除 `settings.editorEngine` 字段。
-- [ ] 删除设置页中的引擎切换选项。
-- [ ] `App.vue` 固定加载 `MarkdownEditorCM6`。
-- [ ] 清理与 PM 分支相关的条件渲染逻辑。
+- [x] 删除 `settings.editorEngine` 字段。
+- [x] 删除设置页中的引擎切换选项。
+- [x] `App.vue` 固定加载 `MarkdownEditorCM6`。
+- [x] 清理与 PM 分支相关的条件渲染逻辑。
 
 ## Phase F：最终验证
 - [ ] 执行 `pnpm run build`。

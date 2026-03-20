@@ -62,7 +62,7 @@ html.focus-mode .focus-mode-editor {
   padding: 60px 24px;
 }
 
-html.focus-mode .focus-mode-editor .prosemirror-editor {
+html.focus-mode .focus-mode-editor .cm6-editor {
   padding: 0 !important;
 }
 
@@ -118,7 +118,7 @@ html.focus-mode .statusbar-container:hover {
   }
   
   /* 编辑器内容 */
-  .prosemirror-editor {
+  .cm6-editor {
     max-width: 100% !important;
     padding: 0 !important;
     margin: 0 !important;
