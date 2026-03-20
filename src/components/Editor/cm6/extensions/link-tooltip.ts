@@ -10,6 +10,7 @@ type LinkInfo = {
 
 let tooltipEl: HTMLDivElement | null = null;
 let currentLink: LinkInfo | null = null;
+let hoverTimer: number | null = null;
 
 function createTooltip(): HTMLDivElement {
   if (tooltipEl) return tooltipEl;
@@ -129,6 +130,46 @@ if (typeof document !== 'undefined') {
 }
 
 export const linkTooltipExtension = EditorView.domEventHandlers({
+  mousemove(event, view) {
+    const target = event.target as HTMLElement;
+    if (!target.classList.contains('cm6-link')) {
+      if (!isInsideTooltip(target)) {
+        if (hoverTimer) {
+          window.clearTimeout(hoverTimer);
+          hoverTimer = null;
+        }
+        hideTooltip();
+      }
+      return false;
+    }
+
+    const pos = view.posAtDOM(target, 0);
+    const link = findLinkAtPos(view, pos);
+    if (!link) return false;
+
+    if (hoverTimer) {
+      window.clearTimeout(hoverTimer);
+      hoverTimer = null;
+    }
+
+    if (currentLink && currentLink.from === link.from && currentLink.to === link.to) {
+      return false;
+    }
+
+    hoverTimer = window.setTimeout(() => {
+      showTooltip(view, link);
+      hoverTimer = null;
+    }, 120);
+    return false;
+  },
+  mouseleave() {
+    if (hoverTimer) {
+      window.clearTimeout(hoverTimer);
+      hoverTimer = null;
+    }
+    hideTooltip();
+    return false;
+  },
   click(event, view) {
     const target = event.target as HTMLElement;
     if (!target.classList.contains('cm6-link')) {
