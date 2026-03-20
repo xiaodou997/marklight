@@ -8,6 +8,7 @@
 
 ## B. 需先替换再清理（中风险）
 - `src/composables/useExportActions.ts` 仍有 `CM6 markdown -> PM doc` 兜底路径。
+  - 已完成：相关 PM 模块改为按需动态加载，先降低启动耦合。
   - 下一步：为微信导出新增 Markdown 直出渲染管线，去掉 `parseMarkdown/mySchema` 依赖。
 - `src/utils/wechat-renderer.ts` 当前输入类型为 ProseMirror Node。
   - 下一步：新增 `renderMarkdownToWechatHtml(markdown)`，并平滑替换调用方。
