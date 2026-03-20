@@ -43,7 +43,7 @@ export function useFileOperations() {
     }
   }
 
-  async function handleSave() {
+  async function handleSave(): Promise<boolean> {
     const file = fileStore.currentFile;
     if (file.path) {
       try {
@@ -63,20 +63,18 @@ export function useFileOperations() {
         const newMtime = await invoke<number>('get_file_modified_time', { path: file.path });
         fileStore.markSaved(newMtime);
         return true;
-      } catch (error) { 
-        console.error('Failed to save file:', error); 
+      } catch (error) {
+        console.error('Failed to save file:', error);
         return false;
       }
-    } else { 
-      await handleSaveAs();
-      return true;
+    } else {
+      return await handleSaveAs();
     }
-    return false;
   }
 
-  async function handleSaveAs() {
-    const selected = await save({ 
-      filters: [{ name: 'Markdown', extensions: ['md'] }] 
+  async function handleSaveAs(): Promise<boolean> {
+    const selected = await save({
+      filters: [{ name: 'Markdown', extensions: ['md'] }]
     });
     if (selected) {
       try {
@@ -84,66 +82,71 @@ export function useFileOperations() {
         const newMtime = await invoke<number>('get_file_modified_time', { path: selected });
         fileStore.setFile(fileStore.currentFile.content, selected, newMtime);
         fileStore.markSaved(newMtime);
-      } catch (error) { 
-        console.error('Failed to save file:', error); 
+        return true;
+      } catch (error) {
+        console.error('Failed to save file:', error);
+        return false;
       }
     }
+    return false;
   }
 
   /**
    * 设置自动保存
-   * @param autoSaveStatusRef 用于传递自动保存状态的 ref
+   * 使用 setInterval 周期性检查，避免 watch isDirty 只触发一次的问题
    */
   function setupAutoSave(autoSaveStatusRef: Ref<AutoSaveStatus | null>) {
-    let saveTimeout: ReturnType<typeof setTimeout> | null = null;
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+    let isSaving = false;
 
-    // 监听 isDirty 变化
-    const stopWatch = watch(
-      () => fileStore.currentFile.isDirty,
-      (isDirty) => {
-        // 清除之前的定时器
-        if (saveTimeout) {
-          clearTimeout(saveTimeout);
-          saveTimeout = null;
+    function startInterval() {
+      stopInterval();
+      const interval = settingsStore.settings.autoSaveInterval * 1000;
+      intervalId = setInterval(async () => {
+        if (isSaving) return;
+        if (!settingsStore.settings.autoSave) return;
+        if (!fileStore.currentFile.isDirty || !fileStore.currentFile.path) return;
+
+        isSaving = true;
+        try {
+          const success = await handleSave();
+          if (success) {
+            const ts = Date.now();
+            autoSaveStatusRef.value = { message: '已自动保存', timestamp: ts };
+            setTimeout(() => {
+              if (autoSaveStatusRef.value?.timestamp === ts) {
+                autoSaveStatusRef.value = null;
+              }
+            }, 2000);
+          }
+        } finally {
+          isSaving = false;
         }
+      }, interval);
+    }
 
-        // 如果 isDirty 为 true 且设置了自动保存
-        if (isDirty && settingsStore.settings.autoSave) {
-          const interval = settingsStore.settings.autoSaveInterval * 1000;
-          
-          saveTimeout = setTimeout(async () => {
-            // 再次检查条件（可能在等待期间发生了变化）
-            if (!fileStore.currentFile.isDirty || !fileStore.currentFile.path) {
-              return;
-            }
+    function stopInterval() {
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
+    }
 
-            const success = await handleSave();
-            if (success) {
-              // 设置自动保存状态，供状态栏显示
-              const ts = Date.now();
-              autoSaveStatusRef.value = {
-                message: '已自动保存',
-                timestamp: ts
-              };
-              
-              // 2秒后清除提示
-              setTimeout(() => {
-                if (autoSaveStatusRef.value?.timestamp === ts) {
-                  autoSaveStatusRef.value = null;
-                }
-              }, 2000);
-            }
-          }, interval);
+    // 监听自动保存设置变化，动态启停
+    const stopWatch = watch(
+      () => [settingsStore.settings.autoSave, settingsStore.settings.autoSaveInterval] as const,
+      ([enabled]) => {
+        if (enabled) {
+          startInterval();
+        } else {
+          stopInterval();
         }
       },
-      { immediate: false }
+      { immediate: true }
     );
 
-    // 返回清理函数
     return () => {
-      if (saveTimeout) {
-        clearTimeout(saveTimeout);
-      }
+      stopInterval();
       stopWatch();
     };
   }

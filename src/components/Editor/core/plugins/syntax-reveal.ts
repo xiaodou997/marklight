@@ -590,49 +590,98 @@ function tryUnwrapBlockquote(tr: Transaction, active: ActiveLine) {
 
 /**
  * 检测行内定界符的位置范围（用于 Decoration.inline 上色）
- * 通过将纯文本解析为带 marks 的内容，对比找出定界符字符的位置
+ *
+ * 双策略：
+ * 1. 解析策略（精确）：parse → buildParagraphMap → 对比找定界符
+ * 2. 正则策略（宽容）：直接用正则匹配成对的定界符
+ *
+ * 编辑中间态可能无法精确圆转，此时用正则兜底，保证定界符始终有颜色。
  */
 function findDelimiterRanges(text: string): { from: number; to: number }[] {
-  const ranges: { from: number; to: number }[] = [];
-  if (!text) return ranges;
+  if (!text) return [];
 
-  // 尝试解析为行内内容
-  const nodes = parseInlineNodes(text, mySchema);
-  if (nodes.length === 0) return ranges;
+  // ── 策略 1：解析圆转（精确） ──
+  const parsed = findDelimitersByParsing(text);
+  if (parsed) return parsed;
 
-  // 重新构建段落来做 buildParagraphMap
+  // ── 策略 2：正则匹配成对定界符（宽容） ──
+  return findDelimitersByRegex(text);
+}
+
+/** 解析策略：parse → serialize 圆转对比 */
+function findDelimitersByParsing(text: string): { from: number; to: number }[] | null {
   try {
+    const nodes = parseInlineNodes(text, mySchema);
+    if (nodes.length === 0) return null;
+
     const para = mySchema.nodes.paragraph.create(null, nodes as PMNode[]);
     const { source, pmToSrcAO, pmToSrcBC } = buildParagraphMap(para);
 
-    // source 应该和 text 一致（如果解析正确的话）
-    if (source !== text) return ranges; // 解析不一致，不标色
+    // 圆转不一致 → 放弃精确策略
+    if (source !== text) return null;
 
-    // 找到定界符位置：pmToSrcAO[i] > pmToSrcBC[i] 的区间就是定界符
-    let i = 0;
-    while (i <= para.content.size) {
+    const ranges: { from: number; to: number }[] = [];
+    for (let i = 0; i <= para.content.size; i++) {
       const bc = pmToSrcBC[i];
       const ao = pmToSrcAO[i];
       if (ao > bc) {
-        // bc..ao 之间是定界符
         ranges.push({ from: bc, to: ao });
       }
-      i++;
     }
 
-    // 末尾的关闭定界符
+    // 末尾闭合定界符
     const lastBC = pmToSrcBC[para.content.size];
-    const lastAO = pmToSrcAO[para.content.size];
-    if (lastAO > lastBC && !ranges.some(r => r.from === lastBC && r.to === lastAO)) {
-      // 最后的闭合定界符在 source 末尾
-      // 但 pmToSrcAO[size] 包含了所有闭合定界符
-      // 需要找 pmToSrcBC[size] 到 source.length
-      if (source.length > lastBC) {
-        ranges.push({ from: lastBC, to: source.length });
-      }
+    if (source.length > lastBC && !ranges.some(r => r.from === lastBC && r.to === source.length)) {
+      ranges.push({ from: lastBC, to: source.length });
     }
+
+    return ranges.length > 0 ? ranges : null;
   } catch {
-    // 解析失败，不标色
+    return null;
+  }
+}
+
+/** 正则策略：匹配成对定界符，编辑中间态也能标色 */
+function findDelimitersByRegex(text: string): { from: number; to: number }[] {
+  const ranges: { from: number; to: number }[] = [];
+  // 已占用位置，防止重叠（如 ** 和 * 冲突）
+  const claimed = new Set<number>();
+
+  // 按定界符长度降序，避免 ** 被 * 先抢占
+  const patterns: [string, RegExp][] = [
+    ['**', /\*\*(.+?)\*\*/g],
+    ['~~', /~~(.+?)~~/g],
+    ['==', /==(.+?)==/g],
+    ['``', /``(.+?)``/g],
+    ['`',  /`([^`]+)`/g],
+    ['*',  /(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g],
+    ['~',  /(?<!~)~(?!~)(.+?)(?<!~)~(?!~)/g],
+    ['^',  /\^(.+?)\^/g],
+  ];
+
+  for (const [delim, pattern] of patterns) {
+    // 每次重置 lastIndex
+    pattern.lastIndex = 0;
+    let match: RegExpExecArray | null;
+    while ((match = pattern.exec(text)) !== null) {
+      const openFrom = match.index;
+      const openTo = openFrom + delim.length;
+      const closeFrom = openTo + match[1].length;
+      const closeTo = closeFrom + delim.length;
+
+      // 检查是否有位置冲突
+      let conflict = false;
+      for (let i = openFrom; i < openTo && !conflict; i++) if (claimed.has(i)) conflict = true;
+      for (let i = closeFrom; i < closeTo && !conflict; i++) if (claimed.has(i)) conflict = true;
+      if (conflict) continue;
+
+      // 占用位置
+      for (let i = openFrom; i < openTo; i++) claimed.add(i);
+      for (let i = closeFrom; i < closeTo; i++) claimed.add(i);
+
+      ranges.push({ from: openFrom, to: openTo });
+      ranges.push({ from: closeFrom, to: closeTo });
+    }
   }
 
   return ranges;
@@ -836,31 +885,25 @@ function syncBlockAttrs(
       return tr;
     }
 
-    // 前缀被完全删除 → 转为 paragraph，退出源码模式
-    if (parsed.kind !== 'heading' && plainText.length > 0) {
-      // 不在这里处理，等光标离开时再处理
-      // 但如果 # 全部被删了，应该立即同步
-      if (!plainText.match(/^#/)) {
-        const tr = state.tr;
-        tr.setMeta('addToHistory', false);
-        // 移除前缀（如果还有残留的空格等）
-        // 设置为 paragraph
-        tr.setBlockType(
-          active.nodePos + 1,
-          active.nodePos + node.nodeSize - 1,
-          mySchema.nodes.paragraph,
-        );
-        tr.setMeta(syntaxRevealKey, {
-          activeLine: {
-            ...active,
-            nodeType: 'paragraph',
-            nodeAttrs: {},
-            prefixLen: 0,
-            prefix: '',
-          },
-        } as SourceLineState);
-        return tr;
-      }
+    // 前缀不再是有效标题（如 "##Hello" 删除了空格，或 # 全被删了）→ 转为 paragraph
+    if (parsed.kind !== 'heading') {
+      const tr = state.tr;
+      tr.setMeta('addToHistory', false);
+      tr.setBlockType(
+        active.nodePos + 1,
+        active.nodePos + node.nodeSize - 1,
+        mySchema.nodes.paragraph,
+      );
+      tr.setMeta(syntaxRevealKey, {
+        activeLine: {
+          ...active,
+          nodeType: 'paragraph',
+          nodeAttrs: {},
+          prefixLen: 0,
+          prefix: '',
+        },
+      } as SourceLineState);
+      return tr;
     }
   }
 

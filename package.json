@@ -11,7 +11,10 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "dev:tauri": "tauri dev",
-    "build:tauri": "tauri build"
+    "build:tauri": "tauri build",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "format": "prettier --write \"src/**/*.{ts,vue,css}\""
   },
   "dependencies": {
     "@tauri-apps/api": "^2.10.1",
@@ -50,6 +53,7 @@
     "vue": "^3.5.30"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@tailwindcss/postcss": "^4.2.1",
     "@tauri-apps/cli": "^2.10.1",
     "@types/katex": "^0.16.8",
@@ -57,10 +61,17 @@
     "@types/markdown-it": "^14.1.2",
     "@types/prosemirror-tables": "^0.9.1",
     "@vitejs/plugin-vue": "^6.0.5",
+    "@vue/eslint-config-prettier": "^10.2.0",
+    "@vue/eslint-config-typescript": "^14.7.0",
     "autoprefixer": "^10.4.27",
+    "eslint": "^10.0.3",
+    "eslint-plugin-vue": "^10.8.0",
+    "globals": "^17.4.0",
     "postcss": "^8.5.8",
+    "prettier": "^3.8.1",
     "tailwindcss": "^4.2.1",
     "typescript": "~5.9.3",
+    "typescript-eslint": "^8.57.1",
     "vite": "^8.0.0",
     "vue-tsc": "^3.2.5"
   }

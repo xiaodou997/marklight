@@ -2,7 +2,7 @@ mod commands;
 mod menu;
 
 use commands::*;
-use notify::{Config, RecommendedWatcher, Watcher};
+use notify::{Config, RecommendedWatcher, Watcher, EventKind};
 use tauri::{Emitter, Manager};
 
 pub fn run() {
@@ -35,12 +35,42 @@ pub fn run() {
             let watcher =
                 RecommendedWatcher::new(tx, Config::default()).map_err(|e: notify::Error| e.to_string())?;
 
-            // 在后台线程处理监听事件
+            // 在后台线程处理监听事件，携带变更路径和类型
             std::thread::spawn(move || {
+                use std::time::{Instant, Duration};
+                let mut last_emit = Instant::now() - Duration::from_secs(1);
+
                 for res in rx {
                     match res {
-                        Ok(_) => {
-                            let _ = handle.emit("file-changed", ());
+                        Ok(event) => {
+                            // 防抖：300ms 内不重复发送
+                            let now = Instant::now();
+                            if now.duration_since(last_emit) < Duration::from_millis(300) {
+                                continue;
+                            }
+                            last_emit = now;
+
+                            let kind = match event.kind {
+                                EventKind::Create(_) => "create",
+                                EventKind::Modify(_) => "modify",
+                                EventKind::Remove(_) => "remove",
+                                _ => "other",
+                            };
+                            let paths: Vec<String> = event.paths
+                                .iter()
+                                .map(|p| p.to_string_lossy().to_string())
+                                .collect();
+
+                            #[derive(Clone, serde::Serialize)]
+                            struct FileChangePayload {
+                                kind: String,
+                                paths: Vec<String>,
+                            }
+
+                            let _ = handle.emit("file-changed", FileChangePayload {
+                                kind: kind.to_string(),
+                                paths,
+                            });
                         }
                         Err(e) => println!("watch error: {:?}", e),
                     }

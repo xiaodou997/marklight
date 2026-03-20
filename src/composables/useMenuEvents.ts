@@ -8,8 +8,8 @@ export interface MenuHandlers {
   handleNew: () => void | Promise<void>;
   handleOpen: () => void | Promise<void>;
   handleOpenFolder: () => void | Promise<void>;
-  handleSave: () => void | Promise<void> | Promise<boolean>;
-  handleSaveAs: () => void | Promise<void>;
+  handleSave: () => void | Promise<void> | Promise<boolean> | boolean;
+  handleSaveAs: () => void | Promise<void> | Promise<boolean> | boolean;
   exportHtml: () => void | Promise<void>;
   exportPdf: () => void | Promise<void>;
   copyToWechat: () => void | Promise<void>;
