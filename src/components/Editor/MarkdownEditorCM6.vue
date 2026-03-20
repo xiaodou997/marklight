@@ -35,6 +35,7 @@ import { useFileStore } from '../../stores/file';
 import { useSettingsStore } from '../../stores/settings';
 import { parseMarkdown } from './core/markdown';
 import { mySchema } from './core/schema';
+import { livePreviewExtension } from './cm6/extensions/live-preview';
 import SearchBar from './SearchBar.vue';
 
 const props = defineProps<{ initialContent?: string }>();
@@ -48,6 +49,9 @@ const searchBarRef = ref<InstanceType<typeof SearchBar> | null>(null);
 const isSearchVisible = ref(false);
 const searchMatchCount = ref(0);
 const searchCurrentIndex = ref(0);
+const searchQuery = ref('');
+const searchCaseSensitive = ref(false);
+const searchMatches = ref<Array<{ from: number; to: number }>>([]);
 
 let view: EditorView | null = null;
 
@@ -85,28 +89,106 @@ function handleContainerClick() {
 
 function closeSearch() {
   isSearchVisible.value = false;
-}
-
-function onSearchQuery(query: string) {
-  void query;
+  searchQuery.value = '';
+  searchMatches.value = [];
   searchMatchCount.value = 0;
   searchCurrentIndex.value = 0;
 }
 
-function onSearchCaseSensitive(caseSensitive: boolean) {
-  void caseSensitive;
+function normalizeForSearch(text: string) {
+  return searchCaseSensitive.value ? text : text.toLowerCase();
 }
 
-function onSearchNext() {}
+function rebuildSearchMatches() {
+  if (!view || !searchQuery.value) {
+    searchMatches.value = [];
+    searchMatchCount.value = 0;
+    searchCurrentIndex.value = 0;
+    return;
+  }
 
-function onSearchPrev() {}
+  const docText = view.state.doc.toString();
+  const source = normalizeForSearch(docText);
+  const needle = normalizeForSearch(searchQuery.value);
+  const matches: Array<{ from: number; to: number }> = [];
+  let start = 0;
+  while (start <= source.length) {
+    const index = source.indexOf(needle, start);
+    if (index < 0) break;
+    matches.push({ from: index, to: index + needle.length });
+    start = index + Math.max(needle.length, 1);
+  }
+
+  searchMatches.value = matches;
+  searchMatchCount.value = matches.length;
+  if (matches.length === 0) {
+    searchCurrentIndex.value = 0;
+  } else if (searchCurrentIndex.value >= matches.length) {
+    searchCurrentIndex.value = matches.length - 1;
+  }
+}
+
+function selectMatch(index: number) {
+  if (!view || searchMatches.value.length === 0) return;
+  const safeIndex = ((index % searchMatches.value.length) + searchMatches.value.length) % searchMatches.value.length;
+  const match = searchMatches.value[safeIndex];
+  searchCurrentIndex.value = safeIndex;
+  view.dispatch({
+    selection: { anchor: match.from, head: match.to },
+    effects: EditorView.scrollIntoView(match.from, { y: 'center' }),
+  });
+  view.focus();
+}
+
+function onSearchQuery(query: string) {
+  searchQuery.value = query;
+  rebuildSearchMatches();
+}
+
+function onSearchCaseSensitive(caseSensitive: boolean) {
+  searchCaseSensitive.value = caseSensitive;
+  rebuildSearchMatches();
+}
+
+function onSearchNext() {
+  if (!view || searchMatches.value.length === 0) return;
+  const head = view.state.selection.main.to;
+  const nextIndex = searchMatches.value.findIndex(m => m.from >= head);
+  selectMatch(nextIndex >= 0 ? nextIndex : 0);
+}
+
+function onSearchPrev() {
+  if (!view || searchMatches.value.length === 0) return;
+  const head = view.state.selection.main.from;
+  let prevIndex = -1;
+  for (let i = 0; i < searchMatches.value.length; i++) {
+    if (searchMatches.value[i].to <= head) prevIndex = i;
+  }
+  selectMatch(prevIndex >= 0 ? prevIndex : searchMatches.value.length - 1);
+}
 
 function onSearchReplace(replacement: string) {
-  void replacement;
+  if (!view || searchMatches.value.length === 0) return;
+  const index = searchCurrentIndex.value;
+  const match = searchMatches.value[index];
+  if (!match) return;
+  view.dispatch({
+    changes: { from: match.from, to: match.to, insert: replacement },
+    selection: { anchor: match.from + replacement.length },
+  });
+  rebuildSearchMatches();
+  if (searchMatches.value.length > 0) {
+    selectMatch(Math.min(index, searchMatches.value.length - 1));
+  }
 }
 
 function onSearchReplaceAll(replacement: string) {
-  void replacement;
+  if (!view || searchMatches.value.length === 0) return;
+  const changes = searchMatches.value
+    .map(match => ({ from: match.from, to: match.to, insert: replacement }))
+    .reverse();
+  view.dispatch({ changes });
+  rebuildSearchMatches();
 }
 
 onMounted(() => {
@@ -118,10 +200,14 @@ onMounted(() => {
     history(),
     keymap.of([...defaultKeymap, ...historyKeymap]),
     EditorView.lineWrapping,
+    livePreviewExtension,
     EditorView.updateListener.of((update) => {
       if (update.docChanged) {
         fileStore.markUserEdit();
         debouncedUpdate(update.state, true);
+        if (searchQuery.value) {
+          rebuildSearchMatches();
+        }
       } else if (update.selectionSet) {
         debouncedUpdate(update.state, false);
       }
