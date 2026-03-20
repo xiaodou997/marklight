@@ -18,7 +18,6 @@ import ShortcutsModal from './components/Editor/ShortcutsModal.vue';
 import CommandPalette from './components/Editor/CommandPalette.vue';
 import TitleBar from './components/Layout/TitleBar.vue';
 import { isModKey, isMac } from './utils/platform';
-import { serializeMarkdown } from './components/Editor/core/markdown';
 import pkg from '../package.json';
 
 const MarkdownEditor = defineAsyncComponent(() => import('./components/Editor/MarkdownEditor.vue'));
@@ -33,8 +32,8 @@ const { handleNew, handleOpen, handleSave, handleSaveAs, setupAutoSave } = useFi
 type EditorExpose = {
   scrollToPos: (pos: number) => void;
   openSearch: (showReplace?: boolean) => void;
-  getDoc?: () => any;
   getContent?: () => string;
+  getSelectionMarkdown?: () => string;
   getEditorView: () => any;
 };
 const editorRef = ref<EditorExpose | null>(null);
@@ -149,23 +148,10 @@ function onCopy(event: ClipboardEvent) {
   if (!editorRef.value || isSourceMode.value || activeViewMode.value !== 'editor') return;
   const view = editorRef.value.getEditorView?.();
   if (!view || !view.hasFocus()) return;
-
-  if (settingsStore.settings.editorEngine === 'codemirror') {
-    const from = view.state.selection.main.from as number;
-    const to = view.state.selection.main.to as number;
-    if (from === to) return;
-    const markdown = view.state.doc.sliceString(from, to) as string;
-    event.clipboardData?.setData('text/plain', markdown);
-    event.preventDefault();
-  } else {
-    const { state } = view;
-    const { from, to } = state.selection;
-    if (from === to) return;
-    const content = state.doc.cut(from, to);
-    const markdown = serializeMarkdown(content);
-    event.clipboardData?.setData('text/plain', markdown);
-    event.preventDefault();
-  }
+  const markdown = editorRef.value.getSelectionMarkdown?.() || '';
+  if (!markdown) return;
+  event.clipboardData?.setData('text/plain', markdown);
+  event.preventDefault();
 }
 
 // --- Window title ---

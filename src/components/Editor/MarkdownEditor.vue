@@ -439,8 +439,14 @@ function onSearchReplaceAll(replacement: string) {
 
 defineExpose({
   scrollToPos,
-  getDoc: () => editorView?.state.doc,
   getContent: () => editorView ? serializeMarkdown(editorView.state.doc) : '',
+  getSelectionMarkdown: () => {
+    if (!editorView) return '';
+    const { state } = editorView;
+    const { from, to } = state.selection;
+    if (from === to) return '';
+    return serializeMarkdown(state.doc.cut(from, to));
+  },
   getEditorView: () => editorView,
   openSearch,
   closeSearch,

@@ -339,6 +339,13 @@ defineExpose({
     });
   },
   getContent: () => view?.state.doc.toString() ?? '',
+  getSelectionMarkdown: () => {
+    if (!view) return '';
+    const from = view.state.selection.main.from;
+    const to = view.state.selection.main.to;
+    if (from === to) return '';
+    return view.state.doc.sliceString(from, to);
+  },
   getEditorView: () => view,
   openSearch: (_showReplace = false) => {
     isSearchVisible.value = true;

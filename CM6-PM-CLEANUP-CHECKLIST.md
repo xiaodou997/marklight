@@ -8,9 +8,9 @@
 - [ ] 收集导出、拖拽、快捷键、光标类反馈。
 
 ## Phase B：先删耦合，再删实现
-- [ ] 导出链路彻底去 PM：新增 Markdown 直出微信渲染（已完成第一步），再覆盖剩余兜底。
-- [ ] 确认 `App / composables / stores` 不再静态依赖 `components/Editor/core/*`。
-- [ ] 清理仅剩的 PM 类型或工具引用（若有）。
+- [x] 导出链路彻底去 PM：新增 Markdown 直出微信渲染（已完成第一步），再覆盖剩余兜底。
+- [x] 确认 `App / composables / stores` 不再静态依赖 `components/Editor/core/*`。
+- [x] 清理首批 PM 仅存冗余入口（已删除 `wechat-renderer` 中无调用的 PM 渲染函数）。
 
 ## Phase C：删除 PM 代码目录
 - [ ] 删除文件：`src/components/Editor/MarkdownEditor.vue`
