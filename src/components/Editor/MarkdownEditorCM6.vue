@@ -30,12 +30,16 @@ import { EditorView, keymap, lineNumbers } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language';
+import { getCurrentWebview } from '@tauri-apps/api/webview';
+import { readFile } from '@tauri-apps/plugin-fs';
 
 import { useFileStore } from '../../stores/file';
 import { useSettingsStore } from '../../stores/settings';
 import { parseMarkdown } from './core/markdown';
 import { mySchema } from './core/schema';
 import { livePreviewExtension } from './cm6/extensions/live-preview';
+import { createCm6ShortcutsExtension } from './cm6/extensions/shortcuts';
+import { createImageDropExtension, saveImageAndInsertMarkdown } from './cm6/extensions/image-drop';
 import SearchBar from './SearchBar.vue';
 
 const props = defineProps<{ initialContent?: string }>();
@@ -54,6 +58,8 @@ const searchCaseSensitive = ref(false);
 const searchMatches = ref<Array<{ from: number; to: number }>>([]);
 
 let view: EditorView | null = null;
+let unlistenDragDrop: (() => void) | null = null;
+const lastHtml5Drop = ref(0);
 
 const debouncedUpdate = debounce((state: EditorState, shouldSyncContent: boolean) => {
   const text = state.doc.toString();
@@ -199,6 +205,8 @@ onMounted(() => {
     syntaxHighlighting(defaultHighlightStyle),
     history(),
     keymap.of([...defaultKeymap, ...historyKeymap]),
+    createCm6ShortcutsExtension(settingsStore.settings.customShortcuts),
+    createImageDropExtension(fileStore, lastHtml5Drop),
     EditorView.lineWrapping,
     livePreviewExtension,
     EditorView.updateListener.of((update) => {
@@ -245,10 +253,41 @@ onMounted(() => {
 
   debouncedUpdate(view.state, false);
   view.focus();
+
+  void (async () => {
+    try {
+      const webview = getCurrentWebview();
+      unlistenDragDrop = await webview.onDragDropEvent(async (event) => {
+        const payload = event.payload as { type: string; paths?: string[]; position?: { x: number; y: number } } | undefined;
+        if (!payload || payload.type !== 'drop') return;
+        if (lastHtml5Drop.value && Date.now() - lastHtml5Drop.value < 800) return;
+        const paths = payload.paths || [];
+        if (!paths.length || !view) return;
+        const imagePath = paths.find((p: string) => /\.(png|jpe?g|gif|webp|svg|bmp)$/i.test(p));
+        if (!imagePath) return;
+        const bytes = await readFile(imagePath);
+        const name = imagePath.split(/[/\\]/).pop() || 'image';
+        const ext = imagePath.split('.').pop()?.toLowerCase() || '';
+        const mime = ext === 'png' ? 'image/png' :
+          ext === 'jpg' || ext === 'jpeg' ? 'image/jpeg' :
+            ext === 'gif' ? 'image/gif' :
+              ext === 'webp' ? 'image/webp' :
+                ext === 'svg' ? 'image/svg+xml' :
+                  ext === 'bmp' ? 'image/bmp' : 'application/octet-stream';
+        const file = new File([bytes], name, { type: mime });
+        const insertPos = payload.position ? view.posAtCoords({ x: payload.position.x, y: payload.position.y }) ?? undefined : undefined;
+        await saveImageAndInsertMarkdown(view, file, fileStore, name, insertPos);
+      });
+    } catch {}
+  })();
 });
 
 onUnmounted(() => {
   debouncedUpdate.cancel();
+  if (unlistenDragDrop) {
+    unlistenDragDrop();
+    unlistenDragDrop = null;
+  }
   view?.destroy();
   view = null;
 });
