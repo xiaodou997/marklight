@@ -31,6 +31,14 @@ class TaskPrefixWidget extends WidgetType {
   }
 }
 
+class HorizontalRuleWidget extends WidgetType {
+  toDOM() {
+    const hr = document.createElement('span');
+    hr.className = 'cm6-hr-widget';
+    return hr;
+  }
+}
+
 function getActiveLines(state: Parameters<typeof buildDecorations>[0]['state']): Set<number> {
   const lines = new Set<number>();
   for (const range of state.selection.ranges) {
@@ -73,6 +81,16 @@ function addWidget(
   builder.add(from, to, Decoration.replace({ widget: new PrefixWidget(text, className) }));
 }
 
+function addReplacementWidget(
+  builder: RangeSetBuilder<Decoration>,
+  from: number,
+  to: number,
+  widget: WidgetType
+) {
+  if (from >= to) return;
+  builder.add(from, to, Decoration.replace({ widget }));
+}
+
 function decorateInline(
   builder: RangeSetBuilder<Decoration>,
   lineFrom: number,
@@ -103,8 +121,12 @@ function decorateInline(
   };
 
   decoratePair(/\*\*([^*\n]+)\*\*/g, 'cm6-strong', 2);
+  decoratePair(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, 'cm6-emphasis', 1);
   decoratePair(/~~([^~\n]+)~~/g, 'cm6-strikethrough', 2);
+  decoratePair(/(?<!~)~([^~\n]+)~(?!~)/g, 'cm6-sub', 1);
+  decoratePair(/\^([^^\n]+)\^/g, 'cm6-sup', 1);
   decoratePair(/`([^`\n]+)`/g, 'cm6-inline-code', 1);
+  decoratePair(/==([^=\n]+)==/g, 'cm6-highlight', 2);
 
   let linkMatch: RegExpExecArray | null;
   const linkRe = /\[([^\]\n]+)\]\(([^)\n]+)\)/g;
@@ -140,6 +162,16 @@ function decorateLine(
   text: string,
   active: boolean
 ) {
+  const isHr = /^ {0,3}([-*_])(?:\s*\1){2,}\s*$/.test(text);
+  if (isHr) {
+    if (active) {
+      addMark(builder, lineFrom, lineTo, 'cm6-syntax-mark');
+    } else {
+      addReplacementWidget(builder, lineFrom, lineTo, new HorizontalRuleWidget());
+    }
+    return;
+  }
+
   const headingMatch = text.match(/^(#{1,6})\s+/);
   if (headingMatch) {
     const prefixLen = headingMatch[0].length;
@@ -280,7 +312,21 @@ export const livePreviewExtension = [
     '.cm6-heading-5': { fontSize: '1.125rem', fontWeight: '600' },
     '.cm6-heading-6': { fontSize: '1rem', fontWeight: '600' },
     '.cm6-strong': { fontWeight: '700' },
+    '.cm6-emphasis': { fontStyle: 'italic' },
     '.cm6-strikethrough': { textDecoration: 'line-through' },
+    '.cm6-sub': {
+      fontSize: '0.75em',
+      verticalAlign: 'sub',
+    },
+    '.cm6-sup': {
+      fontSize: '0.75em',
+      verticalAlign: 'super',
+    },
+    '.cm6-highlight': {
+      backgroundColor: '#fef08a',
+      borderRadius: '3px',
+      padding: '0 1px',
+    },
     '.cm6-inline-code': {
       fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
       backgroundColor: 'var(--sidebar-bg)',
@@ -306,6 +352,14 @@ export const livePreviewExtension = [
     },
     '.cm6-list-item': {
       color: 'var(--text-color)',
+    },
+    '.cm6-hr-widget': {
+      display: 'block',
+      width: '100%',
+      borderTop: '1px solid var(--border-color)',
+      marginTop: '0.5em',
+      marginBottom: '0.5em',
+      height: '0',
     },
   }),
 ];
