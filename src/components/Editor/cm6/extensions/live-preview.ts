@@ -221,9 +221,25 @@ function buildDecorations(view: EditorView): DecorationSet {
 
   for (const range of view.visibleRanges) {
     let line = state.doc.lineAt(range.from);
+    let inFence = false;
+    let inMathBlock = false;
     while (line.from <= range.to) {
       const active = activeLines.has(line.number);
-      decorateLine(builder, line.from, line.to, line.text, active);
+      const trimmed = line.text.trim();
+      const isFence = /^```/.test(trimmed);
+      const isMathFence = trimmed === '$$';
+
+      if (isFence) {
+        inFence = !inFence;
+      }
+      if (isMathFence && !inFence) {
+        inMathBlock = !inMathBlock;
+      }
+
+      if (!inFence && !inMathBlock && !isFence && !isMathFence) {
+        decorateLine(builder, line.from, line.to, line.text, active);
+      }
+
       if (line.to >= range.to) break;
       line = state.doc.line(line.number + 1);
     }
