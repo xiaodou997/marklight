@@ -12,6 +12,7 @@ import { useImagePreview } from './composables/useImagePreview';
 import { useWindowEvents, confirmUnsavedChanges } from './composables/useWindowEvents';
 import EditorToolbar from './components/Toolbar/EditorToolbar.vue';
 import MarkdownEditor from './components/Editor/MarkdownEditor.vue';
+import MarkdownEditorCM6 from './components/Editor/MarkdownEditorCM6.vue';
 import StatusBar from './components/Layout/StatusBar.vue';
 import Sidebar, { OutlineItem } from './components/Editor/Sidebar.vue';
 import SettingsModal from './components/Settings/SettingsModal.vue';
@@ -28,7 +29,13 @@ const settingsStore = useSettingsStore();
 
 // --- Composables ---
 const { handleNew, handleOpen, handleSave, handleSaveAs, setupAutoSave } = useFileOperations();
-const editorRef = ref<InstanceType<typeof MarkdownEditor> | null>(null);
+type EditorExpose = {
+  scrollToPos: (pos: number) => void;
+  openSearch: (showReplace?: boolean) => void;
+  getDoc: () => any;
+  getEditorView: () => any;
+};
+const editorRef = ref<EditorExpose | null>(null);
 const appVersion = pkg.version;
 
 const {
@@ -138,17 +145,25 @@ function editorAction(_action: string) {
 
 function onCopy(event: ClipboardEvent) {
   if (!editorRef.value || isSourceMode.value || activeViewMode.value !== 'editor') return;
-  const view = (editorRef.value as any).getEditorView?.();
+  const view = editorRef.value.getEditorView?.();
   if (!view || !view.hasFocus()) return;
 
-  const { state } = view;
-  const { from, to } = state.selection;
-  if (from === to) return;
-
-  const content = state.doc.cut(from, to);
-  const markdown = serializeMarkdown(content);
-  event.clipboardData?.setData('text/plain', markdown);
-  event.preventDefault();
+  if (settingsStore.settings.editorEngine === 'codemirror') {
+    const from = view.state.selection.main.from as number;
+    const to = view.state.selection.main.to as number;
+    if (from === to) return;
+    const markdown = view.state.doc.sliceString(from, to) as string;
+    event.clipboardData?.setData('text/plain', markdown);
+    event.preventDefault();
+  } else {
+    const { state } = view;
+    const { from, to } = state.selection;
+    if (from === to) return;
+    const content = state.doc.cut(from, to);
+    const markdown = serializeMarkdown(content);
+    event.clipboardData?.setData('text/plain', markdown);
+    event.preventDefault();
+  }
 }
 
 // --- Window title ---
@@ -361,7 +376,14 @@ onUnmounted(() => {
       >
         <!-- 实时渲染模式 -->
         <MarkdownEditor
-          v-if="activeViewMode === 'editor' && !isSourceMode"
+          v-if="activeViewMode === 'editor' && !isSourceMode && settingsStore.settings.editorEngine === 'prosemirror'"
+          :key="`${settingsStore.settings.editorEngine}-${fileStore.currentFile.path || 'new-file'}`"
+          ref="editorRef"
+          :initial-content="fileStore.currentFile.content"
+          @update="handleEditorUpdate"
+        />
+        <MarkdownEditorCM6
+          v-else-if="activeViewMode === 'editor' && !isSourceMode && settingsStore.settings.editorEngine === 'codemirror'"
           :key="fileStore.currentFile.path || 'new-file'"
           ref="editorRef"
           :initial-content="fileStore.currentFile.content"

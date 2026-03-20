@@ -41,6 +41,8 @@ export interface Settings {
   customShortcuts: Record<string, string>;
   /** 配置版本号 (用于迁移) */
   configVersion: number;
+  /** 编辑器引擎 */
+  editorEngine: 'prosemirror' | 'codemirror';
 }
 
 const DEFAULT_SETTINGS: Settings = {
@@ -64,6 +66,7 @@ const DEFAULT_SETTINGS: Settings = {
   wechatTheme: 'blue',
   customShortcuts: {},
   configVersion: 1,
+  editorEngine: 'prosemirror',
 };
 
 const LEGACY_STORAGE_KEY = 'marklight-settings';
