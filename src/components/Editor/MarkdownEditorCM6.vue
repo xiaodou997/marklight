@@ -38,6 +38,7 @@ import { useSettingsStore } from '../../stores/settings';
 import { livePreviewExtension } from './cm6/extensions/live-preview';
 import { createCm6ShortcutsExtension } from './cm6/extensions/shortcuts';
 import { createImageDropExtension, saveImageAndInsertMarkdown } from './cm6/extensions/image-drop';
+import { taskToggleExtension } from './cm6/extensions/task-toggle';
 import SearchBar from './SearchBar.vue';
 
 const props = defineProps<{ initialContent?: string }>();
@@ -205,6 +206,7 @@ onMounted(() => {
     keymap.of([...defaultKeymap, ...historyKeymap]),
     createCm6ShortcutsExtension(settingsStore.settings.customShortcuts),
     createImageDropExtension(fileStore, lastHtml5Drop),
+    taskToggleExtension,
     EditorView.lineWrapping,
     livePreviewExtension,
     EditorView.updateListener.of((update) => {

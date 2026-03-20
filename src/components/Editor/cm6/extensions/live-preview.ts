@@ -17,6 +17,20 @@ class PrefixWidget extends WidgetType {
   }
 }
 
+class TaskPrefixWidget extends WidgetType {
+  constructor(private readonly checked: boolean) {
+    super();
+  }
+
+  toDOM() {
+    const span = document.createElement('span');
+    span.className = 'cm6-task-prefix';
+    span.dataset.taskToggle = '1';
+    span.textContent = this.checked ? '☑ ' : '☐ ';
+    return span;
+  }
+}
+
 function getActiveLines(state: Parameters<typeof buildDecorations>[0]['state']): Set<number> {
   const lines = new Set<number>();
   for (const range of state.selection.ranges) {
@@ -159,7 +173,7 @@ function decorateLine(
     if (active) {
       addMark(builder, start, start + markerLen, 'cm6-syntax-mark');
     } else {
-      addWidget(builder, start, start + markerLen, checked ? '☑ ' : '☐ ', 'cm6-list-prefix');
+      builder.add(start, start + markerLen, Decoration.replace({ widget: new TaskPrefixWidget(checked) }));
       addMark(builder, start + markerLen, lineTo, 'cm6-list-item');
     }
     decorateInline(builder, lineFrom, text, active);
