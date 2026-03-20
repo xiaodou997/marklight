@@ -17,16 +17,16 @@
         <!-- 下拉选择器 -->
         <div
           v-if="showDropdown"
-          class="absolute top-full left-0 mt-1 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-50"
+          class="absolute top-full left-0 mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50"
         >
           <!-- 搜索框 -->
-          <div class="p-2 border-b border-gray-100 dark:border-gray-700">
+          <div class="p-2 border-b border-gray-100">
             <input
               ref="searchInputRef"
               v-model="searchQuery"
               type="text"
               placeholder="搜索语言..."
-              class="w-full px-2 py-1 text-xs border border-gray-200 dark:border-gray-600 rounded focus:outline-none focus:border-blue-400 dark:bg-gray-700 dark:text-white"
+              class="w-full px-2 py-1 text-xs border border-gray-200 rounded focus:outline-none focus:border-blue-400"
               @keydown.escape="closeDropdown"
               @keydown.enter="selectHighlighted"
               @keydown.down.prevent="navigateDown"
@@ -44,8 +44,8 @@
               @mouseenter="highlightedIndex = index"
               class="w-full px-3 py-1.5 text-left text-xs font-mono uppercase transition-colors"
               :class="[
-                highlightedIndex === index ? 'bg-blue-100 dark:bg-gray-700 text-blue-600' :
-                selectedLang === lang ? 'bg-blue-50 dark:bg-gray-700 text-blue-500' : 'text-gray-600 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-gray-700'
+                highlightedIndex === index ? 'bg-blue-100 text-blue-600' :
+                selectedLang === lang ? 'bg-blue-50 text-blue-500' : 'text-gray-600 hover:bg-blue-50'
               ]"
             >
               {{ lang }}

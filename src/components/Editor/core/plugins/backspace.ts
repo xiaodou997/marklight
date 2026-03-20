@@ -73,29 +73,7 @@ export const backspaceCommand = (state: EditorState, dispatch?: (tr: Transaction
     }
   }
 
-  // 处理标题：在开头按 backspace 升级标题或转为段落
-  if ($from.parentOffset === 0 && $from.parent.type.name === 'heading') {
-    const currentLevel = $from.parent.attrs.level;
-    if (dispatch) {
-      if (currentLevel > 1) {
-        // 升级标题：h2 -> h1, h3 -> h2, etc.
-        tr.setBlockType(selection.from, selection.to, mySchema.nodes.heading, { level: currentLevel - 1 });
-      } else {
-        // h1 转为普通段落
-        tr.setBlockType(selection.from, selection.to, mySchema.nodes.paragraph);
-      }
-      dispatch(tr);
-    }
-    return true;
-  }
-
-  // 处理引用
-  if ($from.parentOffset === 0 && $from.parent.type.name === 'blockquote') {
-    if (dispatch) {
-      dispatch(tr.setBlockType(selection.from, selection.to, mySchema.nodes.paragraph));
-    }
-    return true;
-  }
+  // 标题和引用的 backspace 由 syntax-reveal 插件处理
 
   return false;
 };

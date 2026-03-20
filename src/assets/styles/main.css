@@ -51,19 +51,9 @@ body {
   background: #d1d5db;
 }
 
-/* 深色主题 */
-.dark {
-  --bg-color: #1e1e1e;
-  --text-color: #e0e0e0;
-}
-
 /* 焦点写作模式 */
 html.focus-mode {
   --bg-color: #ffffff;
-}
-
-html.dark.focus-mode {
-  --bg-color: #1e1e1e;
 }
 
 html.focus-mode .focus-mode-editor {

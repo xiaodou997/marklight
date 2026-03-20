@@ -12,7 +12,7 @@
           v-model="query"
           type="text"
           placeholder="搜索..."
-          class="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+          class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
           @input="onQueryChange"
           @keydown.enter.prevent="onFindNext"
           @keydown.shift.enter.prevent="onFindPrev"
@@ -21,14 +21,14 @@
       </div>
       
       <!-- 匹配计数 -->
-      <span class="text-xs text-gray-500 dark:text-gray-400 min-w-[3rem] text-center">
+      <span class="text-xs text-gray-500 min-w-[3rem] text-center">
         {{ matchText }}
       </span>
       
       <!-- 上一个/下一个 -->
       <button
         @click="onFindPrev"
-        class="p-1.5 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+        class="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded"
         title="上一个 (Shift+Enter)"
       >
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -37,7 +37,7 @@
       </button>
       <button
         @click="onFindNext"
-        class="p-1.5 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+        class="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded"
         title="下一个 (Enter)"
       >
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -51,8 +51,8 @@
         :class="[
           'p-1.5 rounded font-medium text-xs',
           caseSensitive
-            ? 'bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300'
-            : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
+            ? 'bg-blue-100 text-blue-600'
+            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
         ]"
         title="区分大小写"
       >
@@ -62,7 +62,7 @@
       <!-- 关闭 -->
       <button
         @click="onClose"
-        class="p-1.5 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+        class="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded"
         title="关闭 (Esc)"
       >
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -78,12 +78,12 @@
         v-model="replacement"
         type="text"
         placeholder="替换为..."
-        class="flex-1 px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+        class="flex-1 px-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
         @keydown.enter.prevent="onReplace"
       />
       <button
         @click="onReplace"
-        class="px-3 py-1.5 text-sm bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 rounded"
+        class="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 hover:bg-gray-200 rounded"
         title="替换当前"
       >
         替换
@@ -101,7 +101,7 @@
     <button
       v-if="!showReplace"
       @click="toggleReplace"
-      class="mt-2 text-xs text-blue-500 hover:text-blue-600 dark:text-blue-400 dark:hover:text-blue-300"
+      class="mt-2 text-xs text-blue-500 hover:text-blue-600"
     >
       显示替换
     </button>

@@ -12,7 +12,7 @@
         <div 
           v-for="menu in menus" 
           :key="menu.id"
-          class="relative h-full flex items-center px-3 text-xs cursor-default transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+          class="relative h-full flex items-center px-3 text-xs cursor-default transition-colors hover:bg-black/5"
           @mouseenter="onMenuHover(menu.id)"
           @mousedown.stop="toggleMenu(menu.id)"
         >
@@ -47,10 +47,10 @@
 
     <!-- 窗口控制按钮 -->
     <div class="flex items-center h-full">
-      <div @click="minimize" class="control-btn hover:bg-black/5 dark:hover:bg-white/10">
+      <div @click="minimize" class="control-btn hover:bg-black/5">
         <svg class="w-3 h-3" viewBox="0 0 12 12"><rect fill="currentColor" width="10" height="1" x="1" y="6"/></svg>
       </div>
-      <div @click="toggleMaximize" class="control-btn hover:bg-black/5 dark:hover:bg-white/10">
+      <div @click="toggleMaximize" class="control-btn hover:bg-black/5">
         <svg class="w-3 h-3" viewBox="0 0 12 12"><rect fill="currentColor" width="9" height="9" x="1.5" y="1.5" stroke="currentColor" stroke-width="1" fill-opacity="0"/></svg>
       </div>
       <div @click="close" class="control-btn hover:bg-red-500 hover:text-white group">
@@ -200,6 +200,6 @@ const menus: Menu[] = [
 @reference "../../assets/styles/main.css";
 
 .control-btn {
-  @apply w-11 h-full flex items-center justify-center transition-colors duration-150 text-zinc-600 dark:text-zinc-400;
+  @apply w-11 h-full flex items-center justify-center transition-colors duration-150 text-zinc-600
 }
 </style>

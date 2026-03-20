@@ -47,14 +47,14 @@ function onKeyDown(e: KeyboardEvent) {
         tabindex="-1"
       >
         <div
-          class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-[480px] max-h-[70vh] overflow-hidden flex flex-col"
+          class="bg-white rounded-xl shadow-2xl w-[480px] max-h-[70vh] overflow-hidden flex flex-col"
           @click.stop
         >
           <!-- 头部 -->
-          <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-            <h2 class="text-lg font-semibold text-gray-900 dark:text-white">快捷键</h2>
+          <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+            <h2 class="text-lg font-semibold text-gray-900">快捷键</h2>
             <button
-              class="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              class="p-1 rounded-lg hover:bg-gray-100 transition-colors"
               @click="close"
             >
               <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -65,21 +65,21 @@ function onKeyDown(e: KeyboardEvent) {
 
           <!-- 主体 -->
           <div class="flex-1 overflow-y-auto p-6">
-            <div class="text-sm text-gray-500 dark:text-gray-400 mb-4">
+            <div class="text-sm text-gray-500 mb-4">
               {{ isMac ? 'Mac 使用 ⌘ 键' : 'Windows/Linux 使用 Ctrl 键' }}
             </div>
             
             <div v-for="group in shortcutGroups" :key="group.name" class="space-y-3 mb-6 last:mb-0">
-              <h3 class="text-sm font-semibold text-gray-800 dark:text-gray-200 border-b border-gray-200 dark:border-gray-700 pb-1">
+              <h3 class="text-sm font-semibold text-gray-800 border-b border-gray-200 pb-1">
                 {{ group.name }}
               </h3>
               <div class="grid gap-2">
                 <div 
                   v-for="item in group.items" 
                   :key="item.id"
-                  class="flex items-center justify-between py-2 px-3 rounded-lg bg-gray-50 dark:bg-gray-700/50"
+                  class="flex items-center justify-between py-2 px-3 rounded-lg bg-gray-50"
                 >
-                  <span class="text-sm text-gray-700 dark:text-gray-300">{{ item.description }}</span>
+                  <span class="text-sm text-gray-700">{{ item.description }}</span>
                   <div class="shortcut-key">
                     {{ formatShortcutDisplay(item.key) }}
                   </div>
@@ -89,7 +89,7 @@ function onKeyDown(e: KeyboardEvent) {
           </div>
 
           <!-- 底部 -->
-          <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+          <div class="px-6 py-4 border-t border-gray-200 bg-gray-50">
             <button
               class="w-full px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors"
               @click="close"

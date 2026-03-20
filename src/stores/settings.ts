@@ -2,7 +2,7 @@ import { defineStore } from 'pinia';
 import { ref, watch } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 
-export type Theme = 'light' | 'dark' | 'system' | 'custom';
+export type Theme = 'light';
 
 export interface CustomTheme {
   primary: string;
@@ -44,7 +44,7 @@ export interface Settings {
 }
 
 const DEFAULT_SETTINGS: Settings = {
-  theme: 'system',
+  theme: 'light' as Theme,
   customTheme: {
     primary: '#4a90d9',
     background: '#ffffff',
@@ -170,35 +170,15 @@ export const useSettingsStore = defineStore('settings', () => {
     applyFocusMode(value);
   });
 
-  // 应用主题
-  function applyTheme(theme: Theme) {
+  // 应用主题（当前只支持浅色）
+  function applyTheme(_theme: Theme) {
     const root = document.documentElement;
-    const isDark = theme === 'dark' || 
-      (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    
-    // 清除自定义变量
-    if (theme !== 'custom') {
-      root.style.removeProperty('--primary-color');
-      root.style.removeProperty('--bg-color');
-      root.style.removeProperty('--text-color');
-      root.style.removeProperty('--sidebar-bg');
-      root.style.removeProperty('--border-color');
-    }
-
-    if (isDark) {
-      root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
-    }
-
-    if (theme === 'custom') {
-      const ct = settings.value.customTheme;
-      root.style.setProperty('--primary-color', ct.primary);
-      root.style.setProperty('--bg-color', ct.background);
-      root.style.setProperty('--text-color', ct.text);
-      root.style.setProperty('--sidebar-bg', ct.sidebar);
-      root.style.setProperty('--border-color', ct.border);
-    }
+    root.classList.remove('dark');
+    root.style.removeProperty('--primary-color');
+    root.style.removeProperty('--bg-color');
+    root.style.removeProperty('--text-color');
+    root.style.removeProperty('--sidebar-bg');
+    root.style.removeProperty('--border-color');
   }
 
   // 应用焦点模式
@@ -244,13 +224,6 @@ export const useSettingsStore = defineStore('settings', () => {
   // 初始化主题
   function initTheme() {
     applyTheme(settings.value.theme);
-    
-    // 监听系统主题变化
-    if (settings.value.theme === 'system') {
-      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-        applyTheme('system');
-      });
-    }
   }
 
   // 初始化焦点模式

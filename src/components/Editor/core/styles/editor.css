@@ -15,79 +15,32 @@
 .ProseMirror h4 { font-size: 1.25rem; font-weight: 600; margin-top: 1em; margin-bottom: 0.5em; position: relative; }
 .ProseMirror h5 { font-size: 1.125rem; font-weight: 600; margin-top: 1em; margin-bottom: 0.5em; position: relative; }
 .ProseMirror h6 { font-size: 1rem; font-weight: 600; margin-top: 1em; margin-bottom: 0.5em; position: relative; }
-.ProseMirror .heading-marker-editor {
-  color: #9ca3af;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  font-weight: normal;
-  font-size: 0.6em;
-  white-space: pre;
-  outline: none;
-  border: 1px dashed transparent;
-  border-radius: 4px;
-  padding: 0 2px;
-  margin-right: 4px;
-}
-.ProseMirror .heading-marker-input {
-  font: inherit;
-  color: inherit;
-  background: transparent;
-  border: none;
-  outline: none;
-  width: 3em;
-  padding: 0;
-  margin: 0;
-}
-.ProseMirror .heading-marker-editor.is-active {
-  border-color: #bfdbfe;
-  background: #eff6ff;
-  color: #2563eb;
-}
-.ProseMirror blockquote { border-left: 4px solid var(--border-color); padding-left: 1em; margin: 1em 0; color: #6b7280; position: relative; }
-/* 行内标记定界符 */
-.ProseMirror .mark-delimiter {
+/* 源码模式 — 块前缀（## 、- 、> 等） */
+.syntax-prefix {
   color: #9ca3af;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-weight: normal;
   font-style: normal;
-  font-size: 0.85em;
   text-decoration: none;
-  user-select: none;
-  pointer-events: none;
 }
+/* 源码模式 — 行内定界符（**、*、~~ 等） */
+.syntax-delimiter {
+  color: #9ca3af;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-weight: normal;
+  font-style: normal;
+  text-decoration: none;
+}
+.ProseMirror blockquote { border-left: 4px solid var(--border-color); padding-left: 1em; margin: 1em 0; color: #6b7280; position: relative; }
 
 .ProseMirror ul, .ProseMirror ol { padding-left: 1.5em; margin: 0.5em 0; }
-.ProseMirror ul { list-style: none; }
-.ProseMirror ol { list-style: none; }
+.ProseMirror ul { list-style: disc; }
+.ProseMirror ol { list-style: decimal; }
 .ProseMirror li { margin: 0.25em 0; position: relative; }
 .ProseMirror li > p { margin-bottom: 0.25em; }
-/* 列表标记样式 - 默认显示圆点/数字 */
-.ProseMirror ul > li::before {
-  content: "•";
-  position: absolute;
-  left: -1.2em;
-  color: var(--text-color);
-  opacity: 0.8;
-  font-size: 1em;
-}
-.ProseMirror ol > li::before {
-  content: counter(list-item) ".";
-  position: absolute;
-  left: -2em;
-  color: var(--text-color);
-  opacity: 0.8;
-}
-.ProseMirror ol {
-  counter-reset: list-item;
-}
-.ProseMirror ol > li {
-  counter-increment: list-item;
-}
-.ProseMirror ul > li.marker-editing::before {
-  content: none;
-}
-.ProseMirror ol > li.marker-editing::before {
-  content: none;
-}
+/* 活跃列表项隐藏原生标记，用 decoration widget 显示源码标记 */
+.ProseMirror ul > li.syntax-active { list-style: none; }
+.ProseMirror ol > li.syntax-active { list-style: none; }
 .ProseMirror pre { background: var(--sidebar-bg); color: var(--text-color); padding: 1em; border-radius: 0.5em; overflow-x: auto; margin: 1em 0; border: 1px solid var(--border-color); }
 .ProseMirror code { font-family: ui-monospace, monospace; font-size: 0.9em; }
 .ProseMirror table {
@@ -133,7 +86,7 @@
 .ProseMirror li.task-item::before {
   content: none;
 }
-.ProseMirror ul.task-list > li.task-item.marker-editing .task-checkbox {
+.ProseMirror ul.task-list > li.task-item.syntax-active .task-checkbox {
   display: none;
 }
 .ProseMirror .task-checkbox {

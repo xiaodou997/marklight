@@ -28,7 +28,7 @@
       @prev="onSearchPrev"
       @replace="onSearchReplace"
       @replace-all="onSearchReplaceAll"
-      @close="onSearchClose"
+      @close="closeSearch"
     />
   </div>
 </template>
@@ -51,8 +51,7 @@ import { readFile } from '@tauri-apps/plugin-fs';
 import { useFileStore } from '../../stores/file';
 import { mySchema } from './core/schema';
 import { parseMarkdown, serializeMarkdown } from './core/markdown';
-import { delimNavPlugin } from './core/plugins/delim-nav';
-import { sourceRevealPlugin } from './core/plugins/source-reveal';
+import { syntaxRevealPlugin } from './core/plugins/syntax-reveal';
 import { backspaceCommand } from './core/plugins/backspace';
 import { highlightPlugin } from './core/plugins/highlight';
 import { createVueNodeView } from './core/nodeViews';
@@ -65,7 +64,6 @@ import { createSearchPlugin, getSearchState, setQuery, setCaseSensitive, nextMat
 import { createLinkTooltipPlugin } from './core/plugins/link-tooltip';
 import { createMathPreviewPlugin } from './core/plugins/math-preview';
 import { createShortcutsPlugin } from './core/plugins/shortcuts';
-import { headingEditPlugin } from './core/plugins/heading-edit';
 import { useSettingsStore } from '../../stores/settings';
 
 import CodeBlockView from './views/CodeBlockView.vue';
@@ -259,9 +257,7 @@ onMounted(() => {
         myKeymap,
         myInputRules,
         highlightPlugin,
-        delimNavPlugin,
-        sourceRevealPlugin,
-        headingEditPlugin,
+        syntaxRevealPlugin,
         createImageHandlePlugin(),
         columnResizing(),
         tableEditing(),
@@ -357,83 +353,8 @@ onUnmounted(() => {
   }
 });
 
-defineExpose({
-  scrollToPos: (pos: number) => {
-    if (!editorView) return;
-    try {
-      const { doc, tr } = editorView.state;
-      const resolvedPos = doc.resolve(pos);
-      const selection = TextSelection.near(resolvedPos);
-      editorView.dispatch(tr.setSelection(selection).scrollIntoView());
-      editorView.focus();
-      
-      // 额外确保滚动：手动计算位置并滚动
-      const coords = editorView.coordsAtPos(pos);
-      const editorContainer = editorRef.value;
-      if (editorContainer && coords) {
-        const containerRect = editorContainer.getBoundingClientRect();
-        const scrollTop = editorContainer.scrollTop;
-        const targetTop = coords.top - containerRect.top + scrollTop - containerRect.height / 3;
-        editorContainer.scrollTo({
-          top: Math.max(0, targetTop),
-          behavior: 'smooth'
-        });
-      }
-    } catch (e) {
-      console.error('scrollToPos error:', e);
-    }
-  },
-  getDoc: () => editorView?.state.doc,
-  getEditorView: () => editorView,
-  // 搜索功能
-  openSearch: (showReplace = false) => {
-    isSearchVisible.value = true;
-    nextTick(() => {
-      searchBarRef.value?.setShowReplace(showReplace);
-    });
-  },
-  closeSearch: () => {
-    isSearchVisible.value = false;
-    if (editorView) {
-      editorView.dispatch(resetSearch(editorView.state.tr));
-    }
-  },
-  setSearchQuery: (query: string) => {
-    if (!editorView) return;
-    editorView.dispatch(setQuery(editorView.state.tr, query));
-    updateSearchState();
-    scrollToCurrentMatch(editorView);
-  },
-  setSearchCaseSensitive: (caseSensitive: boolean) => {
-    if (!editorView) return;
-    editorView.dispatch(setCaseSensitive(editorView.state.tr, caseSensitive));
-    updateSearchState();
-  },
-  searchNext: () => {
-    if (!editorView) return;
-    editorView.dispatch(nextMatch(editorView.state.tr));
-    updateSearchState();
-    scrollToCurrentMatch(editorView);
-  },
-  searchPrev: () => {
-    if (!editorView) return;
-    editorView.dispatch(prevMatch(editorView.state.tr));
-    updateSearchState();
-    scrollToCurrentMatch(editorView);
-  },
-  searchReplace: (replacement: string) => {
-    if (!editorView) return;
-    replaceCurrent(editorView, replacement);
-    updateSearchState();
-  },
-  searchReplaceAll: (replacement: string) => {
-    if (!editorView) return;
-    replaceAll(editorView, replacement);
-    updateSearchState();
-  }
-});
+// --- 搜索功能（统一函数，供 expose 和事件处理复用）---
 
-// 更新搜索状态
 function updateSearchState() {
   if (!editorView) return;
   const state = getSearchState(editorView.state);
@@ -443,7 +364,41 @@ function updateSearchState() {
   }
 }
 
-// 搜索栏事件处理
+function scrollToPos(pos: number) {
+  if (!editorView) return;
+  try {
+    const { doc, tr } = editorView.state;
+    const resolvedPos = doc.resolve(pos);
+    const selection = TextSelection.near(resolvedPos);
+    editorView.dispatch(tr.setSelection(selection).scrollIntoView());
+    editorView.focus();
+
+    const coords = editorView.coordsAtPos(pos);
+    const editorContainer = editorRef.value;
+    if (editorContainer && coords) {
+      const containerRect = editorContainer.getBoundingClientRect();
+      const scrollTop = editorContainer.scrollTop;
+      const targetTop = coords.top - containerRect.top + scrollTop - containerRect.height / 3;
+      editorContainer.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
+    }
+  } catch (e) {
+    console.error('scrollToPos error:', e);
+  }
+}
+
+function openSearch(showReplace = false) {
+  isSearchVisible.value = true;
+  nextTick(() => { searchBarRef.value?.setShowReplace(showReplace); });
+}
+
+function closeSearch() {
+  isSearchVisible.value = false;
+  if (editorView) {
+    editorView.dispatch(resetSearch(editorView.state.tr));
+  }
+  editorView?.focus();
+}
+
 function onSearchQuery(query: string) {
   if (!editorView) return;
   editorView.dispatch(setQuery(editorView.state.tr, query));
@@ -468,7 +423,6 @@ function onSearchPrev() {
   if (!editorView) return;
   editorView.dispatch(prevMatch(editorView.state.tr));
   updateSearchState();
-  scrollToCurrentMatch(editorView);
 }
 
 function onSearchReplace(replacement: string) {
@@ -483,11 +437,17 @@ function onSearchReplaceAll(replacement: string) {
   updateSearchState();
 }
 
-function onSearchClose() {
-  isSearchVisible.value = false;
-  if (editorView) {
-    editorView.dispatch(resetSearch(editorView.state.tr));
-  }
-  editorView?.focus();
-}
+defineExpose({
+  scrollToPos,
+  getDoc: () => editorView?.state.doc,
+  getEditorView: () => editorView,
+  openSearch,
+  closeSearch,
+  setSearchQuery: onSearchQuery,
+  setSearchCaseSensitive: onSearchCaseSensitive,
+  searchNext: onSearchNext,
+  searchPrev: onSearchPrev,
+  searchReplace: onSearchReplace,
+  searchReplaceAll: onSearchReplaceAll,
+});
 </script>

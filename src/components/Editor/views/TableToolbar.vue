@@ -2,11 +2,11 @@
   <div 
     v-show="visible"
     ref="toolbarRef"
-    class="fixed z-50 flex items-center gap-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-2 py-1.5 shadow-lg backdrop-blur-sm transition-all duration-200"
+    class="fixed z-50 flex items-center gap-1 rounded-lg border border-gray-200 bg-white px-2 py-1.5 shadow-lg backdrop-blur-sm transition-all duration-200"
     :style="{ left: `${pos.left}px`, top: `${pos.top}px`, transform: 'translate(-50%, -120%)' }"
   >
     <!-- 行操作 -->
-    <div class="flex items-center gap-1 border-r border-gray-200 dark:border-gray-700 pr-2 mr-1">
+    <div class="flex items-center gap-1 border-r border-gray-200 pr-2 mr-1">
       <button @click="exec('addRowBefore')" class="toolbar-btn" title="快捷键: Cmd+↑">
         <div class="flex flex-col items-center gap-0.5">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -34,7 +34,7 @@
     </div>
 
     <!-- 列操作 -->
-    <div class="flex items-center gap-1 border-r border-gray-200 dark:border-gray-700 pr-2 mr-1">
+    <div class="flex items-center gap-1 border-r border-gray-200 pr-2 mr-1">
       <button @click="exec('addColumnBefore')" class="toolbar-btn" title="快捷键: Cmd+←">
         <div class="flex flex-col items-center gap-0.5">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
