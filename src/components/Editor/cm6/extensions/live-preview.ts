@@ -28,7 +28,7 @@ class TaskPrefixWidget extends WidgetType {
 
   toDOM() {
     const span = document.createElement('span');
-    span.className = 'cm6-task-prefix';
+    span.className = 'mk-task-prefix';
     span.dataset.taskToggle = '1';
     span.textContent = this.checked ? '☑ ' : '☐ ';
     return span;
@@ -42,7 +42,7 @@ class TaskPrefixWidget extends WidgetType {
 class HorizontalRuleWidget extends WidgetType {
   toDOM() {
     const hr = document.createElement('span');
-    hr.className = 'cm6-hr-widget';
+    hr.className = 'mk-hr-widget';
     return hr;
   }
 
@@ -124,8 +124,8 @@ function decorateInline(
       const fullTo = fullFrom + full.length;
 
       if (active) {
-        addMark(out, fullFrom, innerFrom, 'cm6-syntax-mark');
-        addMark(out, innerTo, fullTo, 'cm6-syntax-mark');
+        addMark(out, fullFrom, innerFrom, 'mk-syntax-mark');
+        addMark(out, innerTo, fullTo, 'mk-syntax-mark');
       } else {
         addHidden(out, fullFrom, innerFrom);
         addMark(out, innerFrom, innerTo, markClass);
@@ -134,13 +134,13 @@ function decorateInline(
     }
   };
 
-  decoratePair(/\*\*([^*\n]+)\*\*/g, 'cm6-strong', 2);
-  decoratePair(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, 'cm6-emphasis', 1);
-  decoratePair(/~~([^~\n]+)~~/g, 'cm6-strikethrough', 2);
-  decoratePair(/(?<!~)~([^~\n]+)~(?!~)/g, 'cm6-sub', 1);
-  decoratePair(/\^([^^\n]+)\^/g, 'cm6-sup', 1);
-  decoratePair(/`([^`\n]+)`/g, 'cm6-inline-code', 1);
-  decoratePair(/==([^=\n]+)==/g, 'cm6-highlight', 2);
+  decoratePair(/\*\*([^*\n]+)\*\*/g, 'mk-strong', 2);
+  decoratePair(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, 'mk-emphasis', 1);
+  decoratePair(/~~([^~\n]+)~~/g, 'mk-strikethrough', 2);
+  decoratePair(/(?<!~)~([^~\n]+)~(?!~)/g, 'mk-sub', 1);
+  decoratePair(/\^([^^\n]+)\^/g, 'mk-sup', 1);
+  decoratePair(/`([^`\n]+)`/g, 'mk-inline-code', 1);
+  decoratePair(/==([^=\n]+)==/g, 'mk-highlight', 2);
 
   let linkMatch: RegExpExecArray | null;
   const linkRe = /\[([^\]\n]+)\]\(([^)\n]+)\)/g;
@@ -159,11 +159,11 @@ function decorateInline(
     const end = urlFrom + url.length + 1; // )
 
     if (active) {
-      addMark(out, start, labelFrom, 'cm6-syntax-mark');
-      addMark(out, labelTo, end, 'cm6-syntax-mark');
+      addMark(out, start, labelFrom, 'mk-syntax-mark');
+      addMark(out, labelTo, end, 'mk-syntax-mark');
     } else {
       addHidden(out, start, labelFrom);
-      addMark(out, labelFrom, labelTo, 'cm6-link');
+      addMark(out, labelFrom, labelTo, 'mk-link');
       addHidden(out, labelTo, end);
     }
   }
@@ -179,7 +179,7 @@ function decorateLine(
   const isHr = /^ {0,3}([-*_])(?:\s*\1){2,}\s*$/.test(text);
   if (isHr) {
     if (active) {
-      addMark(out, lineFrom, lineTo, 'cm6-syntax-mark');
+      addMark(out, lineFrom, lineTo, 'mk-syntax-mark');
     } else {
       addReplacementWidget(out, lineFrom, lineTo, new HorizontalRuleWidget());
     }
@@ -191,11 +191,11 @@ function decorateLine(
     const prefixLen = headingMatch[0].length;
     const level = headingMatch[1].length;
     if (active) {
-      addMark(out, lineFrom, lineFrom + prefixLen, `cm6-syntax-mark cm6-heading cm6-heading-${level}`);
-      addMark(out, lineFrom + prefixLen, lineTo, `cm6-heading cm6-heading-${level}`);
+      addMark(out, lineFrom, lineFrom + prefixLen, `mk-syntax-mark mk-heading mk-heading-${level}`);
+      addMark(out, lineFrom + prefixLen, lineTo, `mk-heading mk-heading-${level}`);
     } else {
       addHidden(out, lineFrom, lineFrom + prefixLen);
-      addMark(out, lineFrom + prefixLen, lineTo, `cm6-heading cm6-heading-${level}`);
+      addMark(out, lineFrom + prefixLen, lineTo, `mk-heading mk-heading-${level}`);
     }
     decorateInline(out, lineFrom, text, active);
     return;
@@ -205,11 +205,11 @@ function decorateLine(
   if (quoteMatch) {
     const prefixLen = quoteMatch[1].length;
     if (active) {
-      addMark(out, lineFrom, lineFrom + prefixLen, 'cm6-syntax-mark');
+      addMark(out, lineFrom, lineFrom + prefixLen, 'mk-syntax-mark');
     } else {
-      out.push(Decoration.line({ class: 'cm6-blockquote-line' }).range(lineFrom));
+      out.push(Decoration.line({ class: 'mk-blockquote-line' }).range(lineFrom));
       addHidden(out, lineFrom, lineFrom + prefixLen);
-      addMark(out, lineFrom + prefixLen, lineTo, 'cm6-blockquote');
+      addMark(out, lineFrom + prefixLen, lineTo, 'mk-blockquote');
     }
     decorateInline(out, lineFrom, text, active);
     return;
@@ -222,10 +222,10 @@ function decorateLine(
     const checked = /\[[xX]\]/.test(taskMatch[2]);
     const start = lineFrom + indentLen;
     if (active) {
-      addMark(out, start, start + markerLen, 'cm6-syntax-mark');
+      addMark(out, start, start + markerLen, 'mk-syntax-mark');
     } else {
       out.push(Decoration.replace({ widget: new TaskPrefixWidget(checked) }).range(start, start + markerLen));
-      addMark(out, start + markerLen, lineTo, 'cm6-list-item');
+      addMark(out, start + markerLen, lineTo, 'mk-list-item');
     }
     decorateInline(out, lineFrom, text, active);
     return;
@@ -238,10 +238,10 @@ function decorateLine(
     const markerLen = orderedMatch[2].length;
     const start = lineFrom + indentLen;
     if (active) {
-      addMark(out, start, start + markerLen, 'cm6-syntax-mark');
+      addMark(out, start, start + markerLen, 'mk-syntax-mark');
     } else {
-      addWidget(out, start, start + markerLen, `${marker} `, 'cm6-list-prefix');
-      addMark(out, start + markerLen, lineTo, 'cm6-list-item');
+      addWidget(out, start, start + markerLen, `${marker} `, 'mk-list-prefix');
+      addMark(out, start + markerLen, lineTo, 'mk-list-item');
     }
     decorateInline(out, lineFrom, text, active);
     return;
@@ -254,10 +254,10 @@ function decorateLine(
     const marker = bulletMatch[2].trim();
     const start = lineFrom + indentLen;
     if (active) {
-      addMark(out, start, start + markerLen, 'cm6-syntax-mark');
+      addMark(out, start, start + markerLen, 'mk-syntax-mark');
     } else {
-      addWidget(out, start, start + markerLen, `${marker} `, 'cm6-list-prefix');
-      addMark(out, start + markerLen, lineTo, 'cm6-list-item');
+      addWidget(out, start, start + markerLen, `${marker} `, 'mk-list-prefix');
+      addMark(out, start + markerLen, lineTo, 'mk-list-item');
     }
     decorateInline(out, lineFrom, text, active);
     return;
@@ -322,59 +322,59 @@ export const livePreviewExtension = [
     decorations: plugin => plugin.decorations,
   }),
   EditorView.baseTheme({
-    '.cm6-syntax-mark': {
+    '.mk-syntax-mark': {
       color: '#9ca3af',
       fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
     },
-    '.cm6-heading-1': { fontSize: '2.25rem', fontWeight: '800' },
-    '.cm6-heading-2': { fontSize: '1.875rem', fontWeight: '700' },
-    '.cm6-heading-3': { fontSize: '1.5rem', fontWeight: '600' },
-    '.cm6-heading-4': { fontSize: '1.25rem', fontWeight: '600' },
-    '.cm6-heading-5': { fontSize: '1.125rem', fontWeight: '600' },
-    '.cm6-heading-6': { fontSize: '1rem', fontWeight: '600' },
-    '.cm6-strong': { fontWeight: '700' },
-    '.cm6-emphasis': { fontStyle: 'italic' },
-    '.cm6-strikethrough': { textDecoration: 'line-through' },
-    '.cm6-sub': {
+    '.mk-heading-1': { fontSize: '2.25rem', fontWeight: '800' },
+    '.mk-heading-2': { fontSize: '1.875rem', fontWeight: '700' },
+    '.mk-heading-3': { fontSize: '1.5rem', fontWeight: '600' },
+    '.mk-heading-4': { fontSize: '1.25rem', fontWeight: '600' },
+    '.mk-heading-5': { fontSize: '1.125rem', fontWeight: '600' },
+    '.mk-heading-6': { fontSize: '1rem', fontWeight: '600' },
+    '.mk-strong': { fontWeight: '700' },
+    '.mk-emphasis': { fontStyle: 'italic' },
+    '.mk-strikethrough': { textDecoration: 'line-through' },
+    '.mk-sub': {
       fontSize: '0.75em',
       verticalAlign: 'sub',
     },
-    '.cm6-sup': {
+    '.mk-sup': {
       fontSize: '0.75em',
       verticalAlign: 'super',
     },
-    '.cm6-highlight': {
+    '.mk-highlight': {
       backgroundColor: '#fef08a',
       borderRadius: '3px',
       padding: '0 1px',
     },
-    '.cm6-inline-code': {
+    '.mk-inline-code': {
       fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
       backgroundColor: 'var(--sidebar-bg)',
       border: '1px solid var(--border-color)',
       borderRadius: '4px',
       padding: '0 2px',
     },
-    '.cm6-link': {
+    '.mk-link': {
       color: 'var(--primary-color)',
       textDecoration: 'underline',
       textUnderlineOffset: '2px',
     },
-    '.cm6-blockquote-line': {
+    '.mk-blockquote-line': {
       borderLeft: '3px solid #d1d5db',
       paddingLeft: '12px',
     },
-    '.cm6-blockquote': {
+    '.mk-blockquote': {
       color: '#6b7280',
     },
-    '.cm6-list-prefix': {
+    '.mk-list-prefix': {
       color: '#6b7280',
       fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
     },
-    '.cm6-list-item': {
+    '.mk-list-item': {
       color: 'var(--text-color)',
     },
-    '.cm6-hr-widget': {
+    '.mk-hr-widget': {
       display: 'block',
       width: '100%',
       borderTop: '1px solid var(--border-color)',

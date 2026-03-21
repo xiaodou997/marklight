@@ -15,7 +15,7 @@ let hoverTimer: number | null = null;
 function createTooltip(): HTMLDivElement {
   if (tooltipEl) return tooltipEl;
   const el = document.createElement('div');
-  el.className = 'cm6-link-tooltip';
+  el.className = 'mk-link-tooltip';
   el.style.cssText = [
     'position: fixed',
     'z-index: 1000',
@@ -132,7 +132,7 @@ if (typeof document !== 'undefined') {
 export const linkTooltipExtension = EditorView.domEventHandlers({
   mousemove(event, view) {
     const target = event.target as HTMLElement;
-    if (!target.classList.contains('cm6-link')) {
+    if (!target.classList.contains('mk-link')) {
       if (!isInsideTooltip(target)) {
         if (hoverTimer) {
           window.clearTimeout(hoverTimer);
@@ -172,7 +172,7 @@ export const linkTooltipExtension = EditorView.domEventHandlers({
   },
   click(event, view) {
     const target = event.target as HTMLElement;
-    if (!target.classList.contains('cm6-link')) {
+    if (!target.classList.contains('mk-link')) {
       return false;
     }
 

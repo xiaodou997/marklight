@@ -15,15 +15,15 @@ class CodeBlockWidget extends WidgetType {
 
   toDOM() {
     const wrapper = document.createElement('div');
-    wrapper.className = 'cm6-codeblock-widget';
+    wrapper.className = 'mk-codeblock-widget';
 
     const header = document.createElement('div');
-    header.className = 'cm6-codeblock-header';
+    header.className = 'mk-codeblock-header';
     header.textContent = this.language || 'code';
     wrapper.appendChild(header);
 
     const pre = document.createElement('pre');
-    pre.className = 'cm6-codeblock-pre';
+    pre.className = 'mk-codeblock-pre';
     const codeEl = document.createElement('code');
     codeEl.className = this.language ? `language-${this.language}` : '';
     codeEl.textContent = this.code;
@@ -111,14 +111,14 @@ const codeBlockField = StateField.define<DecorationSet>({
 export const codeBlockWidgetExtension = [
   codeBlockField,
   EditorView.baseTheme({
-    '.cm6-codeblock-widget': {
+    '.mk-codeblock-widget': {
       border: '1px solid var(--border-color)',
       borderRadius: '8px',
       backgroundColor: 'var(--sidebar-bg)',
       margin: '8px 0',
       overflow: 'hidden',
     },
-    '.cm6-codeblock-header': {
+    '.mk-codeblock-header': {
       fontSize: '11px',
       color: '#6b7280',
       padding: '6px 10px',
@@ -126,7 +126,7 @@ export const codeBlockWidgetExtension = [
       fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
       textTransform: 'lowercase',
     },
-    '.cm6-codeblock-pre': {
+    '.mk-codeblock-pre': {
       margin: '0',
       padding: '10px 12px',
       overflowX: 'auto',

@@ -14,7 +14,7 @@ class MathBlockWidget extends WidgetType {
 
   toDOM() {
     const wrapper = document.createElement('div');
-    wrapper.className = 'cm6-math-widget';
+    wrapper.className = 'mk-math-widget';
     try {
       wrapper.innerHTML = katex.renderToString(this.latex, {
         throwOnError: false,
@@ -103,7 +103,7 @@ const mathBlockField = StateField.define<DecorationSet>({
 export const mathWidgetExtension = [
   mathBlockField,
   EditorView.baseTheme({
-    '.cm6-math-widget': {
+    '.mk-math-widget': {
       border: '1px solid var(--border-color)',
       borderRadius: '8px',
       backgroundColor: 'var(--sidebar-bg)',

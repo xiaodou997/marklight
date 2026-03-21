@@ -17,10 +17,10 @@ class TableWidget extends WidgetType {
 
   toDOM() {
     const wrap = document.createElement('div');
-    wrap.className = 'cm6-table-widget';
+    wrap.className = 'mk-table-widget';
 
     const tableEl = document.createElement('table');
-    tableEl.className = 'cm6-table';
+    tableEl.className = 'mk-table';
 
     const thead = document.createElement('thead');
     const hr = document.createElement('tr');
@@ -148,18 +148,18 @@ const tableField = StateField.define<DecorationSet>({
 export const tableWidgetExtension = [
   tableField,
   EditorView.baseTheme({
-    '.cm6-table-widget': {
+    '.mk-table-widget': {
       margin: '10px 0',
       overflowX: 'auto',
       border: '1px solid var(--border-color)',
       borderRadius: '8px',
     },
-    '.cm6-table': {
+    '.mk-table': {
       width: '100%',
       borderCollapse: 'collapse',
       backgroundColor: 'var(--bg-color)',
     },
-    '.cm6-table th': {
+    '.mk-table th': {
       backgroundColor: 'var(--sidebar-bg)',
       borderBottom: '1px solid var(--border-color)',
       borderRight: '1px solid var(--border-color)',
@@ -167,13 +167,13 @@ export const tableWidgetExtension = [
       padding: '8px 10px',
       fontWeight: '600',
     },
-    '.cm6-table td': {
+    '.mk-table td': {
       borderTop: '1px solid var(--border-color)',
       borderRight: '1px solid var(--border-color)',
       padding: '8px 10px',
       verticalAlign: 'top',
     },
-    '.cm6-table th:last-child, .cm6-table td:last-child': {
+    '.mk-table th:last-child, .mk-table td:last-child': {
       borderRight: 'none',
     },
   }),

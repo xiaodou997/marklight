@@ -93,15 +93,15 @@ class MermaidWidget extends WidgetType {
 
   toDOM() {
     const wrap = document.createElement('div');
-    wrap.className = 'cm6-mermaid-widget';
+    wrap.className = 'mk-mermaid-widget';
 
     const badge = document.createElement('div');
-    badge.className = 'cm6-mermaid-badge';
+    badge.className = 'mk-mermaid-badge';
     badge.textContent = this.lang || 'mermaid';
     wrap.appendChild(badge);
 
     const container = document.createElement('div');
-    container.className = 'cm6-mermaid-content';
+    container.className = 'mk-mermaid-content';
     wrap.appendChild(container);
 
     const raw = this.code.trim();
@@ -117,7 +117,7 @@ class MermaidWidget extends WidgetType {
     void (async () => {
       try {
         const mermaid = await ensureMermaidInit();
-        const id = `cm6-mermaid-${Math.random().toString(36).slice(2, 11)}`;
+        const id = `mk-mermaid-${Math.random().toString(36).slice(2, 11)}`;
         const { svg } = await mermaid.render(id, renderCode);
         container.innerHTML = svg;
       } catch (error) {
@@ -207,14 +207,14 @@ const mermaidField = StateField.define<DecorationSet>({
 export const mermaidWidgetExtension = [
   mermaidField,
   EditorView.baseTheme({
-    '.cm6-mermaid-widget': {
+    '.mk-mermaid-widget': {
       margin: '10px 0',
       border: '1px solid var(--border-color)',
       borderRadius: '8px',
       backgroundColor: 'var(--bg-color)',
       overflow: 'hidden',
     },
-    '.cm6-mermaid-badge': {
+    '.mk-mermaid-badge': {
       fontSize: '11px',
       color: '#6b7280',
       padding: '6px 10px',
@@ -223,7 +223,7 @@ export const mermaidWidgetExtension = [
       fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
       textTransform: 'lowercase',
     },
-    '.cm6-mermaid-content': {
+    '.mk-mermaid-content': {
       padding: '10px',
       overflowX: 'auto',
       color: '#ef4444',

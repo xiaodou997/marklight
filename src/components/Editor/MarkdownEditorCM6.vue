@@ -4,10 +4,7 @@
     style="background-color: var(--bg-color);"
     @click="handleContainerClick"
   >
-    <teleport to="head">
-      <style :id="customCssId">{{ settingsStore.settings.customEditorCSS }}</style>
-    </teleport>
-    <div ref="editorRef" class="cm6-editor h-full px-12 py-8 overflow-y-auto outline-none"></div>
+    <div ref="editorRef" class="mk-editor h-full px-12 py-8 overflow-y-auto outline-none"></div>
 
     <BubbleMenu ref="bubbleMenuRef" :on-action="onBubbleMenuAction" />
     <SearchBar
@@ -61,6 +58,19 @@ const fileStore = useFileStore();
 const settingsStore = useSettingsStore();
 const editorRef = ref<HTMLElement | null>(null);
 const customCssId = 'marklight-custom-editor-css';
+
+function injectCustomCSS(css: string) {
+  let el = document.getElementById(customCssId) as HTMLStyleElement | null;
+  if (!el) {
+    el = document.createElement('style');
+    el.id = customCssId;
+    document.head.appendChild(el);
+  }
+  el.textContent = css;
+}
+
+watch(() => settingsStore.settings.customEditorCSS, injectCustomCSS, { immediate: true });
+
 const searchBarRef = ref<InstanceType<typeof SearchBar> | null>(null);
 const bubbleMenuRef = ref<InstanceType<typeof BubbleMenu> | null>(null);
 

@@ -48,16 +48,16 @@ class ImageWidget extends WidgetType {
 
   toDOM() {
     const wrap = document.createElement('span');
-    wrap.className = 'cm6-image-widget';
+    wrap.className = 'mk-image-widget';
 
     const img = document.createElement('img');
-    img.className = 'cm6-image-widget-el';
+    img.className = 'mk-image-widget-el';
     img.alt = this.alt;
     img.src = resolveImageSrc(this.src, this.currentFilePath);
     img.loading = 'lazy';
 
     const caption = document.createElement('span');
-    caption.className = 'cm6-image-widget-caption';
+    caption.className = 'mk-image-widget-caption';
     caption.textContent = this.alt || this.src;
 
     wrap.appendChild(img);
@@ -130,7 +130,7 @@ export function createImageWidgetExtension(fileStore: ReturnType<typeof useFileS
       decorations: plugin => plugin.decorations,
     }),
     EditorView.baseTheme({
-      '.cm6-image-widget': {
+      '.mk-image-widget': {
         display: 'inline-flex',
         flexDirection: 'column',
         gap: '6px',
@@ -141,13 +141,13 @@ export function createImageWidgetExtension(fileStore: ReturnType<typeof useFileS
         padding: '6px',
         backgroundColor: 'var(--bg-color)',
       },
-      '.cm6-image-widget-el': {
+      '.mk-image-widget-el': {
         maxWidth: '100%',
         maxHeight: '520px',
         objectFit: 'contain',
         borderRadius: '6px',
       },
-      '.cm6-image-widget-caption': {
+      '.mk-image-widget-caption': {
         fontSize: '12px',
         color: '#6b7280',
         lineHeight: '1.3',
