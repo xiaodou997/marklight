@@ -1,5 +1,5 @@
-import { RangeSetBuilder } from '@codemirror/state';
-import { Decoration, EditorView, ViewPlugin, type DecorationSet, type ViewUpdate, WidgetType } from '@codemirror/view';
+import { RangeSetBuilder, StateField, type EditorState } from '@codemirror/state';
+import { Decoration, EditorView, type DecorationSet, WidgetType } from '@codemirror/view';
 
 type ParsedTable = {
   headers: string[];
@@ -9,6 +9,10 @@ type ParsedTable = {
 class TableWidget extends WidgetType {
   constructor(private readonly table: ParsedTable) {
     super();
+  }
+
+  eq(other: TableWidget) {
+    return JSON.stringify(this.table) === JSON.stringify(other.table);
   }
 
   toDOM() {
@@ -45,7 +49,7 @@ class TableWidget extends WidgetType {
   }
 }
 
-function getActiveLines(state: EditorView['state']) {
+function getActiveLines(state: EditorState) {
   const lines = new Set<number>();
   for (const range of state.selection.ranges) {
     const fromLine = state.doc.lineAt(range.from).number;
@@ -81,71 +85,68 @@ function tryParseTable(lines: string[]): ParsedTable | null {
   return { headers, rows };
 }
 
-function buildDecorations(view: EditorView): DecorationSet {
+function buildDecorations(state: EditorState): DecorationSet {
   const builder = new RangeSetBuilder<Decoration>();
-  const { state } = view;
   const activeLines = getActiveLines(state);
+  const doc = state.doc;
 
-  for (const range of view.visibleRanges) {
-    let line = state.doc.lineAt(range.from);
-    while (line.from <= range.to) {
-      if (!line.text.includes('|')) {
-        if (line.to >= range.to) break;
-        line = state.doc.line(line.number + 1);
-        continue;
-      }
-
-      const blockLines: string[] = [];
-      const blockNumbers: number[] = [];
-      let endLine = line;
-      while (endLine.text.includes('|')) {
-        blockLines.push(endLine.text);
-        blockNumbers.push(endLine.number);
-        if (endLine.to >= range.to) break;
-        const next = state.doc.line(endLine.number + 1);
-        if (!next.text.includes('|')) break;
-        endLine = next;
-      }
-
-      const parsed = tryParseTable(blockLines);
-      if (parsed) {
-        const hasActive = blockNumbers.some(n => activeLines.has(n));
-        if (!hasActive) {
-          builder.add(
-            line.from,
-            endLine.to,
-            Decoration.replace({
-              widget: new TableWidget(parsed),
-              inclusive: false,
-            })
-          );
-        }
-      }
-
-      if (endLine.to >= range.to) break;
-      line = state.doc.line(endLine.number + 1);
+  let line = doc.line(1);
+  while (line.number <= doc.lines) {
+    if (!line.text.includes('|')) {
+      if (line.number >= doc.lines) break;
+      line = doc.line(line.number + 1);
+      continue;
     }
+
+    const blockLines: string[] = [];
+    const blockNumbers: number[] = [];
+    let endLine = line;
+    while (endLine.text.includes('|')) {
+      blockLines.push(endLine.text);
+      blockNumbers.push(endLine.number);
+      if (endLine.number >= doc.lines) break;
+      const next = doc.line(endLine.number + 1);
+      if (!next.text.includes('|')) break;
+      endLine = next;
+    }
+
+    const parsed = tryParseTable(blockLines);
+    if (parsed) {
+      const hasActive = blockNumbers.some(n => activeLines.has(n));
+      if (!hasActive) {
+        builder.add(
+          line.from,
+          endLine.to,
+          Decoration.replace({
+            widget: new TableWidget(parsed),
+            inclusive: false,
+          })
+        );
+      }
+    }
+
+    if (endLine.number >= doc.lines) break;
+    line = doc.line(endLine.number + 1);
   }
 
   return builder.finish();
 }
 
+const tableField = StateField.define<DecorationSet>({
+  create(state) {
+    return buildDecorations(state);
+  },
+  update(oldDecos, tr) {
+    if (tr.docChanged || tr.selection) {
+      return buildDecorations(tr.state);
+    }
+    return oldDecos;
+  },
+  provide: f => EditorView.decorations.from(f),
+});
+
 export const tableWidgetExtension = [
-  ViewPlugin.fromClass(class {
-    decorations: DecorationSet;
-
-    constructor(view: EditorView) {
-      this.decorations = buildDecorations(view);
-    }
-
-    update(update: ViewUpdate) {
-      if (update.docChanged || update.selectionSet || update.viewportChanged) {
-        this.decorations = buildDecorations(update.view);
-      }
-    }
-  }, {
-    decorations: plugin => plugin.decorations,
-  }),
+  tableField,
   EditorView.baseTheme({
     '.cm6-table-widget': {
       margin: '10px 0',

@@ -255,12 +255,14 @@ onMounted(() => {
     }),
     EditorView.theme({
       '&': { height: '100%' },
+      '&.cm-focused': { outline: 'none' },
       '.cm-scroller': { overflow: 'auto' },
       '.cm-content': {
         fontFamily: settingsStore.settings.fontFamily,
         fontSize: `${settingsStore.settings.fontSize}px`,
         lineHeight: String(settingsStore.settings.lineHeight),
         color: 'var(--text-color)',
+        outline: 'none',
       },
       '.cm-gutters': {
         backgroundColor: 'var(--bg-color)',

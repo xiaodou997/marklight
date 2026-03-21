@@ -1,5 +1,5 @@
-import { RangeSetBuilder } from '@codemirror/state';
-import { Decoration, EditorView, ViewPlugin, type DecorationSet, type ViewUpdate, WidgetType } from '@codemirror/view';
+import { RangeSetBuilder, StateField, type EditorState } from '@codemirror/state';
+import { Decoration, EditorView, type DecorationSet, WidgetType } from '@codemirror/view';
 import type mermaidType from 'mermaid';
 
 let mermaidLoader: Promise<typeof mermaidType> | null = null;
@@ -87,6 +87,10 @@ class MermaidWidget extends WidgetType {
     super();
   }
 
+  eq(other: MermaidWidget) {
+    return this.code === other.code && this.lang === other.lang;
+  }
+
   toDOM() {
     const wrap = document.createElement('div');
     wrap.className = 'cm6-mermaid-widget';
@@ -125,7 +129,7 @@ class MermaidWidget extends WidgetType {
   }
 }
 
-function getActiveLines(state: EditorView['state']) {
+function getActiveLines(state: EditorState) {
   const lines = new Set<number>();
   for (const range of state.selection.ranges) {
     const fromLine = state.doc.lineAt(range.from).number;
@@ -135,76 +139,73 @@ function getActiveLines(state: EditorView['state']) {
   return lines;
 }
 
-function buildDecorations(view: EditorView): DecorationSet {
+function buildDecorations(state: EditorState): DecorationSet {
   const builder = new RangeSetBuilder<Decoration>();
-  const { state } = view;
   const activeLines = getActiveLines(state);
+  const doc = state.doc;
 
-  for (const range of view.visibleRanges) {
-    let line = state.doc.lineAt(range.from);
-    let open: { from: number; lineNo: number; lang: string } | null = null;
-    let content: string[] = [];
+  let line = doc.line(1);
+  let open: { from: number; lineNo: number; lang: string } | null = null;
+  let content: string[] = [];
 
-    while (line.from <= range.to) {
-      const fence = line.text.match(/^```([a-zA-Z0-9_-]+)?\s*$/);
-      if (fence) {
-        if (!open) {
-          const lang = (fence[1] || '').toLowerCase();
-          open = { from: line.from, lineNo: line.number, lang };
-          content = [];
-        } else {
-          const closeLineNo = line.number;
-          const mermaidLike = ['mermaid', 'flow', 'seq'].includes(open.lang);
-          if (mermaidLike) {
-            let hasActive = false;
-            for (let n = open.lineNo; n <= closeLineNo; n++) {
-              if (activeLines.has(n)) {
-                hasActive = true;
-                break;
-              }
-            }
-            if (!hasActive) {
-              builder.add(
-                open.from,
-                line.to,
-                Decoration.replace({
-                  widget: new MermaidWidget(content.join('\n'), open.lang),
-                  inclusive: false,
-                })
-              );
+  while (line.number <= doc.lines) {
+    const fence = line.text.match(/^```([a-zA-Z0-9_-]+)?\s*$/);
+    if (fence) {
+      if (!open) {
+        const lang = (fence[1] || '').toLowerCase();
+        open = { from: line.from, lineNo: line.number, lang };
+        content = [];
+      } else {
+        const closeLineNo = line.number;
+        const mermaidLike = ['mermaid', 'flow', 'seq'].includes(open.lang);
+        if (mermaidLike) {
+          let hasActive = false;
+          for (let n = open.lineNo; n <= closeLineNo; n++) {
+            if (activeLines.has(n)) {
+              hasActive = true;
+              break;
             }
           }
-          open = null;
-          content = [];
+          if (!hasActive) {
+            builder.add(
+              open.from,
+              line.to,
+              Decoration.replace({
+                widget: new MermaidWidget(content.join('\n'), open.lang),
+                inclusive: false,
+              })
+            );
+          }
         }
-      } else if (open) {
-        content.push(line.text);
+        open = null;
+        content = [];
       }
-
-      if (line.to >= range.to) break;
-      line = state.doc.line(line.number + 1);
+    } else if (open) {
+      content.push(line.text);
     }
+
+    if (line.number >= doc.lines) break;
+    line = doc.line(line.number + 1);
   }
 
   return builder.finish();
 }
 
+const mermaidField = StateField.define<DecorationSet>({
+  create(state) {
+    return buildDecorations(state);
+  },
+  update(oldDecos, tr) {
+    if (tr.docChanged || tr.selection) {
+      return buildDecorations(tr.state);
+    }
+    return oldDecos;
+  },
+  provide: f => EditorView.decorations.from(f),
+});
+
 export const mermaidWidgetExtension = [
-  ViewPlugin.fromClass(class {
-    decorations: DecorationSet;
-
-    constructor(view: EditorView) {
-      this.decorations = buildDecorations(view);
-    }
-
-    update(update: ViewUpdate) {
-      if (update.docChanged || update.selectionSet || update.viewportChanged) {
-        this.decorations = buildDecorations(update.view);
-      }
-    }
-  }, {
-    decorations: plugin => plugin.decorations,
-  }),
+  mermaidField,
   EditorView.baseTheme({
     '.cm6-mermaid-widget': {
       margin: '10px 0',

@@ -1,5 +1,5 @@
-import { RangeSetBuilder } from '@codemirror/state';
-import { Decoration, EditorView, ViewPlugin, type DecorationSet, type ViewUpdate, WidgetType } from '@codemirror/view';
+import { RangeSetBuilder, StateField, type EditorState } from '@codemirror/state';
+import { Decoration, EditorView, type DecorationSet, WidgetType } from '@codemirror/view';
 
 class CodeBlockWidget extends WidgetType {
   constructor(
@@ -7,6 +7,10 @@ class CodeBlockWidget extends WidgetType {
     private readonly language: string
   ) {
     super();
+  }
+
+  eq(other: CodeBlockWidget) {
+    return this.code === other.code && this.language === other.language;
   }
 
   toDOM() {
@@ -30,7 +34,7 @@ class CodeBlockWidget extends WidgetType {
   }
 }
 
-function getActiveLines(state: EditorView['state']) {
+function getActiveLines(state: EditorState) {
   const lines = new Set<number>();
   for (const range of state.selection.ranges) {
     const fromLine = state.doc.lineAt(range.from).number;
@@ -40,75 +44,72 @@ function getActiveLines(state: EditorView['state']) {
   return lines;
 }
 
-function buildDecorations(view: EditorView): DecorationSet {
+function buildDecorations(state: EditorState): DecorationSet {
   const builder = new RangeSetBuilder<Decoration>();
-  const { state } = view;
   const activeLines = getActiveLines(state);
+  const doc = state.doc;
 
-  for (const range of view.visibleRanges) {
-    let line = state.doc.lineAt(range.from);
-    let openLine: { from: number; lineNo: number; lang: string } | null = null;
-    let content: string[] = [];
+  let line = doc.line(1);
+  let openLine: { from: number; lineNo: number; lang: string } | null = null;
+  let content: string[] = [];
 
-    while (line.from <= range.to) {
-      const fence = line.text.match(/^```(\w+)?\s*$/);
-      if (fence) {
-        if (!openLine) {
-          openLine = { from: line.from, lineNo: line.number, lang: (fence[1] || '').toLowerCase() };
-          content = [];
-        } else {
-          const closeLineNo = line.number;
-          const skip = ['mermaid', 'flow', 'seq'].includes(openLine.lang);
-          let hasActive = false;
-          for (let n = openLine.lineNo; n <= closeLineNo; n++) {
-            if (activeLines.has(n)) {
-              hasActive = true;
-              break;
-            }
+  while (line.number <= doc.lines) {
+    const fence = line.text.match(/^```(\w+)?\s*$/);
+    if (fence) {
+      if (!openLine) {
+        openLine = { from: line.from, lineNo: line.number, lang: (fence[1] || '').toLowerCase() };
+        content = [];
+      } else {
+        const closeLineNo = line.number;
+        const skip = ['mermaid', 'flow', 'seq'].includes(openLine.lang);
+        let hasActive = false;
+        for (let n = openLine.lineNo; n <= closeLineNo; n++) {
+          if (activeLines.has(n)) {
+            hasActive = true;
+            break;
           }
-
-          if (!hasActive && !skip) {
-            builder.add(
-              openLine.from,
-              line.to,
-              Decoration.replace({
-                widget: new CodeBlockWidget(content.join('\n'), openLine.lang),
-                inclusive: false,
-              })
-            );
-          }
-
-          openLine = null;
-          content = [];
         }
-      } else if (openLine) {
-        content.push(line.text);
-      }
 
-      if (line.to >= range.to) break;
-      line = state.doc.line(line.number + 1);
+        if (!hasActive && !skip) {
+          builder.add(
+            openLine.from,
+            line.to,
+            Decoration.replace({
+              widget: new CodeBlockWidget(content.join('\n'), openLine.lang),
+              inclusive: false,
+            })
+          );
+        }
+
+        openLine = null;
+        content = [];
+      }
+    } else if (openLine) {
+      content.push(line.text);
     }
+
+    if (line.number >= doc.lines) break;
+    line = doc.line(line.number + 1);
   }
 
   return builder.finish();
 }
 
+const codeBlockField = StateField.define<DecorationSet>({
+  create(state) {
+    return buildDecorations(state);
+  },
+  update(oldDecos, tr) {
+    if (tr.docChanged || tr.selection) {
+      return buildDecorations(tr.state);
+    }
+    return oldDecos;
+  },
+  provide: f => EditorView.decorations.from(f),
+});
+
 export const codeBlockWidgetExtension = [
-  ViewPlugin.fromClass(class {
-    decorations: DecorationSet;
-
-    constructor(view: EditorView) {
-      this.decorations = buildDecorations(view);
-    }
-
-    update(update: ViewUpdate) {
-      if (update.docChanged || update.selectionSet || update.viewportChanged) {
-        this.decorations = buildDecorations(update.view);
-      }
-    }
-  }, {
-    decorations: plugin => plugin.decorations,
-  }),
+  codeBlockField,
   EditorView.baseTheme({
     '.cm6-codeblock-widget': {
       border: '1px solid var(--border-color)',

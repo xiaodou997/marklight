@@ -1,4 +1,4 @@
-import { RangeSetBuilder } from '@codemirror/state';
+import { type Range } from '@codemirror/state';
 import { Decoration, EditorView, ViewPlugin, type DecorationSet, type ViewUpdate, WidgetType } from '@codemirror/view';
 
 class PrefixWidget extends WidgetType {
@@ -15,6 +15,10 @@ class PrefixWidget extends WidgetType {
     span.textContent = this.text;
     return span;
   }
+
+  eq(other: PrefixWidget) {
+    return this.text === other.text && this.className === other.className;
+  }
 }
 
 class TaskPrefixWidget extends WidgetType {
@@ -29,6 +33,10 @@ class TaskPrefixWidget extends WidgetType {
     span.textContent = this.checked ? '☑ ' : '☐ ';
     return span;
   }
+
+  eq(other: TaskPrefixWidget) {
+    return this.checked === other.checked;
+  }
 }
 
 class HorizontalRuleWidget extends WidgetType {
@@ -37,9 +45,13 @@ class HorizontalRuleWidget extends WidgetType {
     hr.className = 'cm6-hr-widget';
     return hr;
   }
+
+  eq() {
+    return true;
+  }
 }
 
-function getActiveLines(state: Parameters<typeof buildDecorations>[0]['state']): Set<number> {
+function getActiveLines(state: EditorView['state']): Set<number> {
   const lines = new Set<number>();
   for (const range of state.selection.ranges) {
     const fromLine = state.doc.lineAt(range.from).number;
@@ -51,48 +63,50 @@ function getActiveLines(state: Parameters<typeof buildDecorations>[0]['state']):
   return lines;
 }
 
+// ── 辅助函数：往数组 push decoration（不要求顺序） ──
+
 function addMark(
-  builder: RangeSetBuilder<Decoration>,
+  out: Range<Decoration>[],
   from: number,
   to: number,
   className: string
 ) {
   if (from >= to) return;
-  builder.add(from, to, Decoration.mark({ class: className }));
+  out.push(Decoration.mark({ class: className }).range(from, to));
 }
 
 function addHidden(
-  builder: RangeSetBuilder<Decoration>,
+  out: Range<Decoration>[],
   from: number,
   to: number
 ) {
   if (from >= to) return;
-  builder.add(from, to, Decoration.replace({}));
+  out.push(Decoration.replace({}).range(from, to));
 }
 
 function addWidget(
-  builder: RangeSetBuilder<Decoration>,
+  out: Range<Decoration>[],
   from: number,
   to: number,
   text: string,
   className: string
 ) {
   if (from >= to) return;
-  builder.add(from, to, Decoration.replace({ widget: new PrefixWidget(text, className) }));
+  out.push(Decoration.replace({ widget: new PrefixWidget(text, className) }).range(from, to));
 }
 
 function addReplacementWidget(
-  builder: RangeSetBuilder<Decoration>,
+  out: Range<Decoration>[],
   from: number,
   to: number,
   widget: WidgetType
 ) {
   if (from >= to) return;
-  builder.add(from, to, Decoration.replace({ widget }));
+  out.push(Decoration.replace({ widget }).range(from, to));
 }
 
 function decorateInline(
-  builder: RangeSetBuilder<Decoration>,
+  out: Range<Decoration>[],
   lineFrom: number,
   text: string,
   active: boolean
@@ -110,12 +124,12 @@ function decorateInline(
       const fullTo = fullFrom + full.length;
 
       if (active) {
-        addMark(builder, fullFrom, innerFrom, 'cm6-syntax-mark');
-        addMark(builder, innerTo, fullTo, 'cm6-syntax-mark');
+        addMark(out, fullFrom, innerFrom, 'cm6-syntax-mark');
+        addMark(out, innerTo, fullTo, 'cm6-syntax-mark');
       } else {
-        addHidden(builder, fullFrom, innerFrom);
-        addHidden(builder, innerTo, fullTo);
-        addMark(builder, innerFrom, innerTo, markClass);
+        addHidden(out, fullFrom, innerFrom);
+        addMark(out, innerFrom, innerTo, markClass);
+        addHidden(out, innerTo, fullTo);
       }
     }
   };
@@ -145,18 +159,18 @@ function decorateInline(
     const end = urlFrom + url.length + 1; // )
 
     if (active) {
-      addMark(builder, start, labelFrom, 'cm6-syntax-mark');
-      addMark(builder, labelTo, end, 'cm6-syntax-mark');
+      addMark(out, start, labelFrom, 'cm6-syntax-mark');
+      addMark(out, labelTo, end, 'cm6-syntax-mark');
     } else {
-      addHidden(builder, start, labelFrom);
-      addHidden(builder, labelTo, end);
-      addMark(builder, labelFrom, labelTo, 'cm6-link');
+      addHidden(out, start, labelFrom);
+      addMark(out, labelFrom, labelTo, 'cm6-link');
+      addHidden(out, labelTo, end);
     }
   }
 }
 
 function decorateLine(
-  builder: RangeSetBuilder<Decoration>,
+  out: Range<Decoration>[],
   lineFrom: number,
   lineTo: number,
   text: string,
@@ -165,9 +179,9 @@ function decorateLine(
   const isHr = /^ {0,3}([-*_])(?:\s*\1){2,}\s*$/.test(text);
   if (isHr) {
     if (active) {
-      addMark(builder, lineFrom, lineTo, 'cm6-syntax-mark');
+      addMark(out, lineFrom, lineTo, 'cm6-syntax-mark');
     } else {
-      addReplacementWidget(builder, lineFrom, lineTo, new HorizontalRuleWidget());
+      addReplacementWidget(out, lineFrom, lineTo, new HorizontalRuleWidget());
     }
     return;
   }
@@ -177,12 +191,13 @@ function decorateLine(
     const prefixLen = headingMatch[0].length;
     const level = headingMatch[1].length;
     if (active) {
-      addMark(builder, lineFrom, lineFrom + prefixLen, 'cm6-syntax-mark');
+      addMark(out, lineFrom, lineFrom + prefixLen, 'cm6-syntax-mark');
+      addMark(out, lineFrom + prefixLen, lineTo, `cm6-heading cm6-heading-${level}`);
     } else {
-      addHidden(builder, lineFrom, lineFrom + prefixLen);
-      addMark(builder, lineFrom + prefixLen, lineTo, `cm6-heading cm6-heading-${level}`);
+      addHidden(out, lineFrom, lineFrom + prefixLen);
+      addMark(out, lineFrom + prefixLen, lineTo, `cm6-heading cm6-heading-${level}`);
     }
-    decorateInline(builder, lineFrom, text, active);
+    decorateInline(out, lineFrom, text, active);
     return;
   }
 
@@ -190,12 +205,12 @@ function decorateLine(
   if (quoteMatch) {
     const prefixLen = quoteMatch[1].length;
     if (active) {
-      addMark(builder, lineFrom, lineFrom + prefixLen, 'cm6-syntax-mark');
+      addMark(out, lineFrom, lineFrom + prefixLen, 'cm6-syntax-mark');
     } else {
-      addWidget(builder, lineFrom, lineFrom + prefixLen, '│ ', 'cm6-quote-prefix');
-      addMark(builder, lineFrom + prefixLen, lineTo, 'cm6-blockquote');
+      addWidget(out, lineFrom, lineFrom + prefixLen, ' ', 'cm6-quote-prefix');
+      addMark(out, lineFrom + prefixLen, lineTo, 'cm6-blockquote');
     }
-    decorateInline(builder, lineFrom, text, active);
+    decorateInline(out, lineFrom, text, active);
     return;
   }
 
@@ -206,12 +221,12 @@ function decorateLine(
     const checked = /\[[xX]\]/.test(taskMatch[2]);
     const start = lineFrom + indentLen;
     if (active) {
-      addMark(builder, start, start + markerLen, 'cm6-syntax-mark');
+      addMark(out, start, start + markerLen, 'cm6-syntax-mark');
     } else {
-      builder.add(start, start + markerLen, Decoration.replace({ widget: new TaskPrefixWidget(checked) }));
-      addMark(builder, start + markerLen, lineTo, 'cm6-list-item');
+      out.push(Decoration.replace({ widget: new TaskPrefixWidget(checked) }).range(start, start + markerLen));
+      addMark(out, start + markerLen, lineTo, 'cm6-list-item');
     }
-    decorateInline(builder, lineFrom, text, active);
+    decorateInline(out, lineFrom, text, active);
     return;
   }
 
@@ -222,12 +237,12 @@ function decorateLine(
     const markerLen = orderedMatch[2].length;
     const start = lineFrom + indentLen;
     if (active) {
-      addMark(builder, start, start + markerLen, 'cm6-syntax-mark');
+      addMark(out, start, start + markerLen, 'cm6-syntax-mark');
     } else {
-      addWidget(builder, start, start + markerLen, `${marker} `, 'cm6-list-prefix');
-      addMark(builder, start + markerLen, lineTo, 'cm6-list-item');
+      addWidget(out, start, start + markerLen, `${marker} `, 'cm6-list-prefix');
+      addMark(out, start + markerLen, lineTo, 'cm6-list-item');
     }
-    decorateInline(builder, lineFrom, text, active);
+    decorateInline(out, lineFrom, text, active);
     return;
   }
 
@@ -238,50 +253,55 @@ function decorateLine(
     const marker = bulletMatch[2].trim();
     const start = lineFrom + indentLen;
     if (active) {
-      addMark(builder, start, start + markerLen, 'cm6-syntax-mark');
+      addMark(out, start, start + markerLen, 'cm6-syntax-mark');
     } else {
-      addWidget(builder, start, start + markerLen, `${marker} `, 'cm6-list-prefix');
-      addMark(builder, start + markerLen, lineTo, 'cm6-list-item');
+      addWidget(out, start, start + markerLen, `${marker} `, 'cm6-list-prefix');
+      addMark(out, start + markerLen, lineTo, 'cm6-list-item');
     }
-    decorateInline(builder, lineFrom, text, active);
+    decorateInline(out, lineFrom, text, active);
     return;
   }
 
-  decorateInline(builder, lineFrom, text, active);
+  decorateInline(out, lineFrom, text, active);
 }
 
 function buildDecorations(view: EditorView): DecorationSet {
-  const { state } = view;
-  const activeLines = getActiveLines(state);
-  const builder = new RangeSetBuilder<Decoration>();
+  try {
+    const { state } = view;
+    const activeLines = getActiveLines(state);
+    const decos: Range<Decoration>[] = [];
 
-  for (const range of view.visibleRanges) {
-    let line = state.doc.lineAt(range.from);
-    let inFence = false;
-    let inMathBlock = false;
-    while (line.from <= range.to) {
-      const active = activeLines.has(line.number);
-      const trimmed = line.text.trim();
-      const isFence = /^```/.test(trimmed);
-      const isMathFence = trimmed === '$$';
+    for (const range of view.visibleRanges) {
+      let line = state.doc.lineAt(range.from);
+      let inFence = false;
+      let inMathBlock = false;
+      while (line.from <= range.to) {
+        const active = activeLines.has(line.number);
+        const trimmed = line.text.trim();
+        const isFence = /^```/.test(trimmed);
+        const isMathFence = trimmed === '$$';
 
-      if (isFence) {
-        inFence = !inFence;
+        if (isFence) {
+          inFence = !inFence;
+        }
+        if (isMathFence && !inFence) {
+          inMathBlock = !inMathBlock;
+        }
+
+        if (!inFence && !inMathBlock && !isFence && !isMathFence) {
+          decorateLine(decos, line.from, line.to, line.text, active);
+        }
+
+        if (line.to >= range.to) break;
+        line = state.doc.line(line.number + 1);
       }
-      if (isMathFence && !inFence) {
-        inMathBlock = !inMathBlock;
-      }
-
-      if (!inFence && !inMathBlock && !isFence && !isMathFence) {
-        decorateLine(builder, line.from, line.to, line.text, active);
-      }
-
-      if (line.to >= range.to) break;
-      line = state.doc.line(line.number + 1);
     }
-  }
 
-  return builder.finish();
+    return Decoration.set(decos, true);
+  } catch (e) {
+    console.error('[live-preview] buildDecorations failed:', e);
+    return Decoration.none;
+  }
 }
 
 export const livePreviewExtension = [
@@ -340,8 +360,9 @@ export const livePreviewExtension = [
       textUnderlineOffset: '2px',
     },
     '.cm6-quote-prefix': {
-      color: '#9ca3af',
-      fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+      borderLeft: '3px solid #d1d5db',
+      paddingLeft: '8px',
+      marginLeft: '2px',
     },
     '.cm6-blockquote': {
       color: '#6b7280',
