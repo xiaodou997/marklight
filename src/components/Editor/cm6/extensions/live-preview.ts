@@ -191,7 +191,7 @@ function decorateLine(
     const prefixLen = headingMatch[0].length;
     const level = headingMatch[1].length;
     if (active) {
-      addMark(out, lineFrom, lineFrom + prefixLen, 'cm6-syntax-mark');
+      addMark(out, lineFrom, lineFrom + prefixLen, `cm6-syntax-mark cm6-heading cm6-heading-${level}`);
       addMark(out, lineFrom + prefixLen, lineTo, `cm6-heading cm6-heading-${level}`);
     } else {
       addHidden(out, lineFrom, lineFrom + prefixLen);
@@ -207,7 +207,8 @@ function decorateLine(
     if (active) {
       addMark(out, lineFrom, lineFrom + prefixLen, 'cm6-syntax-mark');
     } else {
-      addWidget(out, lineFrom, lineFrom + prefixLen, ' ', 'cm6-quote-prefix');
+      out.push(Decoration.line({ class: 'cm6-blockquote-line' }).range(lineFrom));
+      addHidden(out, lineFrom, lineFrom + prefixLen);
       addMark(out, lineFrom + prefixLen, lineTo, 'cm6-blockquote');
     }
     decorateInline(out, lineFrom, text, active);
@@ -359,10 +360,9 @@ export const livePreviewExtension = [
       textDecoration: 'underline',
       textUnderlineOffset: '2px',
     },
-    '.cm6-quote-prefix': {
+    '.cm6-blockquote-line': {
       borderLeft: '3px solid #d1d5db',
-      paddingLeft: '8px',
-      marginLeft: '2px',
+      paddingLeft: '12px',
     },
     '.cm6-blockquote': {
       color: '#6b7280',

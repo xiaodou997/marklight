@@ -39,6 +39,8 @@ export interface Settings {
   wechatTheme: string;
   /** 自定义快捷键 */
   customShortcuts: Record<string, string>;
+  /** 自定义编辑器 CSS（用于覆盖渲染样式） */
+  customEditorCSS: string;
   /** 配置版本号 (用于迁移) */
   configVersion: number;
 }
@@ -63,6 +65,7 @@ const DEFAULT_SETTINGS: Settings = {
   lineHeight: 1.6,
   wechatTheme: 'blue',
   customShortcuts: {},
+  customEditorCSS: '',
   configVersion: 2,
 };
 

@@ -136,11 +136,14 @@ function toggleSourceMode() {
   isSourceMode.value = !isSourceMode.value;
 }
 
-function editorAction(_action: string) {
+function editorAction(action: string) {
   if (!editorRef.value || activeViewMode.value !== 'editor') return;
-  const view = (editorRef.value as any).getEditorView?.();
+  const editor = editorRef.value as any;
+  const view = editor.getEditorView?.();
   if (!view) return;
   view.focus();
+  if (action === 'undo') editor.undo?.();
+  else if (action === 'redo') editor.redo?.();
 }
 
 function onCopy(event: ClipboardEvent) {

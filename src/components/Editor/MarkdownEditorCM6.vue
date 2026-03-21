@@ -4,6 +4,9 @@
     style="background-color: var(--bg-color);"
     @click="handleContainerClick"
   >
+    <teleport to="head">
+      <style :id="customCssId">{{ settingsStore.settings.customEditorCSS }}</style>
+    </teleport>
     <div ref="editorRef" class="cm6-editor h-full px-12 py-8 overflow-y-auto outline-none"></div>
 
     <BubbleMenu ref="bubbleMenuRef" :on-action="onBubbleMenuAction" />
@@ -24,11 +27,11 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue';
+import { onMounted, onUnmounted, ref, watch } from 'vue';
 import { debounce } from 'lodash-es';
 import { EditorState } from '@codemirror/state';
 import { EditorView, keymap, lineNumbers } from '@codemirror/view';
-import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
+import { defaultKeymap, history, historyKeymap, undo, redo } from '@codemirror/commands';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language';
 import { getCurrentWebview } from '@tauri-apps/api/webview';
@@ -57,6 +60,7 @@ const emit = defineEmits<{ (e: 'update', data: any): void }>();
 const fileStore = useFileStore();
 const settingsStore = useSettingsStore();
 const editorRef = ref<HTMLElement | null>(null);
+const customCssId = 'marklight-custom-editor-css';
 const searchBarRef = ref<InstanceType<typeof SearchBar> | null>(null);
 const bubbleMenuRef = ref<InstanceType<typeof BubbleMenu> | null>(null);
 
@@ -349,6 +353,8 @@ defineExpose({
     return view.state.doc.sliceString(from, to);
   },
   getEditorView: () => view,
+  undo: () => { if (view) undo(view); },
+  redo: () => { if (view) redo(view); },
   openSearch: (_showReplace = false) => {
     isSearchVisible.value = true;
     searchBarRef.value?.setShowReplace(_showReplace);
