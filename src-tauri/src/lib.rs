@@ -17,7 +17,7 @@ pub fn run() {
 
             // 处理命令行参数（文件关联打开）
             // macOS 通过 open-url 事件，Windows/Linux 通过命令行参数
-            #[cfg(any(target_os = "windows", target_os = "linux"))]
+            #[cfg(any(target_os = "windows", target_os = "linux", target_os = "macos"))]
             {
                 use tauri_plugin_cli::CliExt;
                 if let Ok(matches) = app.cli().matches() {

@@ -58,9 +58,29 @@ export function useWindowEvents(options: WindowEventsOptions) {
       options.handleOpenFile(event.payload);
     });
 
-    // macOS: 文件关联打开
-    unlistenTauriOpen = await listen<string>('tauri://open', (event) => {
-      options.handleOpenFile(event.payload);
+    // macOS: 文件关联打开（兼容 string / string[] / { paths: string[] }）
+    unlistenTauriOpen = await listen<unknown>('tauri://open', (event) => {
+      const payload = event.payload as unknown;
+      if (typeof payload === 'string') {
+        options.handleOpenFile(payload);
+        return;
+      }
+      if (Array.isArray(payload)) {
+        const filePath = payload.find((item): item is string => typeof item === 'string');
+        if (filePath) {
+          options.handleOpenFile(filePath);
+        }
+        return;
+      }
+      if (payload && typeof payload === 'object' && 'paths' in payload) {
+        const paths = (payload as { paths?: unknown }).paths;
+        if (Array.isArray(paths)) {
+          const filePath = paths.find((item): item is string => typeof item === 'string');
+          if (filePath) {
+            options.handleOpenFile(filePath);
+          }
+        }
+      }
     });
   }
 
