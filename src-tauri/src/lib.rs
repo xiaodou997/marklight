@@ -4,6 +4,15 @@ mod menu;
 use commands::*;
 use notify::{Config, RecommendedWatcher, Watcher, EventKind};
 use tauri::{Emitter, Manager};
+use std::sync::Mutex;
+
+#[derive(Default)]
+struct StartupOpenFile(Mutex<Option<String>>);
+
+#[tauri::command]
+fn consume_startup_open_file(state: tauri::State<'_, StartupOpenFile>) -> Option<String> {
+    state.0.lock().ok()?.take()
+}
 
 pub fn run() {
     tauri::Builder::default()
@@ -14,6 +23,7 @@ pub fn run() {
         .plugin(tauri_plugin_cli::init())
         .setup(|app| {
             let handle = app.handle().clone();
+            app.manage(StartupOpenFile::default());
 
             // 处理命令行参数（文件关联打开）
             // macOS 通过 open-url 事件，Windows/Linux 通过命令行参数
@@ -24,7 +34,11 @@ pub fn run() {
                     // matches.args 在 Tauri v2 中直接就是 HashMap<String, ArgData>
                     if let Some(file_arg) = matches.args.get("file") {
                         if let Some(file_path) = file_arg.value.as_str() {
-                            let _ = app.emit("open-file-args", file_path.to_string());
+                            if let Some(state) = app.try_state::<StartupOpenFile>() {
+                                if let Ok(mut startup_file) = state.0.lock() {
+                                    *startup_file = Some(file_path.to_string());
+                                }
+                            }
                         }
                     }
                 }
@@ -116,7 +130,8 @@ pub fn run() {
             watch_directory,
             unwatch_directory,
             read_config,
-            write_config
+            write_config,
+            consume_startup_open_file
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -1,4 +1,5 @@
 import { listen } from '@tauri-apps/api/event';
+import { invoke } from '@tauri-apps/api/core';
 import { confirm } from '@tauri-apps/plugin-dialog';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 
@@ -82,6 +83,16 @@ export function useWindowEvents(options: WindowEventsOptions) {
         }
       }
     });
+
+    // 启动阶段通过“打开方式”传入的文件路径（避免事件监听时序导致丢失）
+    try {
+      const startupFile = await invoke<string | null>('consume_startup_open_file');
+      if (startupFile) {
+        options.handleOpenFile(startupFile);
+      }
+    } catch {
+      // ignore
+    }
   }
 
   function cleanup() {
