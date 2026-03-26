@@ -133,6 +133,33 @@ pub fn run() {
             write_config,
             consume_startup_open_file
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while running tauri application")
+        .run(|app_handle, event| {
+            // macOS "打开方式" 通过 OpenedURLs 事件传递文件路径
+            #[cfg(any(target_os = "macos", target_os = "ios"))]
+            if let tauri::RunEvent::Opened { urls } = &event {
+                let mut paths: Vec<String> = Vec::new();
+                for url in urls {
+                    if let Ok(pb) = url.to_file_path() {
+                        if let Some(s) = pb.to_str() {
+                            paths.push(s.to_string());
+                        }
+                    }
+                }
+
+                if let Some(first_path) = paths.first().cloned() {
+                    // 存入 StartupOpenFile 供前端启动时读取（应对窗口还未就绪的情况）
+                    if let Some(state) = app_handle.try_state::<StartupOpenFile>() {
+                        if let Ok(mut startup_file) = state.0.lock() {
+                            if startup_file.is_none() {
+                                *startup_file = Some(first_path);
+                            }
+                        }
+                    }
+                    // 同时广播给已就绪的窗口
+                    let _ = app_handle.emit("tauri://open", paths);
+                }
+            }
+        });
 }
