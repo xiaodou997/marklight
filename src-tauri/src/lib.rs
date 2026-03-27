@@ -15,10 +15,14 @@ fn consume_startup_open_file(state: tauri::State<'_, StartupOpenFile>) -> Option
 }
 
 /// 前端就绪后调用此命令。Rust 收到通知后，将等待中的启动文件推送给该窗口。
+/// 作为 on_page_load 的额外保险机制。
 #[tauri::command]
 fn notify_frontend_ready(app: tauri::AppHandle, state: tauri::State<'_, StartupOpenFile>) {
+    eprintln!("[marklight] notify_frontend_ready called");
     if let Ok(mut guard) = state.0.lock() {
+        eprintln!("[marklight] StartupOpenFile at notify_frontend_ready = {:?}", *guard);
         if let Some(path) = guard.take() {
+            eprintln!("[marklight] Pushing startup file via notify_frontend_ready: {}", path);
             let _ = app.emit("open-startup-file", path);
         }
     }
@@ -31,17 +35,33 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_cli::init())
+        // ── 方案一（最可靠）：webview 页面加载完成时主动推送等待中的文件 ──
+        // on_page_load 在 webview JS 执行完毕后触发，此时前端监听器已注册。
+        // 无论 RunEvent::Opened 和 webview 加载孰先孰后，这里都能兜底。
+        .on_page_load(|webview, payload| {
+            use tauri::webview::PageLoadEvent;
+            if payload.event() == PageLoadEvent::Finished {
+                eprintln!("[marklight] on_page_load::Finished for url={}", payload.url());
+                if let Some(state) = webview.app_handle().try_state::<StartupOpenFile>() {
+                    if let Ok(mut guard) = state.0.lock() {
+                        eprintln!("[marklight] StartupOpenFile at page_load = {:?}", *guard);
+                        if let Some(path) = guard.take() {
+                            eprintln!("[marklight] Pushing startup file via on_page_load: {}", path);
+                            let _ = webview.emit("open-startup-file", path);
+                        }
+                    }
+                }
+            }
+        })
         .setup(|app| {
             let handle = app.handle().clone();
             app.manage(StartupOpenFile::default());
 
-            // 处理命令行参数（文件关联打开）
-            // macOS 通过 open-url 事件，Windows/Linux 通过命令行参数
-            #[cfg(any(target_os = "windows", target_os = "linux", target_os = "macos"))]
+            // Windows/Linux 通过命令行参数打开文件
+            #[cfg(any(target_os = "windows", target_os = "linux"))]
             {
                 use tauri_plugin_cli::CliExt;
                 if let Ok(matches) = app.cli().matches() {
-                    // matches.args 在 Tauri v2 中直接就是 HashMap<String, ArgData>
                     if let Some(file_arg) = matches.args.get("file") {
                         if let Some(file_path) = file_arg.value.as_str() {
                             if let Some(state) = app.try_state::<StartupOpenFile>() {
@@ -67,7 +87,6 @@ pub fn run() {
                 for res in rx {
                     match res {
                         Ok(event) => {
-                            // 防抖：300ms 内不重复发送
                             let now = Instant::now();
                             if now.duration_since(last_emit) < Duration::from_millis(300) {
                                 continue;
@@ -101,13 +120,11 @@ pub fn run() {
                 }
             });
 
-            // 将 watcher 存储在状态中，防止被销毁
             app.manage(std::sync::Mutex::new(watcher));
 
             menu::setup_menu(&app.handle()).map_err(|e| e.to_string())?;
 
             if let Some(main_window) = app.get_webview_window("main") {
-                // Windows 和 Linux 下禁用原生边框以使用自定义标题栏
                 #[cfg(any(target_os = "windows", target_os = "linux"))]
                 main_window.set_decorations(false).map_err(|e| e.to_string())?;
 
@@ -147,11 +164,15 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error while running tauri application")
         .run(|app_handle, event| {
-            // macOS "打开方式" 通过 OpenedURLs 事件传递文件路径
+            // ── 方案二：macOS RunEvent::Opened ──
+            // 热启动（App 已运行）时直接广播给已就绪的前端。
+            // 冷启动时存入 StartupOpenFile，由 on_page_load 在页面加载后推送。
             #[cfg(any(target_os = "macos", target_os = "ios"))]
             if let tauri::RunEvent::Opened { urls } = &event {
+                eprintln!("[marklight] RunEvent::Opened fired, {} URL(s)", urls.len());
                 let mut paths: Vec<String> = Vec::new();
                 for url in urls {
+                    eprintln!("[marklight]   url = {}", url);
                     if let Ok(pb) = url.to_file_path() {
                         if let Some(s) = pb.to_str() {
                             paths.push(s.to_string());
@@ -160,15 +181,17 @@ pub fn run() {
                 }
 
                 if let Some(first_path) = paths.first().cloned() {
-                    // 存入 StartupOpenFile 供前端启动时读取（应对窗口还未就绪的情况）
+                    // 存入 StartupOpenFile（冷启动时 on_page_load 会在页面加载后推送）
                     if let Some(state) = app_handle.try_state::<StartupOpenFile>() {
                         if let Ok(mut startup_file) = state.0.lock() {
                             if startup_file.is_none() {
+                                eprintln!("[marklight] Storing startup file: {}", first_path);
                                 *startup_file = Some(first_path);
                             }
                         }
                     }
-                    // 同时广播给已就绪的窗口
+                    // 热启动时前端已就绪，直接广播
+                    eprintln!("[marklight] Broadcasting tauri://open");
                     let _ = app_handle.emit("tauri://open", paths);
                 }
             }
