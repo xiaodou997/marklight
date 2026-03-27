@@ -14,6 +14,16 @@ fn consume_startup_open_file(state: tauri::State<'_, StartupOpenFile>) -> Option
     state.0.lock().ok()?.take()
 }
 
+/// 前端就绪后调用此命令。Rust 收到通知后，将等待中的启动文件推送给该窗口。
+#[tauri::command]
+fn notify_frontend_ready(app: tauri::AppHandle, state: tauri::State<'_, StartupOpenFile>) {
+    if let Ok(mut guard) = state.0.lock() {
+        if let Some(path) = guard.take() {
+            let _ = app.emit("open-startup-file", path);
+        }
+    }
+}
+
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
@@ -131,7 +141,8 @@ pub fn run() {
             unwatch_directory,
             read_config,
             write_config,
-            consume_startup_open_file
+            consume_startup_open_file,
+            notify_frontend_ready
         ])
         .build(tauri::generate_context!())
         .expect("error while running tauri application")

@@ -36,6 +36,7 @@ export function useWindowEvents(options: WindowEventsOptions) {
   let unlistenCloseRequest: (() => void) | null = null;
   let unlistenFileArgs: (() => void) | null = null;
   let unlistenTauriOpen: (() => void) | null = null;
+  let unlistenStartupFile: (() => void) | null = null;
 
   async function setup() {
     unlistenOpenFile = await listen<string>('open-file-in-new-window', (event) => {
@@ -59,7 +60,7 @@ export function useWindowEvents(options: WindowEventsOptions) {
       options.handleOpenFile(event.payload);
     });
 
-    // macOS: 文件关联打开（兼容 string / string[] / { paths: string[] }）
+    // macOS 热启动：App 已运行时通过"打开方式"打开文件（RunEvent::Opened 直接广播）
     unlistenTauriOpen = await listen<unknown>('tauri://open', (event) => {
       const payload = event.payload as unknown;
       if (typeof payload === 'string') {
@@ -68,30 +69,34 @@ export function useWindowEvents(options: WindowEventsOptions) {
       }
       if (Array.isArray(payload)) {
         const filePath = payload.find((item): item is string => typeof item === 'string');
-        if (filePath) {
-          options.handleOpenFile(filePath);
-        }
+        if (filePath) options.handleOpenFile(filePath);
         return;
       }
       if (payload && typeof payload === 'object' && 'paths' in payload) {
         const paths = (payload as { paths?: unknown }).paths;
         if (Array.isArray(paths)) {
           const filePath = paths.find((item): item is string => typeof item === 'string');
-          if (filePath) {
-            options.handleOpenFile(filePath);
-          }
+          if (filePath) options.handleOpenFile(filePath);
         }
       }
     });
 
-    // 启动阶段通过“打开方式”传入的文件路径（避免事件监听时序导致丢失）
+    // macOS 冷启动（推送模型）：
+    // 先注册监听器，再通知 Rust 前端已就绪。
+    // Rust 收到通知后检查 StartupOpenFile，若有等待中的文件则主动推送过来。
+    // 这样完全消除"RunEvent::Opened 比 invoke 晚触发"的竞态条件。
+    unlistenStartupFile = await listen<string>('open-startup-file', (event) => {
+      if (event.payload) options.handleOpenFile(event.payload);
+    });
+
     try {
-      const startupFile = await invoke<string | null>('consume_startup_open_file');
-      if (startupFile) {
-        options.handleOpenFile(startupFile);
-      }
+      await invoke('notify_frontend_ready');
     } catch {
-      // ignore
+      // 降级兜底：直接拉取（兼容旧版本或命令不存在的情况）
+      try {
+        const startupFile = await invoke<string | null>('consume_startup_open_file');
+        if (startupFile) options.handleOpenFile(startupFile);
+      } catch { /* ignore */ }
     }
   }
 
@@ -100,6 +105,7 @@ export function useWindowEvents(options: WindowEventsOptions) {
     unlistenCloseRequest?.();
     unlistenFileArgs?.();
     unlistenTauriOpen?.();
+    unlistenStartupFile?.();
   }
 
   return { setup, cleanup, appWindow };
