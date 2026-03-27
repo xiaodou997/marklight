@@ -57,8 +57,8 @@ pub fn run() {
             let handle = app.handle().clone();
             app.manage(StartupOpenFile::default());
 
-            // Windows/Linux 通过命令行参数打开文件
-            #[cfg(any(target_os = "windows", target_os = "linux"))]
+            // 所有平台均支持命令行参数打开文件（macOS 用于 dev 模式调试）
+            // 生产环境 macOS 通过 RunEvent::Opened 处理，CLI 参数作为补充
             {
                 use tauri_plugin_cli::CliExt;
                 if let Ok(matches) = app.cli().matches() {
