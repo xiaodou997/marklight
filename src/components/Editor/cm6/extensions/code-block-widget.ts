@@ -13,6 +13,8 @@ class CodeBlockWidget extends WidgetType {
     return this.code === other.code && this.language === other.language;
   }
 
+  ignoreEvent() { return false; }
+
   toDOM() {
     const wrapper = document.createElement('div');
     wrapper.className = 'mk-codeblock-widget';
@@ -71,9 +73,12 @@ function buildDecorations(state: EditorState): DecorationSet {
         }
 
         if (!hasActive && !skip) {
+          // 替换范围延伸到下一行开头（含关闭围栏的换行符），
+          // 避免 live-preview 在 visibleRanges Range 2 起点处再次解析到 ``` 行导致 inFence 状态错乱
+          const replTo = line.number < doc.lines ? doc.line(line.number + 1).from : line.to;
           builder.add(
             openLine.from,
-            line.to,
+            replTo,
             Decoration.replace({
               widget: new CodeBlockWidget(content.join('\n'), openLine.lang),
               inclusive: false,

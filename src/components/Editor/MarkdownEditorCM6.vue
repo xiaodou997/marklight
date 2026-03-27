@@ -241,7 +241,9 @@ onMounted(() => {
     markdown({ base: markdownLanguage }),
     syntaxHighlighting(defaultHighlightStyle),
     history(),
-    keymap.of([...defaultKeymap, ...historyKeymap]),
+    // 过滤掉 Mod-/ (toggleComment)，Markdown 中无意义且会插入 HTML 注释；
+    // 由 App.vue 的 window keydown 统一处理为切换源码模式。
+    keymap.of([...defaultKeymap.filter(b => b.key !== 'Mod-/'), ...historyKeymap]),
     createCm6ShortcutsExtension(settingsStore.settings.customShortcuts),
     createImageDropExtension(fileStore, lastHtml5Drop),
     createSmartPasteExtension(),

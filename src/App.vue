@@ -283,6 +283,10 @@ onMounted(async () => {
 });
 
 function handleKeyDown(e: KeyboardEvent) {
+  if (isModKey(e) && e.key === '/') {
+    e.preventDefault();
+    toggleSourceMode();
+  }
   if (isModKey(e) && e.shiftKey && e.key === 'P') {
     e.preventDefault();
     isCommandPaletteOpen.value = true;

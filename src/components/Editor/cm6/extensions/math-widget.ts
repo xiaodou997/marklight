@@ -12,6 +12,8 @@ class MathBlockWidget extends WidgetType {
     return this.latex === other.latex;
   }
 
+  ignoreEvent() { return false; }
+
   toDOM() {
     const wrapper = document.createElement('div');
     wrapper.className = 'mk-math-widget';
@@ -63,9 +65,10 @@ function buildDecorations(state: EditorState): DecorationSet {
         }
 
         if (!hasActive) {
+          const replTo = line.number < doc.lines ? doc.line(line.number + 1).from : line.to;
           builder.add(
             openLine.from,
-            line.to,
+            replTo,
             Decoration.replace({
               widget: new MathBlockWidget(content.join('\n')),
               inclusive: false,

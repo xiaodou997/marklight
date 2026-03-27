@@ -15,6 +15,8 @@ class TableWidget extends WidgetType {
     return JSON.stringify(this.table) === JSON.stringify(other.table);
   }
 
+  ignoreEvent() { return false; }
+
   toDOM() {
     const wrap = document.createElement('div');
     wrap.className = 'mk-table-widget';
@@ -26,7 +28,7 @@ class TableWidget extends WidgetType {
     const hr = document.createElement('tr');
     for (const header of this.table.headers) {
       const th = document.createElement('th');
-      th.textContent = header;
+      renderInlineMarkdown(header, th);
       hr.appendChild(th);
     }
     thead.appendChild(hr);
@@ -37,7 +39,7 @@ class TableWidget extends WidgetType {
       const tr = document.createElement('tr');
       for (const cell of row) {
         const td = document.createElement('td');
-        td.textContent = cell;
+        renderInlineMarkdown(cell, td);
         tr.appendChild(td);
       }
       tbody.appendChild(tr);
@@ -46,6 +48,30 @@ class TableWidget extends WidgetType {
 
     wrap.appendChild(tableEl);
     return wrap;
+  }
+}
+
+/** 渲染单元格中的行内 Markdown（行内代码、加粗、斜体） */
+function renderInlineMarkdown(text: string, container: HTMLElement) {
+  // 按行内代码、加粗、斜体分割，保留分隔符
+  const parts = text.split(/(`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*)/g);
+  for (const part of parts) {
+    if (part.startsWith('`') && part.endsWith('`') && part.length > 2) {
+      const code = document.createElement('code');
+      code.className = 'mk-inline-code';
+      code.textContent = part.slice(1, -1);
+      container.appendChild(code);
+    } else if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
+      const b = document.createElement('strong');
+      b.textContent = part.slice(2, -2);
+      container.appendChild(b);
+    } else if (part.startsWith('*') && part.endsWith('*') && part.length > 2) {
+      const em = document.createElement('em');
+      em.textContent = part.slice(1, -1);
+      container.appendChild(em);
+    } else if (part) {
+      container.appendChild(document.createTextNode(part));
+    }
   }
 }
 

@@ -91,6 +91,8 @@ class MermaidWidget extends WidgetType {
     return this.code === other.code && this.lang === other.lang;
   }
 
+  ignoreEvent() { return false; }
+
   toDOM() {
     const wrap = document.createElement('div');
     wrap.className = 'mk-mermaid-widget';
@@ -167,9 +169,10 @@ function buildDecorations(state: EditorState): DecorationSet {
             }
           }
           if (!hasActive) {
+            const replTo = line.number < doc.lines ? doc.line(line.number + 1).from : line.to;
             builder.add(
               open.from,
-              line.to,
+              replTo,
               Decoration.replace({
                 widget: new MermaidWidget(content.join('\n'), open.lang),
                 inclusive: false,
