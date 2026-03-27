@@ -40,15 +40,14 @@ pub fn run() {
         // 无论 RunEvent::Opened 和 webview 加载孰先孰后，这里都能兜底。
         .on_page_load(|webview, payload| {
             use tauri::webview::PageLoadEvent;
+            // PageLoadEvent::Finished 在 HTML 加载完即触发，早于 Vue onMounted 和事件监听器注册。
+            // 因此这里只做诊断日志，不发送事件（监听器还没就绪）。
+            // 实际推送由 notify_frontend_ready 完成（在监听器注册后由前端主动调用）。
             if payload.event() == PageLoadEvent::Finished {
                 eprintln!("[marklight] on_page_load::Finished for url={}", payload.url());
                 if let Some(state) = webview.app_handle().try_state::<StartupOpenFile>() {
-                    if let Ok(mut guard) = state.0.lock() {
+                    if let Ok(guard) = state.0.lock() {
                         eprintln!("[marklight] StartupOpenFile at page_load = {:?}", *guard);
-                        if let Some(path) = guard.take() {
-                            eprintln!("[marklight] Pushing startup file via on_page_load: {}", path);
-                            let _ = webview.emit("open-startup-file", path);
-                        }
                     }
                 }
             }
