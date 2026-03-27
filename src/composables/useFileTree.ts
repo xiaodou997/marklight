@@ -1,33 +1,110 @@
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { open, message } from '@tauri-apps/plugin-dialog';
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 import { useFileStore } from '../stores/file';
-import { isMac } from '../utils/platform';
-import type { FileInfo } from '../components/Editor/Sidebar.vue';
+
+interface FileInfo {
+  name: string;
+  path: string;
+  is_dir: boolean;
+  is_md: boolean;
+  is_txt: boolean;
+  is_image: boolean;
+}
+
+export interface TreeNode {
+  name: string;
+  path: string;
+  is_dir: boolean;
+  is_md: boolean;
+  is_txt: boolean;
+  is_image: boolean;
+  expanded: boolean;
+  children: TreeNode[] | null; // null = not yet loaded
+}
+
+function fileInfoToNode(info: FileInfo): TreeNode {
+  return { ...info, expanded: false, children: info.is_dir ? null : [] };
+}
+
+function findNode(nodes: TreeNode[], path: string): TreeNode | null {
+  for (const node of nodes) {
+    if (node.path === path) return node;
+    if (node.is_dir && node.children) {
+      const found = findNode(node.children, path);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+/** 合并新旧列表，保留已展开目录的子树 */
+function mergeChildren(newInfos: FileInfo[], oldNodes: TreeNode[]): TreeNode[] {
+  const oldMap = new Map(oldNodes.map(n => [n.path, n]));
+  return newInfos.map(info => {
+    const old = oldMap.get(info.path);
+    if (old && old.is_dir) {
+      return { ...fileInfoToNode(info), expanded: old.expanded, children: old.children };
+    }
+    return fileInfoToNode(info);
+  });
+}
+
+/** 递归刷新所有已展开的目录 */
+async function refreshExpandedNodes(nodes: TreeNode[]): Promise<void> {
+  for (const node of nodes) {
+    if (node.is_dir && node.expanded) {
+      const result = await invoke<FileInfo[]>('list_directory', { path: node.path }).catch(() => null);
+      if (result) {
+        node.children = mergeChildren(result, node.children ?? []);
+        await refreshExpandedNodes(node.children);
+      }
+    }
+  }
+}
 
 export function useFileTree() {
   const fileStore = useFileStore();
 
-  const files = ref<FileInfo[]>([]);
-  const currentFolder = ref<string | null>(null);
-  const watchedFolder = ref<string | null>(null);
+  const rootFolder = ref<string | null>(null);
+  const treeNodes = ref<TreeNode[]>([]);
   const pendingRenamePath = ref<string | null>(null);
+  const watchedFolder = ref<string | null>(null);
 
   let unlistenFileChanged: (() => void) | null = null;
 
-  async function loadFiles(folderPath: string) {
-    try {
-      const result = await invoke<FileInfo[]>('list_directory', { path: folderPath });
-      files.value = result;
-      currentFolder.value = folderPath;
-      if (watchedFolder.value && watchedFolder.value !== folderPath) {
-        await invoke('unwatch_directory', { path: watchedFolder.value });
-        watchedFolder.value = null;
+  /** 所有节点展平（用于搜索、CommandPalette 等） */
+  const flatAllNodes = computed(() => {
+    const result: TreeNode[] = [];
+    function collect(nodes: TreeNode[]) {
+      for (const n of nodes) {
+        result.push(n);
+        if (n.is_dir && n.children) collect(n.children);
       }
-      if (watchedFolder.value !== folderPath) {
-        await invoke('watch_directory', { path: folderPath });
-        watchedFolder.value = folderPath;
+    }
+    collect(treeNodes.value);
+    return result;
+  });
+
+  /** 仅文件（非目录），用于 CommandPalette */
+  const flatFiles = computed(() =>
+    flatAllNodes.value.filter(n => !n.is_dir)
+  );
+
+  async function loadRootFolder(path: string) {
+    try {
+      const result = await invoke<FileInfo[]>('list_directory', { path });
+      rootFolder.value = path;
+      treeNodes.value = result.map(fileInfoToNode);
+
+      // 切换监听目录
+      if (watchedFolder.value && watchedFolder.value !== path) {
+        await invoke('unwatch_directory', { path: watchedFolder.value });
+      }
+      if (watchedFolder.value !== path) {
+        await invoke('watch_directory', { path });
+        watchedFolder.value = path;
       }
     } catch (error) {
       console.error('Failed to list directory:', error);
@@ -35,42 +112,44 @@ export function useFileTree() {
   }
 
   async function handleOpenFolder(sidebarModeSetter: (mode: 'files') => void) {
-    const selected = await open({
-      directory: true,
-      title: '选择文件夹'
-    });
+    const selected = await open({ directory: true, title: '选择文件夹' });
     if (selected && typeof selected === 'string') {
-      await loadFiles(selected);
+      await loadRootFolder(selected);
       sidebarModeSetter('files');
     }
   }
 
-  async function handleNavigateFolder(path: string) {
-    await loadFiles(path);
-  }
+  /** 展开或折叠目录节点 */
+  async function toggleDir(path: string) {
+    const node = findNode(treeNodes.value, path);
+    if (!node || !node.is_dir) return;
 
-  async function handleNavigateUp() {
-    if (!currentFolder.value) return;
-    const lastSlashIndex = Math.max(
-      currentFolder.value.lastIndexOf('/'),
-      currentFolder.value.lastIndexOf('\\')
-    );
-    if (lastSlashIndex !== -1) {
-      const parentPath = currentFolder.value.substring(0, lastSlashIndex) || (isMac ? '/' : '');
-      await loadFiles(parentPath);
+    if (node.expanded) {
+      node.expanded = false;
+    } else {
+      // 首次展开时加载子节点
+      if (node.children === null) {
+        const result = await invoke<FileInfo[]>('list_directory', { path: node.path }).catch(() => []);
+        node.children = result.map(fileInfoToNode);
+      }
+      node.expanded = true;
     }
   }
 
-  async function refreshFiles() {
-    if (currentFolder.value) {
-      await loadFiles(currentFolder.value);
+  /** 刷新整棵树（保留展开状态） */
+  async function refreshTree() {
+    if (!rootFolder.value) return;
+    const result = await invoke<FileInfo[]>('list_directory', { path: rootFolder.value }).catch(() => null);
+    if (result) {
+      treeNodes.value = mergeChildren(result, treeNodes.value);
+      await refreshExpandedNodes(treeNodes.value);
     }
   }
 
   async function handleFileRenamed(oldPath: string, newName: string) {
     try {
       const newPath = await invoke<string>('rename_file', { oldPath, newName });
-      await refreshFiles();
+      await refreshTree();
       if (fileStore.currentFile.path === oldPath) {
         fileStore.currentFile.path = newPath;
       }
@@ -82,7 +161,7 @@ export function useFileTree() {
   async function handleFileDeleted(path: string, onCurrentFileDeleted: () => void) {
     try {
       await invoke('delete_file', { path });
-      await refreshFiles();
+      await refreshTree();
       if (fileStore.currentFile.path === path) {
         fileStore.reset();
         onCurrentFileDeleted();
@@ -95,38 +174,30 @@ export function useFileTree() {
   async function handleFileCreated(
     name: string,
     isFolder: boolean,
+    targetDir: string,
     openFile: (path: string) => void
   ) {
-    if (!currentFolder.value) return;
-
     if (name === '__AUTO_RENAME__' && !isFolder) {
-      await handleNewFileWithRename(openFile);
+      await handleNewFileWithRename(targetDir, openFile);
       return;
     }
-
     try {
       const path = await invoke<string>(
         isFolder ? 'create_folder' : 'create_file',
-        { dir: currentFolder.value, name }
+        { dir: targetDir, name }
       );
-      await refreshFiles();
-      if (!isFolder) {
-        openFile(path);
-      }
+      await refreshTree();
+      if (!isFolder) openFile(path);
     } catch (error) {
       await message(`创建失败: ${error}`, { title: '错误', kind: 'error' });
     }
   }
 
-  async function handleNewFileWithRename(openFile: (path: string) => void) {
-    if (!currentFolder.value) return;
+  async function handleNewFileWithRename(targetDir: string, openFile: (path: string) => void) {
     const defaultName = '未命名.md';
     try {
-      const path = await invoke<string>('create_file', {
-        dir: currentFolder.value,
-        name: defaultName
-      });
-      await refreshFiles();
+      const path = await invoke<string>('create_file', { dir: targetDir, name: defaultName });
+      await refreshTree();
       openFile(path);
       pendingRenamePath.value = path;
     } catch (error) {
@@ -146,33 +217,26 @@ export function useFileTree() {
     }
   }
 
-  /** 当打开文件时，自动加载其所在文件夹 */
+  /** 打开文件时，若尚未设置根目录，则以文件所在目录为根 */
   function syncFolderFromFilePath(filePath: string | null) {
-    if (!filePath) return;
-    const lastSlashIndex = Math.max(filePath.lastIndexOf('/'), filePath.lastIndexOf('\\'));
-    if (lastSlashIndex !== -1) {
-      const folder = filePath.substring(0, lastSlashIndex);
-      if (folder && folder !== currentFolder.value) {
-        loadFiles(folder);
-      }
+    if (!filePath || rootFolder.value) return;
+    const lastSlash = Math.max(filePath.lastIndexOf('/'), filePath.lastIndexOf('\\'));
+    if (lastSlash !== -1) {
+      const folder = filePath.substring(0, lastSlash);
+      if (folder) loadRootFolder(folder);
     }
   }
 
   async function setupFileChangeListener() {
     unlistenFileChanged = await listen<{ kind: string; paths: string[] }>('file-changed', (event) => {
+      if (!rootFolder.value) return;
       const payload = event.payload;
-      if (!currentFolder.value) return;
-
-      // 只在变更路径属于当前文件夹时刷新
-      if (payload && payload.paths && payload.paths.length > 0) {
-        const relevant = payload.paths.some((p: string) => {
-          const dir = p.substring(0, Math.max(p.lastIndexOf('/'), p.lastIndexOf('\\')));
-          return dir === currentFolder.value;
-        });
-        if (!relevant) return;
-      }
-
-      refreshFiles();
+      if (!payload?.paths?.length) return;
+      // 只要变更路径在根目录下就刷新
+      const relevant = payload.paths.some(p =>
+        p.startsWith(rootFolder.value! + '/') || p === rootFolder.value
+      );
+      if (relevant) refreshTree();
     });
   }
 
@@ -188,14 +252,14 @@ export function useFileTree() {
   }
 
   return {
-    files,
-    currentFolder,
+    rootFolder,
+    treeNodes,
+    flatFiles,
     pendingRenamePath,
-    loadFiles,
+    loadRootFolder,
     handleOpenFolder,
-    handleNavigateFolder,
-    handleNavigateUp,
-    refreshFiles,
+    toggleDir,
+    refreshTree,
     handleFileRenamed,
     handleFileDeleted,
     handleFileCreated,

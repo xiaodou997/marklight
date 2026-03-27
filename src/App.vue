@@ -12,7 +12,7 @@ import { useImagePreview } from './composables/useImagePreview';
 import { useWindowEvents, confirmUnsavedChanges } from './composables/useWindowEvents';
 import EditorToolbar from './components/Toolbar/EditorToolbar.vue';
 import StatusBar from './components/Layout/StatusBar.vue';
-import Sidebar, { OutlineItem } from './components/Editor/Sidebar.vue';
+import Sidebar, { type OutlineItem } from './components/Editor/Sidebar.vue';
 import SettingsModal from './components/Settings/SettingsModal.vue';
 import ShortcutsModal from './components/Editor/ShortcutsModal.vue';
 import CommandPalette from './components/Editor/CommandPalette.vue';
@@ -48,9 +48,10 @@ const { exportHtml, exportPdf, copyToWechat } = useExportActions({
 });
 
 const {
-  files, currentFolder, pendingRenamePath,
+  rootFolder, treeNodes, flatFiles, pendingRenamePath,
   handleOpenFolder: fileTreeOpenFolder,
-  handleNavigateFolder, handleNavigateUp, refreshFiles,
+  toggleDir,
+  refreshTree,
   handleFileRenamed, handleFileDeleted: fileTreeDeleteFile,
   handleFileCreated: fileTreeCreateFile,
   handleRenameCompleted, handleRevealInFinder,
@@ -106,7 +107,8 @@ function handleFileDeletedWrapper(path: string) {
 }
 
 function handleFileCreatedWrapper(name: string, isFolder: boolean) {
-  fileTreeCreateFile(name, isFolder, handleOpenFile);
+  if (!rootFolder.value) return;
+  fileTreeCreateFile(name, isFolder, rootFolder.value, handleOpenFile);
 }
 
 // --- Window events ---
@@ -339,18 +341,17 @@ onUnmounted(() => {
         <Sidebar
           v-model:mode="sidebarMode"
           :outline-items="outlineItems"
-          :files="files"
-          :current-folder="currentFolder"
+          :tree-nodes="treeNodes"
+          :root-folder="rootFolder"
           :current-file-path="fileStore.currentFile.path"
           :pending-rename-path="pendingRenamePath"
           @scroll-to="scrollToHeading"
           @open-folder="handleOpenFolder"
           @open-file="handleOpenFile"
           @open-image="handleOpenImage"
-          @navigate-folder="handleNavigateFolder"
-          @navigate-up="handleNavigateUp"
+          @toggle-dir="toggleDir"
           @open-file-in-new-window="handleOpenNewWindow"
-          @refresh-files="refreshFiles"
+          @refresh-files="refreshTree"
           @file-renamed="handleFileRenamed"
           @file-deleted="handleFileDeletedWrapper"
           @file-created="handleFileCreatedWrapper"
@@ -432,8 +433,8 @@ onUnmounted(() => {
     <!-- 命令面板 -->
     <CommandPalette
       :visible="isCommandPaletteOpen"
-      :files="files"
-      :current-folder="currentFolder"
+      :files="flatFiles"
+      :current-folder="rootFolder"
       @close="isCommandPaletteOpen = false"
       @execute="handleCommandExecute"
       @open-file="handleOpenFile"
