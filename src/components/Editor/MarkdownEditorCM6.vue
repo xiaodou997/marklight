@@ -285,6 +285,8 @@ onMounted(() => {
         border: 'none',
         color: '#9ca3af',
       },
+      // 覆盖 defaultHighlightStyle 对标题自动加的 text-decoration: underline
+      '.mk-heading': { textDecoration: 'none' },
     }),
   ];
 

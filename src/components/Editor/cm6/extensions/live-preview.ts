@@ -266,6 +266,21 @@ function decorateLine(
   decorateInline(out, lineFrom, text, active);
 }
 
+/**
+ * 扫描文档从第 1 行到 beforeLineNumber-1 行，计算在指定行开始时的围栏状态。
+ * 防止 visibleRanges 从代码块中间开始时 inFence 被错误初始化为 false。
+ */
+function computeFenceState(state: EditorView['state'], beforeLineNumber: number): { inFence: boolean; inMathBlock: boolean } {
+  let inFence = false;
+  let inMathBlock = false;
+  for (let n = 1; n < beforeLineNumber; n++) {
+    const text = state.doc.line(n).text.trim();
+    if (/^```/.test(text)) inFence = !inFence;
+    if (text === '$$' && !inFence) inMathBlock = !inMathBlock;
+  }
+  return { inFence, inMathBlock };
+}
+
 function buildDecorations(view: EditorView): DecorationSet {
   try {
     const { state } = view;
@@ -274,8 +289,9 @@ function buildDecorations(view: EditorView): DecorationSet {
 
     for (const range of view.visibleRanges) {
       let line = state.doc.lineAt(range.from);
-      let inFence = false;
-      let inMathBlock = false;
+      const startState = computeFenceState(state, line.number);
+      let inFence = startState.inFence;
+      let inMathBlock = startState.inMathBlock;
       while (line.from <= range.to) {
         const active = activeLines.has(line.number);
         const trimmed = line.text.trim();
