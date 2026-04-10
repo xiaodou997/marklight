@@ -1,6 +1,7 @@
 import { RangeSetBuilder, StateField, type EditorState } from '@codemirror/state';
 import { Decoration, EditorView, type DecorationSet, WidgetType } from '@codemirror/view';
 import katex from 'katex';
+import { getActiveLines } from '../utils/active-lines';
 import 'katex/dist/katex.min.css';
 
 class MathBlockWidget extends WidgetType {
@@ -27,16 +28,6 @@ class MathBlockWidget extends WidgetType {
     }
     return wrapper;
   }
-}
-
-function getActiveLines(state: EditorState) {
-  const lines = new Set<number>();
-  for (const range of state.selection.ranges) {
-    const fromLine = state.doc.lineAt(range.from).number;
-    const toLine = state.doc.lineAt(range.to).number;
-    for (let n = fromLine; n <= toLine; n++) lines.add(n);
-  }
-  return lines;
 }
 
 function buildDecorations(state: EditorState): DecorationSet {
@@ -103,16 +94,4 @@ const mathBlockField = StateField.define<DecorationSet>({
   provide: f => EditorView.decorations.from(f),
 });
 
-export const mathWidgetExtension = [
-  mathBlockField,
-  EditorView.baseTheme({
-    '.mk-math-widget': {
-      border: '1px solid var(--border-color)',
-      borderRadius: '8px',
-      backgroundColor: 'var(--sidebar-bg)',
-      padding: '10px 12px',
-      margin: '8px 0',
-      overflowX: 'auto',
-    },
-  }),
-];
+export const mathWidgetExtension = mathBlockField;

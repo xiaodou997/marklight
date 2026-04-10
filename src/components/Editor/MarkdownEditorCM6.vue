@@ -27,29 +27,37 @@
 import { onMounted, onUnmounted, ref, watch } from 'vue';
 import { debounce } from 'lodash-es';
 import { EditorState } from '@codemirror/state';
-import { EditorView, keymap, lineNumbers } from '@codemirror/view';
-import { defaultKeymap, history, historyKeymap, undo, redo } from '@codemirror/commands';
-import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
-import { syntaxHighlighting, defaultHighlightStyle } from '@codemirror/language';
+import { EditorView } from '@codemirror/view';
+import { undo, redo } from '@codemirror/commands';
 import { getCurrentWebview } from '@tauri-apps/api/webview';
 import { readFile } from '@tauri-apps/plugin-fs';
 
 import { useFileStore } from '../../stores/file';
 import { useSettingsStore } from '../../stores/settings';
-import { livePreviewExtension } from './cm6/extensions/live-preview';
-import { createCm6ShortcutsExtension } from './cm6/extensions/shortcuts';
-import { createImageDropExtension, saveImageAndInsertMarkdown } from './cm6/extensions/image-drop';
-import { createSmartPasteExtension } from './cm6/extensions/smart-paste';
-import { taskToggleExtension } from './cm6/extensions/task-toggle';
-import { codeBlockWidgetExtension } from './cm6/extensions/code-block-widget';
-import { mathWidgetExtension } from './cm6/extensions/math-widget';
-import { tableWidgetExtension } from './cm6/extensions/table-widget';
-import { createImageWidgetExtension } from './cm6/extensions/image-widget';
-import { mermaidWidgetExtension } from './cm6/extensions/mermaid-widget';
-import { linkTooltipExtension } from './cm6/extensions/link-tooltip';
+import { createEditorExtensions } from './cm6/editor-extensions';
+import { saveImageAndInsertMarkdown } from './cm6/extensions/image-drop';
 import { getCm6BubbleMenuState, handleCm6BubbleMenuAction } from './cm6/extensions/bubble-menu';
 import BubbleMenu from './views/BubbleMenu.vue';
 import SearchBar from './SearchBar.vue';
+import 'highlight.js/styles/github.css';
+
+// 深色模式 highlight.js 主题切换
+const hljsDarkCssId = 'hljs-dark-theme';
+function syncHljsTheme() {
+  const isDark = document.documentElement.classList.contains('dark');
+  let el = document.getElementById(hljsDarkCssId) as HTMLLinkElement | null;
+  if (isDark) {
+    if (!el) {
+      el = document.createElement('link');
+      el.id = hljsDarkCssId;
+      el.rel = 'stylesheet';
+      el.href = new URL('highlight.js/styles/github-dark.css', import.meta.url).href;
+      document.head.appendChild(el);
+    }
+  } else {
+    el?.remove();
+  }
+}
 
 const props = defineProps<{ initialContent?: string }>();
 const emit = defineEmits<{ (e: 'update', data: any): void }>();
@@ -70,6 +78,20 @@ function injectCustomCSS(css: string) {
 }
 
 watch(() => settingsStore.settings.customEditorCSS, injectCustomCSS, { immediate: true });
+
+// 监听主题变化，同步 highlight.js 深色主题
+watch(
+  () => settingsStore.settings.theme,
+  () => {
+    // 延迟一帧，等 applyTheme 把 dark class 写入 html
+    requestAnimationFrame(syncHljsTheme);
+  },
+  { immediate: true }
+);
+
+// 监听系统主题变化（system 模式下 dark class 可能由 MQ listener 更改）
+const themeObserver = new MutationObserver(() => syncHljsTheme());
+themeObserver.observe(document.documentElement, { attributeFilter: ['class'] });
 
 const searchBarRef = ref<InstanceType<typeof SearchBar> | null>(null);
 const bubbleMenuRef = ref<InstanceType<typeof BubbleMenu> | null>(null);
@@ -237,62 +259,22 @@ function onSearchReplaceAll(replacement: string) {
 onMounted(() => {
   if (!editorRef.value) return;
 
-  const extensions = [
-    markdown({ base: markdownLanguage }),
-    syntaxHighlighting(defaultHighlightStyle),
-    history(),
-    // 过滤掉 Mod-/ (toggleComment)，Markdown 中无意义且会插入 HTML 注释；
-    // 由 App.vue 的 window keydown 统一处理为切换源码模式。
-    keymap.of([...defaultKeymap.filter(b => b.key !== 'Mod-/'), ...historyKeymap]),
-    createCm6ShortcutsExtension(settingsStore.settings.customShortcuts),
-    createImageDropExtension(fileStore, lastHtml5Drop),
-    createSmartPasteExtension(),
-    taskToggleExtension,
-    ...createImageWidgetExtension(fileStore),
-    mermaidWidgetExtension,
-    codeBlockWidgetExtension,
-    mathWidgetExtension,
-    tableWidgetExtension,
-    linkTooltipExtension,
-    EditorView.lineWrapping,
-    livePreviewExtension,
+  const extensions = createEditorExtensions(fileStore, settingsStore, lastHtml5Drop);
+
+  // 监听文档变化
+  extensions.push(
     EditorView.updateListener.of((update) => {
       if (update.docChanged) {
         fileStore.markUserEdit();
         debouncedUpdate(update.state, true);
-        if (searchQuery.value) {
-          rebuildSearchMatches();
-        }
+        if (searchQuery.value) rebuildSearchMatches();
         syncBubbleMenu();
       } else if (update.selectionSet) {
         debouncedUpdate(update.state, false);
         syncBubbleMenu();
       }
-    }),
-    EditorView.theme({
-      '&': { height: '100%' },
-      '&.cm-focused': { outline: 'none' },
-      '.cm-scroller': { overflow: 'auto' },
-      '.cm-content': {
-        fontFamily: settingsStore.settings.fontFamily,
-        fontSize: `${settingsStore.settings.fontSize}px`,
-        lineHeight: String(settingsStore.settings.lineHeight),
-        color: 'var(--text-color)',
-        outline: 'none',
-      },
-      '.cm-gutters': {
-        backgroundColor: 'var(--bg-color)',
-        border: 'none',
-        color: '#9ca3af',
-      },
-      // 覆盖 defaultHighlightStyle 对标题自动加的 text-decoration: underline
-      '.mk-heading': { textDecoration: 'none' },
-    }),
-  ];
-
-  if (settingsStore.settings.showLineNumbers) {
-    extensions.push(lineNumbers());
-  }
+    })
+  );
 
   const startState = EditorState.create({
     doc: props.initialContent || '',
@@ -329,7 +311,9 @@ onMounted(() => {
                 ext === 'svg' ? 'image/svg+xml' :
                   ext === 'bmp' ? 'image/bmp' : 'application/octet-stream';
         const file = new File([bytes], name, { type: mime });
-        const insertPos = payload.position ? view.posAtCoords({ x: payload.position.x, y: payload.position.y }) ?? undefined : undefined;
+        const insertPos = payload.position
+          ? view.posAtCoords({ x: payload.position.x, y: payload.position.y }) ?? undefined
+          : undefined;
         await saveImageAndInsertMarkdown(view, file, fileStore, name, insertPos);
       });
     } catch (error) {
@@ -339,6 +323,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  themeObserver.disconnect();
   debouncedUpdate.cancel();
   bubbleMenuRef.value?.update(false, 0, 0, { bold: false, italic: false, code: false, link: false });
   if (unlistenDragDrop) {

@@ -177,17 +177,21 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
         tabindex="-1"
       >
         <div
-          class="bg-white rounded-xl shadow-2xl w-[560px] max-h-[80vh] overflow-hidden flex flex-col"
+          class="rounded-xl shadow-2xl w-[560px] max-h-[80vh] overflow-hidden flex flex-col"
+          style="background-color: var(--bg-color); color: var(--text-color);"
           @click.stop
         >
           <!-- 头部 -->
-          <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-            <h2 class="text-lg font-semibold text-gray-900">设置</h2>
+          <div class="flex items-center justify-between px-6 py-4 border-b" style="border-color: var(--border-color);">
+            <h2 class="text-lg font-semibold" style="color: var(--text-color);">设置</h2>
             <button
-              class="p-1 rounded-lg hover:bg-gray-100 transition-colors"
+              class="p-1 rounded-lg transition-colors"
+              style="color: var(--muted-color);"
+              @mouseenter="($event.target as HTMLElement).style.backgroundColor = 'var(--hover-bg)'"
+              @mouseleave="($event.target as HTMLElement).style.backgroundColor = ''"
               @click="close"
             >
-              <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
@@ -196,14 +200,16 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
           <!-- 主体 -->
           <div class="flex flex-1 overflow-hidden">
             <!-- 侧边导航 -->
-            <nav class="w-36 p-4 border-r border-gray-200 flex-shrink-0">
+            <nav class="w-36 p-4 border-r shrink-0" style="border-color: var(--border-color);">
               <button
                 v-for="tab in tabs"
                 :key="tab.key"
                 class="w-full text-left px-3 py-2 rounded-lg mb-1 transition-colors flex items-center gap-2"
-                :class="activeTab === tab.key
-                  ? 'bg-blue-50 text-blue-600'
-                  : 'hover:bg-gray-100 text-gray-700'"
+                :style="activeTab === tab.key
+                  ? 'background-color: rgba(99,102,241,0.1); color: var(--primary-color);'
+                  : `color: var(--text-color);`"
+                @mouseenter="activeTab !== tab.key && (($event.target as HTMLElement).style.backgroundColor = 'var(--hover-bg)')"
+                @mouseleave="activeTab !== tab.key && (($event.target as HTMLElement).style.backgroundColor = '')"
                 @click="activeTab = tab.key as any"
               >
                 <span>{{ tab.icon }}</span>
@@ -215,8 +221,27 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
             <div class="flex-1 p-6 overflow-y-auto">
               <!-- 外观设置 -->
               <div v-show="activeTab === 'appearance'" class="space-y-6">
+                <!-- 主题切换 -->
                 <div class="space-y-2">
-                  <label class="block text-sm font-medium text-gray-700">
+                  <label class="block text-sm font-medium" style="color: var(--text-color);">主题</label>
+                  <div class="grid grid-cols-3 gap-2">
+                    <button
+                      v-for="opt in [{ value: 'light', label: '浅色', icon: '☀️' }, { value: 'dark', label: '深色', icon: '🌙' }, { value: 'system', label: '跟随系统', icon: '💻' }]"
+                      :key="opt.value"
+                      class="flex flex-col items-center gap-1 py-2 px-3 rounded-lg border-2 transition-all text-sm"
+                      :style="settings.theme === opt.value
+                        ? 'border-color: var(--primary-color); background-color: rgba(99,102,241,0.08); color: var(--primary-color);'
+                        : 'border-color: var(--border-color); color: var(--text-color);'"
+                      @click="settings.theme = opt.value as any"
+                    >
+                      <span class="text-lg">{{ opt.icon }}</span>
+                      <span>{{ opt.label }}</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="space-y-2">
+                  <label class="block text-sm font-medium" style="color: var(--text-color);">
                     字体大小: {{ settings.fontSize }}px
                   </label>
                   <input
@@ -225,19 +250,21 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
                     min="12"
                     max="24"
                     step="1"
-                    class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                    class="w-full h-2 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                    style="background-color: var(--border-color);"
                   />
-                  <div class="flex justify-between text-xs text-gray-500">
+                  <div class="flex justify-between text-xs" style="color: var(--muted-color);">
                     <span>12px</span>
                     <span>24px</span>
                   </div>
                 </div>
 
                 <div class="space-y-2">
-                  <label class="block text-sm font-medium text-gray-700">字体族</label>
+                  <label class="block text-sm font-medium" style="color: var(--text-color);">字体族</label>
                   <select
                     v-model="settings.fontFamily"
-                    class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono"
+                    class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono"
+                    style="border-color: var(--border-color); background-color: var(--bg-color); color: var(--text-color);"
                   >
                     <option v-for="opt in fontOptions" :key="opt.value" :value="opt.value">
                       {{ opt.label }}
@@ -246,7 +273,7 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
                 </div>
 
                 <div class="space-y-2">
-                  <label class="block text-sm font-medium text-gray-700">
+                  <label class="block text-sm font-medium" style="color: var(--text-color);">
                     行高: {{ settings.lineHeight }}
                   </label>
                   <input
@@ -255,7 +282,8 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
                     min="1.2"
                     max="2.4"
                     step="0.1"
-                    class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                    class="w-full h-2 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                    style="background-color: var(--border-color);"
                   />
                 </div>
               </div>
@@ -263,17 +291,17 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
               <!-- 编辑器设置 -->
               <div v-show="activeTab === 'editor'" class="space-y-6">
                 <div class="space-y-2">
-                  <label class="block text-sm font-medium text-gray-700">编辑器引擎</label>
-                  <div class="w-full px-3 py-2 border border-gray-200 rounded-lg bg-gray-50 text-gray-700">
+                  <label class="block text-sm font-medium" style="color: var(--text-color);">编辑器引擎</label>
+                  <div class="w-full px-3 py-2 border rounded-lg" style="border-color: var(--border-color); background-color: var(--sidebar-bg); color: var(--text-color);">
                     CodeMirror 6（已启用）
                   </div>
-                  <p class="text-xs text-gray-500">当前版本仅支持 CodeMirror 6 引擎。</p>
+                  <p class="text-xs" style="color: var(--muted-color);">当前版本仅支持 CodeMirror 6 引擎。</p>
                 </div>
 
                 <div class="flex items-center justify-between">
                   <div>
-                    <label class="block text-sm font-medium text-gray-700">显示行号</label>
-                    <p class="text-xs text-gray-500 mt-1">在编辑器左侧显示行号</p>
+                    <label class="block text-sm font-medium" style="color: var(--text-color);">显示行号</label>
+                    <p class="text-xs mt-1" style="color: var(--muted-color);">在编辑器左侧显示行号</p>
                   </div>
                   <button
                     @click="settings.showLineNumbers = !settings.showLineNumbers"
@@ -288,7 +316,7 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
                 </div>
 
                 <div class="space-y-2">
-                  <label class="block text-sm font-medium text-gray-700">
+                  <label class="block text-sm font-medium" style="color: var(--text-color);">
                     Tab 宽度: {{ settings.tabWidth }} 空格
                   </label>
                   <div class="flex gap-2">
@@ -296,9 +324,9 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
                       v-for="width in [2, 4]"
                       :key="width"
                       class="flex-1 py-2 rounded-lg border transition-colors"
-                      :class="settings.tabWidth === width 
-                        ? 'border-blue-500 bg-blue-50 text-blue-600'
-                        : 'border-gray-300 hover:bg-gray-50'"
+                      :style="settings.tabWidth === width
+                        ? 'border-color: var(--primary-color); background-color: rgba(99,102,241,0.08); color: var(--primary-color);'
+                        : 'border-color: var(--border-color); color: var(--text-color);'"
                       @click="settings.tabWidth = width"
                     >
                       {{ width }} 空格
@@ -308,8 +336,8 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
 
                 <div class="flex items-center justify-between">
                   <div>
-                    <label class="block text-sm font-medium text-gray-700">拼写检查</label>
-                    <p class="text-xs text-gray-500 mt-1">启用系统拼写检查</p>
+                    <label class="block text-sm font-medium" style="color: var(--text-color);">拼写检查</label>
+                    <p class="text-xs mt-1" style="color: var(--muted-color);">启用系统拼写检查</p>
                   </div>
                   <button
                     @click="settings.spellCheck = !settings.spellCheck"
@@ -325,8 +353,8 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
 
                 <div class="flex items-center justify-between">
                   <div>
-                    <label class="block text-sm font-medium text-gray-700">大纲默认展开</label>
-                    <p class="text-xs text-gray-500 mt-1">启动时自动展开侧边栏大纲</p>
+                    <label class="block text-sm font-medium" style="color: var(--text-color);">大纲默认展开</label>
+                    <p class="text-xs mt-1" style="color: var(--muted-color);">启动时自动展开侧边栏大纲</p>
                   </div>
                   <button
                     @click="settings.outlineExpanded = !settings.outlineExpanded"
@@ -344,11 +372,12 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
               <!-- 快捷键设置 -->
               <div v-show="activeTab === 'shortcuts'" class="space-y-4">
                 <div class="flex items-center justify-between">
-                  <div class="text-sm text-gray-500">
+                  <div class="text-sm" style="color: var(--muted-color);">
                     {{ isMac ? 'Mac 使用 ⌘ 键' : 'Windows/Linux 使用 Ctrl 键' }} · 点击行可修改快捷键
                   </div>
                   <button
-                    class="text-xs text-blue-500 hover:text-blue-600"
+                    class="text-xs"
+                    style="color: var(--primary-color);"
                     @click="resetAllShortcuts"
                   >
                     重置全部
@@ -361,20 +390,20 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
                 </div>
                 
                 <div v-for="group in shortcutGroups" :key="group.name" class="space-y-2">
-                  <h3 class="text-sm font-semibold text-gray-800 border-b border-gray-200 pb-1">
+                  <h3 class="text-sm font-semibold pb-1 border-b" style="color: var(--text-color); border-color: var(--border-color);">
                     {{ group.name }}
                   </h3>
                   <div class="grid gap-1.5">
-                    <div 
-                      v-for="item in group.items" 
+                    <div
+                      v-for="item in group.items"
                       :key="item.id"
                       class="flex items-center justify-between py-2 px-3 rounded-lg cursor-pointer transition-all"
-                      :class="editingId === item.id 
-                        ? 'bg-blue-50 ring-2 ring-blue-500' 
-                        : 'bg-gray-50 hover:bg-gray-100'"
+                      :style="editingId === item.id
+                        ? 'background-color: rgba(99,102,241,0.08); outline: 2px solid var(--primary-color);'
+                        : 'background-color: var(--sidebar-bg);'"
                       @click="startEdit(item)"
                     >
-                      <span class="text-sm text-gray-700">{{ item.description }}</span>
+                      <span class="text-sm" style="color: var(--text-color);">{{ item.description }}</span>
                       
                       <!-- 快捷键显示/编辑 -->
                       <div class="flex items-center gap-1.5">
@@ -419,8 +448,8 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
               <div v-show="activeTab === 'save'" class="space-y-6">
                 <div class="flex items-center justify-between">
                   <div>
-                    <label class="block text-sm font-medium text-gray-700">自动保存</label>
-                    <p class="text-xs text-gray-500 mt-1">编辑时自动保存文件</p>
+                    <label class="block text-sm font-medium" style="color: var(--text-color);">自动保存</label>
+                    <p class="text-xs mt-1" style="color: var(--muted-color);">编辑时自动保存文件</p>
                   </div>
                   <button
                     @click="settings.autoSave = !settings.autoSave"
@@ -435,7 +464,7 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
                 </div>
 
                 <div v-if="settings.autoSave" class="space-y-2">
-                  <label class="block text-sm font-medium text-gray-700">
+                  <label class="block text-sm font-medium" style="color: var(--text-color);">
                     保存间隔: {{ settings.autoSaveInterval }} 秒
                   </label>
                   <input
@@ -444,9 +473,10 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
                     min="10"
                     max="120"
                     step="10"
-                    class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                    class="w-full h-2 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                    style="background-color: var(--border-color);"
                   />
-                  <div class="flex justify-between text-xs text-gray-500">
+                  <div class="flex justify-between text-xs" style="color: var(--muted-color);">
                     <span>10秒</span>
                     <span>120秒</span>
                   </div>
@@ -456,25 +486,25 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
               <!-- 导出设置 -->
               <div v-show="activeTab === 'export'" class="space-y-6">
                 <div class="space-y-2">
-                  <label class="block text-sm font-medium text-gray-700">微信导出主题</label>
-                  <p class="text-xs text-gray-500 mt-1">选择复制到微信时的排版风格</p>
-                  
+                  <label class="block text-sm font-medium" style="color: var(--text-color);">微信导出主题</label>
+                  <p class="text-xs mt-1" style="color: var(--muted-color);">选择复制到微信时的排版风格</p>
+
                   <div class="grid grid-cols-2 gap-3 mt-3">
                     <button
                       v-for="theme in WECHAT_THEMES"
                       :key="theme.id"
                       class="p-3 rounded-lg border-2 transition-all text-left"
-                      :class="settings.wechatTheme === theme.id 
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300'"
+                      :style="settings.wechatTheme === theme.id
+                        ? 'border-color: var(--primary-color); background-color: rgba(99,102,241,0.08);'
+                        : 'border-color: var(--border-color);'"
                       @click="settings.wechatTheme = theme.id"
                     >
                       <div class="flex items-center gap-2 mb-2">
-                        <span 
-                          class="w-4 h-4 rounded-full" 
+                        <span
+                          class="w-4 h-4 rounded-full"
                           :style="{ backgroundColor: theme.colors.primary }"
                         ></span>
-                        <span class="text-sm font-medium text-gray-700">{{ theme.name }}</span>
+                        <span class="text-sm font-medium" style="color: var(--text-color);">{{ theme.name }}</span>
                       </div>
                       <div class="flex gap-1">
                         <span 
@@ -498,9 +528,10 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
           </div>
 
           <!-- 底部 -->
-          <div class="flex items-center justify-between px-6 py-4 border-t border-gray-200 bg-gray-50">
+          <div class="flex items-center justify-between px-6 py-4 border-t" style="border-color: var(--border-color); background-color: var(--sidebar-bg);">
             <button
-              class="px-4 py-2 text-sm text-gray-600 hover:text-gray-900 transition-colors"
+              class="px-4 py-2 text-sm transition-colors"
+              style="color: var(--muted-color);"
               @click="handleReset"
             >
               恢复默认
@@ -550,24 +581,24 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
   justify-content: center;
   font-size: 13px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  background: white;
-  border: 1px solid #d1d5db;
+  background: var(--bg-color);
+  border: 1px solid var(--border-color);
   border-radius: 6px;
-  color: #374151;
+  color: var(--text-color);
   text-align: center;
   white-space: nowrap;
   letter-spacing: 0.5px;
 }
 
 .shortcut-input.custom {
-  color: #2563eb;
-  border-color: #60a5fa;
+  color: var(--primary-color);
+  border-color: var(--primary-color);
 }
 
 .shortcut-input.editing {
-  background: #eff6ff;
-  border-color: #3b82f6;
-  color: #1d4ed8;
+  background: rgba(99, 102, 241, 0.08);
+  border-color: var(--primary-color);
+  color: var(--primary-color);
   outline: none;
 }
 

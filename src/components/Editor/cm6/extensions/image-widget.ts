@@ -2,6 +2,7 @@ import { RangeSetBuilder } from '@codemirror/state';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import { Decoration, EditorView, ViewPlugin, type DecorationSet, type ViewUpdate, WidgetType } from '@codemirror/view';
 import type { useFileStore } from '../../../../stores/file';
+import { getActiveLines } from '../utils/active-lines';
 
 function unescapeMarkdown(value: string): string {
   return value.replace(/\\([()[\]])/g, '$1');
@@ -66,16 +67,6 @@ class ImageWidget extends WidgetType {
   }
 }
 
-function getActiveLines(state: EditorView['state']) {
-  const lines = new Set<number>();
-  for (const range of state.selection.ranges) {
-    const fromLine = state.doc.lineAt(range.from).number;
-    const toLine = state.doc.lineAt(range.to).number;
-    for (let n = fromLine; n <= toLine; n++) lines.add(n);
-  }
-  return lines;
-}
-
 export function createImageWidgetExtension(fileStore: ReturnType<typeof useFileStore>) {
   function buildDecorations(view: EditorView): DecorationSet {
     const builder = new RangeSetBuilder<Decoration>();
@@ -113,45 +104,19 @@ export function createImageWidgetExtension(fileStore: ReturnType<typeof useFileS
     return builder.finish();
   }
 
-  return [
-    ViewPlugin.fromClass(class {
-      decorations: DecorationSet;
+  return ViewPlugin.fromClass(class {
+    decorations: DecorationSet;
 
-      constructor(view: EditorView) {
-        this.decorations = buildDecorations(view);
-      }
+    constructor(view: EditorView) {
+      this.decorations = buildDecorations(view);
+    }
 
-      update(update: ViewUpdate) {
-        if (update.docChanged || update.selectionSet || update.viewportChanged) {
-          this.decorations = buildDecorations(update.view);
-        }
+    update(update: ViewUpdate) {
+      if (update.docChanged || update.selectionSet || update.viewportChanged) {
+        this.decorations = buildDecorations(update.view);
       }
-    }, {
-      decorations: plugin => plugin.decorations,
-    }),
-    EditorView.baseTheme({
-      '.mk-image-widget': {
-        display: 'inline-flex',
-        flexDirection: 'column',
-        gap: '6px',
-        margin: '8px 0',
-        maxWidth: '100%',
-        border: '1px solid var(--border-color)',
-        borderRadius: '8px',
-        padding: '6px',
-        backgroundColor: 'var(--bg-color)',
-      },
-      '.mk-image-widget-el': {
-        maxWidth: '100%',
-        maxHeight: '520px',
-        objectFit: 'contain',
-        borderRadius: '6px',
-      },
-      '.mk-image-widget-caption': {
-        fontSize: '12px',
-        color: '#6b7280',
-        lineHeight: '1.3',
-      },
-    }),
-  ];
+    }
+  }, {
+    decorations: plugin => plugin.decorations,
+  });
 }

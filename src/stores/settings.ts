@@ -2,7 +2,7 @@ import { defineStore } from 'pinia';
 import { ref, watch } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 
-export type Theme = 'light';
+export type Theme = 'light' | 'dark' | 'system';
 
 export interface CustomTheme {
   primary: string;
@@ -46,7 +46,7 @@ export interface Settings {
 }
 
 const DEFAULT_SETTINGS: Settings = {
-  theme: 'light' as Theme,
+  theme: 'system' as Theme,
   customTheme: {
     primary: '#4a90d9',
     background: '#ffffff',
@@ -135,13 +135,13 @@ export const useSettingsStore = defineStore('settings', () => {
       
       if (Object.keys(config).length > 0) {
         // 已有配置文件
-        settings.value = { ...DEFAULT_SETTINGS, ...migrateConfig(config as Partial<Settings>) };
+        Object.assign(settings.value, { ...DEFAULT_SETTINGS, ...migrateConfig(config as Partial<Settings>) });
         console.log('[Settings] 已从配置文件加载');
       } else {
         // 配置文件不存在，尝试迁移 localStorage
         const legacySettings = migrateFromLocalStorage();
         if (legacySettings) {
-          settings.value = { ...DEFAULT_SETTINGS, ...migrateConfig(legacySettings) };
+          Object.assign(settings.value, { ...DEFAULT_SETTINGS, ...migrateConfig(legacySettings) });
           console.log('[Settings] localStorage 配置已迁移到文件');
         } else {
           console.log('[Settings] 首次启动，使用默认配置');
@@ -154,7 +154,7 @@ export const useSettingsStore = defineStore('settings', () => {
       // 尝试从 localStorage 恢复
       const legacySettings = migrateFromLocalStorage();
       if (legacySettings) {
-        settings.value = { ...DEFAULT_SETTINGS, ...migrateConfig(legacySettings) };
+        Object.assign(settings.value, { ...DEFAULT_SETTINGS, ...migrateConfig(legacySettings) });
       }
       // 尝试保存配置
       try {
@@ -179,15 +179,34 @@ export const useSettingsStore = defineStore('settings', () => {
     applyFocusMode(value);
   });
 
-  // 应用主题（当前只支持浅色）
-  function applyTheme(_theme: Theme) {
-    const root = document.documentElement;
-    root.classList.remove('dark');
-    root.style.removeProperty('--primary-color');
-    root.style.removeProperty('--bg-color');
-    root.style.removeProperty('--text-color');
-    root.style.removeProperty('--sidebar-bg');
-    root.style.removeProperty('--border-color');
+  // 系统深色模式媒体查询监听
+  let systemDarkMQ: MediaQueryList | null = null;
+  let systemDarkListener: (() => void) | null = null;
+
+  function applyDarkClass(dark: boolean) {
+    document.documentElement.classList.toggle('dark', dark);
+  }
+
+  // 应用主题（light / dark / system）
+  function applyTheme(theme: Theme) {
+    // 清理旧的系统监听
+    if (systemDarkListener && systemDarkMQ) {
+      systemDarkMQ.removeEventListener('change', systemDarkListener);
+      systemDarkListener = null;
+      systemDarkMQ = null;
+    }
+
+    if (theme === 'dark') {
+      applyDarkClass(true);
+    } else if (theme === 'light') {
+      applyDarkClass(false);
+    } else {
+      // system：跟随系统
+      systemDarkMQ = window.matchMedia('(prefers-color-scheme: dark)');
+      applyDarkClass(systemDarkMQ.matches);
+      systemDarkListener = () => applyDarkClass(systemDarkMQ!.matches);
+      systemDarkMQ.addEventListener('change', systemDarkListener);
+    }
   }
 
   // 应用焦点模式
@@ -217,7 +236,7 @@ export const useSettingsStore = defineStore('settings', () => {
 
   // 重置为默认值
   function resetSettings() {
-    settings.value = { ...DEFAULT_SETTINGS };
+    Object.assign(settings.value, { ...DEFAULT_SETTINGS });
   }
 
   // 打开设置弹窗

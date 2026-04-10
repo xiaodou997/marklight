@@ -1,5 +1,6 @@
 import { RangeSetBuilder, StateField, type EditorState } from '@codemirror/state';
 import { Decoration, EditorView, type DecorationSet, WidgetType } from '@codemirror/view';
+import { getActiveLines } from '../utils/active-lines';
 
 type HljsLike = {
   getLanguage: (lang: string) => unknown;
@@ -15,31 +16,27 @@ function getHljs(): Promise<HljsLike> {
   return hljsPromise;
 }
 
-/** 语言标签 widget（开启围栏行的可见内容） */
-class FenceLangBadge extends WidgetType {
-  constructor(private readonly lang: string) { super(); }
-
-  eq(other: FenceLangBadge) { return this.lang === other.lang; }
-
-  toDOM() {
-    const span = document.createElement('span');
-    span.className = 'mk-codeblock-lang-text';
-    span.textContent = this.lang || 'code';
-    return span;
-  }
-}
-
-/** 非活动代码块渲染 widget（语法高亮） */
-class CodeBlockRenderWidget extends WidgetType {
+/**
+ * 整块代码块 widget（非活动时渲染，包含 header + highlight.js 内容 + footer）
+ * 用一个 Decoration.replace 替换从开启围栏到关闭围栏的整个范围，
+ * 彻底消除内容行残留的行高空白。
+ */
+class FullCodeBlockWidget extends WidgetType {
   constructor(
     private readonly code: string,
-    private readonly lang: string
+    private readonly lang: string,
+    private readonly blockFrom: number
   ) {
     super();
   }
 
-  eq(other: CodeBlockRenderWidget) {
-    return this.code === other.code && this.lang === other.lang;
+  eq(other: FullCodeBlockWidget) {
+    return this.code === other.code && this.lang === other.lang && this.blockFrom === other.blockFrom;
+  }
+
+  /** 单击不触发 cursor 移动（保持渲染），双击进入编辑模式 */
+  ignoreEvent(event: Event) {
+    return event.type !== 'dblclick';
   }
 
   private escapeHtml(text: string) {
@@ -49,9 +46,38 @@ class CodeBlockRenderWidget extends WidgetType {
       .replace(/>/g, '&gt;');
   }
 
-  toDOM() {
+  toDOM(view: EditorView) {
     const wrap = document.createElement('div');
-    wrap.className = 'mk-codeblock-render';
+    wrap.className = 'mk-codeblock-widget';
+
+    // ── header ──
+    const header = document.createElement('div');
+    header.className = 'mk-codeblock-fence-open';
+    header.style.cssText = 'display:flex;align-items:center;gap:6px;';
+
+    const langText = document.createElement('span');
+    langText.className = 'mk-codeblock-lang-text';
+    langText.textContent = this.lang || 'code';
+    header.appendChild(langText);
+
+    const editBtn = document.createElement('span');
+    editBtn.className = 'mk-codeblock-edit-btn';
+    editBtn.title = '双击代码区域或点击此处进入编辑';
+    editBtn.textContent = '✏';
+    editBtn.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const line = view.state.doc.lineAt(this.blockFrom);
+      const targetLine = view.state.doc.line(line.number + 1);
+      view.dispatch({ selection: { anchor: targetLine.from } });
+      view.focus();
+    });
+    header.appendChild(editBtn);
+    wrap.appendChild(header);
+
+    // ── code content ──
+    const renderDiv = document.createElement('div');
+    renderDiv.className = 'mk-codeblock-render';
 
     const pre = document.createElement('pre');
     pre.className = 'mk-codeblock-render-pre';
@@ -78,19 +104,16 @@ class CodeBlockRenderWidget extends WidgetType {
     }
 
     pre.appendChild(codeEl);
-    wrap.appendChild(pre);
+    renderDiv.appendChild(pre);
+    wrap.appendChild(renderDiv);
+
+    // ── footer ──
+    const footer = document.createElement('div');
+    footer.className = 'mk-codeblock-fence-close';
+    wrap.appendChild(footer);
+
     return wrap;
   }
-}
-
-function getActiveLines(state: EditorState) {
-  const lines = new Set<number>();
-  for (const range of state.selection.ranges) {
-    const fromLine = state.doc.lineAt(range.from).number;
-    const toLine = state.doc.lineAt(range.to).number;
-    for (let n = fromLine; n <= toLine; n++) lines.add(n);
-  }
-  return lines;
 }
 
 function buildDecorations(state: EditorState): DecorationSet {
@@ -125,7 +148,6 @@ function _buildDecorations(state: EditorState): DecorationSet {
     if (fence) {
       if (!open) {
         const lang = (fence[1] || '').toLowerCase();
-        // mermaid/flow/seq 由独立 widget 处理
         if (!['mermaid', 'flow', 'seq'].includes(lang)) {
           open = {
             openFrom: line.from,
@@ -147,7 +169,7 @@ function _buildDecorations(state: EditorState): DecorationSet {
         })();
 
         if (blockActive) {
-          // 活动状态：源码可编辑，仅加容器线条样式
+          // 活动状态：显示原始 markdown，用行级样式标记
           builder.add(open.openFrom, open.openFrom, Decoration.line({ class: 'mk-codeblock-fence-open' }));
           for (let n = open.contentStartNo; n < closeNo; n++) {
             const l = doc.line(n);
@@ -155,35 +177,21 @@ function _buildDecorations(state: EditorState): DecorationSet {
           }
           builder.add(closeLine.from, closeLine.from, Decoration.line({ class: 'mk-codeblock-fence-close' }));
         } else {
-          // 非活动状态：替换为高亮渲染
-          // 先收集代码文本（不能在循环内边 add 边收集，否则 widgetPos < lastContentLine.from 导致排序错误）
+          // 非活动状态：用单个 block replace 替换整个代码块范围
           const parts: string[] = [];
           for (let n = open.contentStartNo; n < closeNo; n++) {
             parts.push(doc.line(n).text);
           }
           const code = parts.join('\n');
 
-          // header 行：line deco + badge replace
-          builder.add(open.openFrom, open.openFrom, Decoration.line({ class: 'mk-codeblock-fence-open' }));
-          builder.add(open.openFrom, open.openTo, Decoration.replace({ widget: new FenceLangBadge(open.lang) }));
-
-          // 渲染 widget 放在 openTo（header 行末尾），side:1 → 渲染在 header 行之后（内容行之前）
-          // 位置严格大于 openFrom，严格小于 firstContentLine.from，不会与任何 replace 冲突
-          builder.add(open.openTo, open.openTo, Decoration.widget({
-            widget: new CodeBlockRenderWidget(code, open.lang),
-            block: true,
-            side: 1,
-          }));
-
-          // 内容行全部隐藏（位置严格递增）
-          for (let n = open.contentStartNo; n < closeNo; n++) {
-            const l = doc.line(n);
-            builder.add(l.from, l.to, Decoration.replace({}));
-          }
-
-          // footer 行
-          builder.add(closeLine.from, closeLine.from, Decoration.line({ class: 'mk-codeblock-fence-close' }));
-          builder.add(closeLine.from, closeLine.to, Decoration.replace({}));
+          builder.add(
+            open.openFrom,
+            closeLine.to,
+            Decoration.replace({
+              widget: new FullCodeBlockWidget(code, open.lang, open.openFrom),
+              block: true,
+            })
+          );
         }
 
         open = null;
@@ -209,65 +217,4 @@ const codeBlockField = StateField.define<DecorationSet>({
   provide: f => EditorView.decorations.from(f),
 });
 
-export const codeBlockWidgetExtension = [
-  codeBlockField,
-  EditorView.baseTheme({
-    // 开启围栏行：header 栏样式，直接作用于 .cm-line
-    '.mk-codeblock-fence-open': {
-      backgroundColor: 'var(--sidebar-bg)',
-      border: '1px solid var(--border-color)',
-      borderBottom: '1px solid var(--border-color)',
-      borderRadius: '8px 8px 0 0',
-      color: '#6b7280',
-      fontSize: '11px',
-      fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-      marginTop: '8px',
-      padding: '5px 10px',
-    },
-    // 语言标签文字（widget 内容）
-    '.mk-codeblock-lang-text': {
-      fontSize: '11px',
-      textTransform: 'lowercase',
-    },
-    // 代码内容行：灰底 + 等宽字体 + 左右边框
-    '.mk-codeblock-content-line': {
-      backgroundColor: 'var(--sidebar-bg)',
-      fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-      fontSize: '13px',
-      borderLeft: '1px solid var(--border-color)',
-      borderRight: '1px solid var(--border-color)',
-      paddingLeft: '10px',
-      paddingRight: '10px',
-    },
-    '.mk-codeblock-render': {
-      backgroundColor: 'var(--sidebar-bg)',
-      borderLeft: '1px solid var(--border-color)',
-      borderRight: '1px solid var(--border-color)',
-      padding: '6px 10px',
-      overflowX: 'auto',
-    },
-    '.mk-codeblock-render-pre': {
-      margin: '0',
-      whiteSpace: 'pre',
-      fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-      fontSize: '13px',
-      lineHeight: '1.6',
-      background: 'transparent',
-    },
-    '.mk-codeblock-render-pre code': {
-      background: 'transparent',
-      padding: '0',
-      borderRadius: '0',
-    },
-    // 关闭围栏行：footer 样式（左下右边框 + 圆角），内容隐藏后高度由 padding 撑开
-    '.mk-codeblock-fence-close': {
-      backgroundColor: 'var(--sidebar-bg)',
-      borderLeft: '1px solid var(--border-color)',
-      borderRight: '1px solid var(--border-color)',
-      borderBottom: '1px solid var(--border-color)',
-      borderRadius: '0 0 8px 8px',
-      padding: '4px 0',
-      marginBottom: '8px',
-    },
-  }),
-];
+export const codeBlockWidgetExtension = codeBlockField;

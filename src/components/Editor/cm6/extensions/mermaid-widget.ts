@@ -1,6 +1,7 @@
 import { RangeSetBuilder, StateField, type EditorState } from '@codemirror/state';
 import { Decoration, EditorView, type DecorationSet, WidgetType } from '@codemirror/view';
 import type mermaidType from 'mermaid';
+import { getActiveLines } from '../utils/active-lines';
 
 let mermaidLoader: Promise<typeof mermaidType> | null = null;
 function loadMermaid() {
@@ -131,16 +132,6 @@ class MermaidWidget extends WidgetType {
   }
 }
 
-function getActiveLines(state: EditorState) {
-  const lines = new Set<number>();
-  for (const range of state.selection.ranges) {
-    const fromLine = state.doc.lineAt(range.from).number;
-    const toLine = state.doc.lineAt(range.to).number;
-    for (let n = fromLine; n <= toLine; n++) lines.add(n);
-  }
-  return lines;
-}
-
 function buildDecorations(state: EditorState): DecorationSet {
   const builder = new RangeSetBuilder<Decoration>();
   const activeLines = getActiveLines(state);
@@ -207,31 +198,4 @@ const mermaidField = StateField.define<DecorationSet>({
   provide: f => EditorView.decorations.from(f),
 });
 
-export const mermaidWidgetExtension = [
-  mermaidField,
-  EditorView.baseTheme({
-    '.mk-mermaid-widget': {
-      margin: '10px 0',
-      border: '1px solid var(--border-color)',
-      borderRadius: '8px',
-      backgroundColor: 'var(--bg-color)',
-      overflow: 'hidden',
-    },
-    '.mk-mermaid-badge': {
-      fontSize: '11px',
-      color: '#6b7280',
-      padding: '6px 10px',
-      borderBottom: '1px solid var(--border-color)',
-      backgroundColor: 'var(--sidebar-bg)',
-      fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-      textTransform: 'lowercase',
-    },
-    '.mk-mermaid-content': {
-      padding: '10px',
-      overflowX: 'auto',
-      color: '#ef4444',
-      fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
-      fontSize: '12px',
-    },
-  }),
-];
+export const mermaidWidgetExtension = mermaidField;

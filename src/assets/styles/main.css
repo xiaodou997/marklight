@@ -1,13 +1,64 @@
 @import "tailwindcss";
 
+/* ── 字体变量 ──────────────────────────────────────────────── */
 :root {
-  --primary-color: #4a90d9;
-  --bg-color: #ffffff;
-  --text-color: #333333;
-  --sidebar-bg: #f9fafb;
-  --border-color: #e5e7eb;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --font-text: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
 }
 
+/* ── 浅色主题（默认） ──────────────────────────────────────── */
+:root {
+  --primary-color: #6366f1;
+  --bg-color: #ffffff;
+  --text-color: #1f2937;
+  --sidebar-bg: #f9fafb;
+  --border-color: #e5e7eb;
+  --muted-color: #6b7280;
+  --code-bg: #f3f4f6;
+  --hover-bg: rgba(0, 0, 0, 0.03);
+  --quote-bg: rgba(99, 102, 241, 0.04);
+  --tag-bg: rgba(99, 102, 241, 0.12);
+  --tag-color: #6366f1;
+  /* Callout */
+  --callout-note: #3b82f6;
+  --callout-note-bg: rgba(59, 130, 246, 0.07);
+  --callout-tip: #10b981;
+  --callout-tip-bg: rgba(16, 185, 129, 0.07);
+  --callout-warning: #f59e0b;
+  --callout-warning-bg: rgba(245, 158, 11, 0.07);
+  --callout-danger: #ef4444;
+  --callout-danger-bg: rgba(239, 68, 68, 0.07);
+  --callout-success: #22c55e;
+  --callout-success-bg: rgba(34, 197, 94, 0.07);
+}
+
+/* ── 深色主题 ─────────────────────────────────────────────── */
+html.dark {
+  --primary-color: #818cf8;
+  --bg-color: #1e1e2e;
+  --text-color: #cdd6f4;
+  --sidebar-bg: #181825;
+  --border-color: #313244;
+  --muted-color: #6c7086;
+  --code-bg: #181825;
+  --hover-bg: rgba(255, 255, 255, 0.04);
+  --quote-bg: rgba(129, 140, 248, 0.06);
+  --tag-bg: rgba(129, 140, 248, 0.15);
+  --tag-color: #818cf8;
+  /* Callout */
+  --callout-note: #60a5fa;
+  --callout-note-bg: rgba(96, 165, 250, 0.1);
+  --callout-tip: #34d399;
+  --callout-tip-bg: rgba(52, 211, 153, 0.1);
+  --callout-warning: #fbbf24;
+  --callout-warning-bg: rgba(251, 191, 36, 0.1);
+  --callout-danger: #f87171;
+  --callout-danger-bg: rgba(248, 113, 113, 0.1);
+  --callout-success: #4ade80;
+  --callout-success-bg: rgba(74, 222, 128, 0.1);
+}
+
+/* ── 基础布局 ──────────────────────────────────────────────── */
 html, body, #app {
   height: 100%;
   margin: 0;
@@ -16,10 +67,13 @@ html, body, #app {
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  font-family: var(--font-text);
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  transition: background-color 0.2s, color 0.2s;
 }
 
-/* 沉浸式标题栏支持 */
+/* ── 标题栏拖拽 ────────────────────────────────────────────── */
 .custom-titlebar-drag-area {
   cursor: default;
 }
@@ -32,10 +86,10 @@ body {
   -webkit-app-region: no-drag;
 }
 
-/* 滚动条美化 */
+/* ── 滚动条美化 ─────────────────────────────────────────────── */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -43,21 +97,17 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #e5e7eb;
-  border-radius: 4px;
+  background: var(--border-color);
+  border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #d1d5db;
+  background: var(--muted-color);
 }
 
-/* 焦点写作模式 */
-html.focus-mode {
-  --bg-color: #ffffff;
-}
-
+/* ── 焦点写作模式 ──────────────────────────────────────────── */
 html.focus-mode .focus-mode-editor {
-  max-width: 720px;
+  max-width: 740px;
   margin: 0 auto;
   padding: 60px 24px;
 }
@@ -66,7 +116,6 @@ html.focus-mode .focus-mode-editor .cm6-editor {
   padding: 0 !important;
 }
 
-/* 焦点模式下工具栏悬停显示 */
 html.focus-mode .toolbar-container {
   position: fixed;
   top: 0;
@@ -80,7 +129,6 @@ html.focus-mode .toolbar-container:hover {
   pointer-events: auto !important;
 }
 
-/* 焦点模式状态栏悬停显示 */
 html.focus-mode .statusbar-container {
   position: fixed;
   bottom: 0;
@@ -94,9 +142,13 @@ html.focus-mode .statusbar-container:hover {
   pointer-events: auto !important;
 }
 
-/* 打印样式 */
+/* ── 深色模式下 highlight.js 代码高亮 ─────────────────────── */
+html.dark .hljs {
+  background: transparent;
+}
+
+/* ── 打印样式 ──────────────────────────────────────────────── */
 @media print {
-  /* 隐藏非内容区域 */
   .toolbar-container,
   .statusbar-container,
   aside,
@@ -106,47 +158,37 @@ html.focus-mode .statusbar-container:hover {
   .search-bar {
     display: none !important;
   }
-  
-  /* 重置布局 */
+
   body, #app, .h-screen {
     height: auto !important;
     overflow: visible !important;
   }
-  
+
   .flex-1 {
     flex: none !important;
   }
-  
-  /* 编辑器内容 */
+
   .cm6-editor {
     max-width: 100% !important;
     padding: 0 !important;
     margin: 0 !important;
   }
-  
-  /* 分页控制 - 避免在标题和内容之间断页 */
+
   h1, h2, h3, h4, h5, h6 {
     break-after: avoid;
     page-break-after: avoid;
   }
-  
+
   p, blockquote, ul, ol, pre, table {
     break-inside: avoid;
     page-break-inside: avoid;
   }
-  
-  /* 代码块 */
+
   pre {
     overflow-wrap: break-word;
     white-space: pre-wrap;
   }
-  
-  /* 表格 */
-  table {
-    break-inside: avoid;
-  }
-  
-  /* 图片 */
+
   img {
     max-width: 100% !important;
     break-inside: avoid;
