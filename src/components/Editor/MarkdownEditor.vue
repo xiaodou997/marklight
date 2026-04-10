@@ -52,6 +52,8 @@ import { Callout } from './tiptap/extensions/callout';
 import { Frontmatter } from './tiptap/extensions/frontmatter';
 import { MarkdownInputRules } from './tiptap/extensions/input-rules';
 import { InlineDecoPlugin } from './tiptap/extensions/inline-deco';
+import { Superscript, Subscript } from './tiptap/extensions/sub-sup';
+import { Wikilink } from './tiptap/extensions/wikilink';
 import BubbleMenuComponent from './views/BubbleMenu.vue';
 import SearchBar from './SearchBar.vue';
 import './tiptap/editor.css';
@@ -140,6 +142,9 @@ function createEditor(content: string) {
       Frontmatter,
       MarkdownInputRules,
       InlineDecoPlugin,
+      Superscript,
+      Subscript,
+      Wikilink,
     ],
     editorProps: {
       attributes: {

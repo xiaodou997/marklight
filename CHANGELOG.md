@@ -14,6 +14,9 @@
 - **Frontmatter**：YAML 元数据面板，可折叠/展开，双击编辑。
 - **搜索替换增强**：基于 ProseMirror 文档模型的精确匹配和定位。
 - **Markdown InputRules**：输入 `$$` 或 ` ```mermaid ` 自动转换为对应块。
+- **Wikilink**：支持 `[[page]]` 和 `[[page|alias]]` 语法，渲染为内联链接。
+- **上标/下标**：支持 `^sup^` 上标和 `~sub~` 下标语法。
+- **内联源码提示**：Typora 风格，光标进入格式化文本时显示 Markdown 语法标记。
 
 ### 🧹 工程清理
 - 移除全部 CodeMirror 6 依赖和代码。

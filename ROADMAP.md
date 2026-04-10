@@ -26,8 +26,8 @@ MarkLight 是一款跨平台 Markdown 编辑器，基于 Tauri 2.x + Vue 3 + Tip
 - [x] Mermaid 图表（渲染 + 点击编辑源码）
 - [x] Callout 块（Obsidian 风格提示框）
 - [x] Frontmatter（YAML 元数据面板）
-- [ ] Wikilink 支持
-- [ ] 上标 / 下标
+- [x] Wikilink 支持（`[[page]]` / `[[page|alias]]`）
+- [x] 上标 / 下标（`^sup^` / `~sub~`）
 
 ## P3：Typora 风格内联源码提示 ✅
 

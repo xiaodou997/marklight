@@ -30,6 +30,8 @@ const MARK_SYNTAX: Record<string, MarkSyntax> = {
   strike: { open: '~~', close: '~~', className: 'mk-deco-strike' },
   code: { open: '`', close: '`', className: 'mk-deco-code' },
   highlight: { open: '==', close: '==', className: 'mk-deco-highlight' },
+  superscript: { open: '^', close: '^', className: 'mk-deco-sup' },
+  subscript: { open: '~', close: '~', className: 'mk-deco-sub' },
 };
 
 // ── 装饰 Widget ──

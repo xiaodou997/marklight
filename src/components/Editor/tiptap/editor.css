@@ -605,6 +605,14 @@ html.dark .mk-deco-highlight {
   color: #fbbf24;
 }
 
+.mk-deco-sup,
+.mk-deco-sub {
+  color: var(--muted-color);
+  opacity: 0.6;
+  vertical-align: baseline;
+  font-size: 0.85em;
+}
+
 .mk-deco-heading {
   color: var(--muted-color);
   opacity: 0.5;
@@ -618,4 +626,46 @@ html.dark .mk-deco-highlight {
   color: var(--muted-color);
   opacity: 0.6;
   font-size: 0.8em;
+}
+
+/* ── Wikilink ────────────────────────────────────────────────── */
+.tiptap-editor .mk-wikilink {
+  color: var(--primary-color);
+  background-color: rgba(99, 102, 241, 0.08);
+  border-radius: 3px;
+  padding: 0 3px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background-color 0.15s;
+}
+
+.tiptap-editor .mk-wikilink:hover {
+  background-color: rgba(99, 102, 241, 0.15);
+}
+
+.tiptap-editor .mk-wikilink::before {
+  content: '[[';
+  color: var(--muted-color);
+  opacity: 0.5;
+  font-size: 0.85em;
+}
+
+.tiptap-editor .mk-wikilink::after {
+  content: ']]';
+  color: var(--muted-color);
+  opacity: 0.5;
+  font-size: 0.85em;
+}
+
+/* ── 上标 / 下标 ─────────────────────────────────────────────── */
+.tiptap-editor sup {
+  font-size: 0.75em;
+  vertical-align: super;
+  line-height: 0;
+}
+
+.tiptap-editor sub {
+  font-size: 0.75em;
+  vertical-align: sub;
+  line-height: 0;
 }

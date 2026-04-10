@@ -100,6 +100,8 @@ class MarkdownSerializerState {
       case 'strike': return '~~';
       case 'code': return '`';
       case 'highlight': return '==';
+      case 'superscript': return '^';
+      case 'subscript': return '~';
       case 'link':
         if (_opening) return '[';
         return `](${mark.attrs.href}${mark.attrs.title ? ` "${mark.attrs.title}"` : ''})`;
@@ -323,6 +325,16 @@ const nodeSerializers: Record<string, NodeSerializer> = {
     state.writeLine(node.textContent);
     state.writeLine('---');
     state.closeBlock(node);
+  },
+
+  wikilink(state, node) {
+    const target = node.attrs.target as string;
+    const alias = node.attrs.alias as string;
+    if (alias) {
+      state.write(`[[${target}|${alias}]]`);
+    } else {
+      state.write(`[[${target}]]`);
+    }
   },
 };
 

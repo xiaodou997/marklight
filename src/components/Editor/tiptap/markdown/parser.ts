@@ -281,10 +281,52 @@ function getTokenHandlers(schema: Schema): Record<string, TokenHandler> {
     state.closeMark(schema.marks.highlight);
   };
 
+  // superscript (^text^)
+  if (schema.marks.superscript) {
+    handlers.sup_open = (state) => {
+      state.openMark(schema.marks.superscript);
+    };
+    handlers.sup_close = (state) => {
+      state.closeMark(schema.marks.superscript);
+    };
+  }
+
+  // subscript (~text~)
+  if (schema.marks.subscript) {
+    handlers.sub_open = (state) => {
+      state.openMark(schema.marks.subscript);
+    };
+    handlers.sub_close = (state) => {
+      state.closeMark(schema.marks.subscript);
+    };
+  }
+
   // ── 文本和硬换行 ──
 
   handlers.text = (state, token) => {
-    state.addText(token.content);
+    // 检查文本中是否包含 wikilink [[target]] 或 [[target|alias]]
+    if (schema.nodes.wikilink && /\[\[/.test(token.content)) {
+      const regex = /\[\[([^\]|]+)(?:\|([^\]]*))?\]\]/g;
+      let lastIndex = 0;
+      let match;
+      while ((match = regex.exec(token.content)) !== null) {
+        // 添加 wikilink 前的文本
+        if (match.index > lastIndex) {
+          state.addText(token.content.slice(lastIndex, match.index));
+        }
+        // 添加 wikilink 节点
+        const target = match[1].trim();
+        const alias = match[2]?.trim() || '';
+        state.addNode(schema.nodes.wikilink, { target, alias });
+        lastIndex = regex.lastIndex;
+      }
+      // 添加剩余文本
+      if (lastIndex < token.content.length) {
+        state.addText(token.content.slice(lastIndex));
+      }
+    } else {
+      state.addText(token.content);
+    }
   };
 
   handlers.inline = (state, token) => {
