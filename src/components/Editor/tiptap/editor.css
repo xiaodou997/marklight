@@ -1,0 +1,621 @@
+/**
+ * TipTap 编辑器样式
+ *
+ * 基于 CSS 变量实现深色/浅色主题切换。
+ * 所有编辑器样式收拢在此文件中。
+ */
+
+/* ── 编辑器基础 ────────────────────────────────────────────── */
+.tiptap-editor {
+  outline: none;
+  font-family: var(--font-text);
+  color: var(--text-color);
+  line-height: 1.75;
+  font-size: 15px;
+  caret-color: var(--primary-color);
+  min-height: 100%;
+}
+
+.tiptap-editor > *:first-child {
+  margin-top: 0;
+}
+
+/* ── 段落 ──────────────────────────────────────────────────── */
+.tiptap-editor p {
+  margin: 0.5em 0;
+}
+
+/* ── 标题 ──────────────────────────────────────────────────── */
+.tiptap-editor h1 {
+  font-size: 1.875em;
+  font-weight: 700;
+  line-height: 1.3;
+  margin: 1em 0 0.5em;
+  color: var(--text-color);
+}
+
+.tiptap-editor h2 {
+  font-size: 1.5em;
+  font-weight: 600;
+  line-height: 1.35;
+  margin: 0.8em 0 0.4em;
+  color: var(--text-color);
+}
+
+.tiptap-editor h3 {
+  font-size: 1.25em;
+  font-weight: 600;
+  line-height: 1.4;
+  margin: 0.6em 0 0.3em;
+  color: var(--text-color);
+}
+
+.tiptap-editor h4 {
+  font-size: 1.125em;
+  font-weight: 600;
+  line-height: 1.4;
+  margin: 0.5em 0 0.25em;
+  color: var(--text-color);
+}
+
+.tiptap-editor h5 {
+  font-size: 1em;
+  font-weight: 600;
+  line-height: 1.4;
+  margin: 0.4em 0 0.2em;
+  color: var(--text-color);
+}
+
+.tiptap-editor h6 {
+  font-size: 0.9em;
+  font-weight: 600;
+  line-height: 1.4;
+  margin: 0.4em 0 0.2em;
+  color: var(--muted-color);
+}
+
+/* ── 引用块 ────────────────────────────────────────────────── */
+.tiptap-editor blockquote {
+  border-left: 3px solid var(--primary-color);
+  padding-left: 12px;
+  margin: 0.5em 0;
+  color: var(--text-color);
+  opacity: 0.85;
+  background-color: var(--quote-bg, transparent);
+}
+
+/* ── 列表 ──────────────────────────────────────────────────── */
+.tiptap-editor ul {
+  list-style-type: disc;
+  padding-left: 1.5em;
+  margin: 0.3em 0;
+}
+
+.tiptap-editor ol {
+  list-style-type: decimal;
+  padding-left: 1.5em;
+  margin: 0.3em 0;
+}
+
+.tiptap-editor li {
+  margin: 0.15em 0;
+}
+
+.tiptap-editor li p {
+  margin: 0;
+}
+
+/* ── 任务列表 ──────────────────────────────────────────────── */
+.tiptap-editor ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0;
+}
+
+.tiptap-editor ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.tiptap-editor ul[data-type="taskList"] li > label {
+  flex-shrink: 0;
+  margin-top: 4px;
+  user-select: none;
+}
+
+.tiptap-editor ul[data-type="taskList"] li > label input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  border-radius: 4px;
+  accent-color: var(--primary-color);
+  cursor: pointer;
+}
+
+.tiptap-editor ul[data-type="taskList"] li > div {
+  flex: 1;
+}
+
+.tiptap-editor ul[data-type="taskList"] li[data-checked="true"] > div {
+  text-decoration: line-through;
+  color: var(--muted-color);
+}
+
+/* ── 行内格式 ──────────────────────────────────────────────── */
+.tiptap-editor strong {
+  font-weight: 700;
+}
+
+.tiptap-editor em {
+  font-style: italic;
+}
+
+.tiptap-editor s {
+  text-decoration: line-through;
+  color: var(--muted-color);
+}
+
+.tiptap-editor code {
+  font-family: var(--font-mono);
+  background-color: var(--code-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 0.1em 4px;
+  font-size: 0.875em;
+}
+
+.tiptap-editor mark {
+  background-color: #fef08a;
+  border-radius: 2px;
+  padding: 0 2px;
+}
+
+html.dark .tiptap-editor mark {
+  background-color: rgba(254, 240, 138, 0.3);
+}
+
+/* ── 链接 ──────────────────────────────────────────────────── */
+.tiptap-editor a {
+  color: var(--primary-color);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.tiptap-editor a:hover {
+  opacity: 0.8;
+}
+
+/* ── 水平线 ────────────────────────────────────────────────── */
+.tiptap-editor hr {
+  border: none;
+  border-top: 1px solid var(--border-color);
+  margin: 1em 0;
+}
+
+/* ── 代码块 ────────────────────────────────────────────────── */
+.tiptap-editor pre {
+  background-color: var(--code-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 12px 16px;
+  margin: 0.5em 0;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.tiptap-editor pre code {
+  background: transparent;
+  border: none;
+  padding: 0;
+  font-size: inherit;
+  border-radius: 0;
+}
+
+/* ── 表格 ──────────────────────────────────────────────────── */
+.tiptap-editor table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.8em 0;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+}
+
+.tiptap-editor th,
+.tiptap-editor td {
+  border: 1px solid var(--border-color);
+  padding: 6px 12px;
+  vertical-align: top;
+  position: relative;
+  min-width: 50px;
+}
+
+.tiptap-editor th {
+  background-color: var(--sidebar-bg);
+  font-weight: 600;
+  font-size: 0.9em;
+  text-align: left;
+}
+
+.tiptap-editor td {
+  background-color: var(--bg-color);
+}
+
+.tiptap-editor tr:nth-child(even) td {
+  background-color: var(--sidebar-bg);
+}
+
+.tiptap-editor tr:hover td {
+  background-color: var(--hover-bg, rgba(0, 0, 0, 0.03));
+}
+
+/* 表格选中状态 */
+.tiptap-editor .selectedCell {
+  background-color: rgba(99, 102, 241, 0.1) !important;
+}
+
+/* ── 图片 ──────────────────────────────────────────────────── */
+.tiptap-editor img.mk-image {
+  max-width: 100%;
+  max-height: 520px;
+  object-fit: contain;
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+  margin: 0.5em 0;
+  display: block;
+}
+
+.tiptap-editor img.ProseMirror-selectednode {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+/* ── Placeholder ───────────────────────────────────────────── */
+.tiptap-editor p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--muted-color);
+  pointer-events: none;
+  height: 0;
+}
+
+/* ── 选中状态 ──────────────────────────────────────────────── */
+.tiptap-editor ::selection {
+  background-color: rgba(99, 102, 241, 0.2);
+}
+
+/* ── 光标 ──────────────────────────────────────────────────── */
+.tiptap-editor .ProseMirror-gapcursor {
+  display: none;
+  pointer-events: none;
+  position: absolute;
+  margin: 0;
+}
+
+.tiptap-editor .ProseMirror-gapcursor:after {
+  content: '';
+  display: block;
+  position: absolute;
+  top: -2px;
+  width: 20px;
+  border-top: 1px solid var(--text-color);
+  animation: ProseMirror-cursor-blink 1.1s steps(2, start) infinite;
+}
+
+@keyframes ProseMirror-cursor-blink {
+  to { visibility: hidden; }
+}
+
+/* ── 数学公式块 ────────────────────────────────────────────── */
+.tiptap-editor .mk-math-block {
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background-color: var(--sidebar-bg);
+  margin: 8px 0;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.tiptap-editor .mk-math-render {
+  padding: 12px 16px;
+  overflow-x: auto;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tiptap-editor .mk-math-placeholder {
+  color: var(--muted-color);
+  font-size: 13px;
+  font-style: italic;
+}
+
+.tiptap-editor .mk-math-error {
+  color: #ef4444;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+
+.tiptap-editor .mk-math-edit {
+  padding: 0;
+}
+
+.tiptap-editor .mk-math-textarea {
+  width: 100%;
+  min-height: 80px;
+  padding: 12px 16px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.6;
+  background-color: var(--code-bg);
+  color: var(--text-color);
+  border: none;
+  outline: none;
+  resize: vertical;
+}
+
+/* ── Mermaid 图表 ──────────────────────────────────────────── */
+.tiptap-editor .mk-mermaid-block {
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background-color: var(--bg-color);
+  margin: 12px 0;
+  overflow: hidden;
+}
+
+.tiptap-editor .mk-mermaid-badge {
+  font-size: 11px;
+  color: var(--muted-color);
+  padding: 5px 12px;
+  border-bottom: 1px solid var(--border-color);
+  background-color: var(--code-bg);
+  font-family: var(--font-mono);
+  text-transform: lowercase;
+  cursor: pointer;
+}
+
+.tiptap-editor .mk-mermaid-render {
+  padding: 16px;
+  overflow-x: auto;
+  min-height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.tiptap-editor .mk-mermaid-placeholder {
+  color: var(--muted-color);
+  font-size: 13px;
+  font-style: italic;
+}
+
+.tiptap-editor .mk-mermaid-error {
+  color: #ef4444;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  white-space: pre-wrap;
+}
+
+.tiptap-editor .mk-mermaid-edit {
+  padding: 0;
+}
+
+.tiptap-editor .mk-mermaid-textarea {
+  width: 100%;
+  min-height: 120px;
+  padding: 12px 16px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.6;
+  background-color: var(--code-bg);
+  color: var(--text-color);
+  border: none;
+  border-top: 1px solid var(--border-color);
+  outline: none;
+  resize: vertical;
+}
+
+/* ── Callout 块 ────────────────────────────────────────────── */
+.tiptap-editor .mk-callout {
+  border-left: 4px solid;
+  border-radius: 4px;
+  padding: 10px 14px;
+  margin: 10px 0;
+  font-size: 0.95em;
+}
+
+.tiptap-editor .mk-callout-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tiptap-editor .mk-callout-icon {
+  flex-shrink: 0;
+}
+
+.tiptap-editor .mk-callout-body {
+  margin-top: 4px;
+}
+
+.tiptap-editor .mk-callout-note {
+  border-color: var(--callout-note);
+  background-color: var(--callout-note-bg);
+}
+
+.tiptap-editor .mk-callout-info {
+  border-color: var(--callout-note);
+  background-color: var(--callout-note-bg);
+}
+
+.tiptap-editor .mk-callout-tip {
+  border-color: var(--callout-tip);
+  background-color: var(--callout-tip-bg);
+}
+
+.tiptap-editor .mk-callout-warning,
+.tiptap-editor .mk-callout-caution {
+  border-color: var(--callout-warning);
+  background-color: var(--callout-warning-bg);
+}
+
+.tiptap-editor .mk-callout-danger,
+.tiptap-editor .mk-callout-important {
+  border-color: var(--callout-danger);
+  background-color: var(--callout-danger-bg);
+}
+
+.tiptap-editor .mk-callout-success {
+  border-color: var(--callout-success);
+  background-color: var(--callout-success-bg);
+}
+
+.tiptap-editor .mk-callout-quote {
+  border-color: var(--muted-color);
+  background-color: var(--sidebar-bg);
+  font-style: italic;
+}
+
+/* ── Frontmatter ───────────────────────────────────────────── */
+.tiptap-editor .mk-frontmatter {
+  background-color: var(--sidebar-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  margin: 0 0 12px 0;
+  color: var(--muted-color);
+}
+
+.tiptap-editor .mk-frontmatter-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted-color);
+  cursor: pointer;
+  user-select: none;
+  margin-bottom: 4px;
+}
+
+.tiptap-editor .mk-frontmatter-content {
+  padding: 2px 0;
+}
+
+.tiptap-editor .mk-frontmatter-row {
+  line-height: 1.7;
+}
+
+.tiptap-editor .mk-frontmatter-key {
+  color: var(--primary-color);
+  font-weight: 500;
+}
+
+.tiptap-editor .mk-frontmatter-value {
+  color: var(--text-color);
+}
+
+.tiptap-editor .mk-frontmatter-empty {
+  color: var(--muted-color);
+  font-style: italic;
+}
+
+.tiptap-editor .mk-frontmatter-edit {
+  padding: 0;
+}
+
+.tiptap-editor .mk-frontmatter-textarea {
+  width: 100%;
+  min-height: 60px;
+  padding: 8px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.6;
+  background-color: var(--code-bg);
+  color: var(--text-color);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  outline: none;
+  resize: vertical;
+  margin-top: 4px;
+}
+
+/* ── Mermaid SVG 主题适配 ──────────────────────────────────── */
+.tiptap-editor .mk-mermaid-render svg {
+  max-width: 100%;
+  height: auto;
+}
+
+html.dark .tiptap-editor .mk-mermaid-render .nodeLabel {
+  color: var(--text-color);
+}
+
+/* ── Typora 风格内联源码提示 ─────────────────────────────────── */
+.mk-syntax-hint {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  color: var(--muted-color);
+  opacity: 0.7;
+  user-select: none;
+  pointer-events: none;
+}
+
+.mk-deco-bold {
+  color: var(--primary-color);
+  opacity: 0.6;
+}
+
+.mk-deco-italic {
+  color: var(--primary-color);
+  opacity: 0.6;
+  font-style: normal;
+}
+
+.mk-deco-strike {
+  color: var(--muted-color);
+  text-decoration: none;
+}
+
+.mk-deco-code {
+  color: #e879a0;
+  opacity: 0.7;
+}
+
+html.dark .mk-deco-code {
+  color: #f0a0b8;
+}
+
+.mk-deco-highlight {
+  color: #d97706;
+  opacity: 0.7;
+}
+
+html.dark .mk-deco-highlight {
+  color: #fbbf24;
+}
+
+.mk-deco-heading {
+  color: var(--muted-color);
+  opacity: 0.5;
+  font-weight: normal;
+  font-size: 0.6em;
+  vertical-align: baseline;
+}
+
+.mk-deco-link,
+.mk-deco-link-bracket {
+  color: var(--muted-color);
+  opacity: 0.6;
+  font-size: 0.8em;
+}

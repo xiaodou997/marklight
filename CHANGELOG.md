@@ -2,6 +2,25 @@
 
 所有对 MarkLight 的重要更改都将记录在此文件中。
 
+## [0.3.0] - 2026-04-10
+
+### 🚀 编辑器全面重构
+- **编辑器引擎迁移**：从 CodeMirror 6 迁移至 TipTap (ProseMirror)，实现 Typora 风格的所见即所得编辑。
+- **代码块可编辑**：代码块始终渲染语法高亮，可直接在渲染态编辑代码内容（基于 CodeBlockLowlight）。
+- **表格可编辑**：表格始终渲染为表格样式，可直接编辑单元格内容，支持 Tab 导航。
+- **数学公式**：支持 `$$` 块级公式（KaTeX 渲染），点击进入 LaTeX 编辑。
+- **Mermaid 图表**：渲染 Mermaid 流程图/时序图，点击进入源码编辑。
+- **Callout 块**：支持 Obsidian 风格的提示框（`> [!NOTE]` 等）。
+- **Frontmatter**：YAML 元数据面板，可折叠/展开，双击编辑。
+- **搜索替换增强**：基于 ProseMirror 文档模型的精确匹配和定位。
+- **Markdown InputRules**：输入 `$$` 或 ` ```mermaid ` 自动转换为对应块。
+
+### 🧹 工程清理
+- 移除全部 CodeMirror 6 依赖和代码。
+- 移除过期的 CM6 迁移文档。
+- 新增 ARCHITECTURE.md 技术方案文档。
+- 更新 ROADMAP.md 路线图。
+
 ## [0.2.2] - 2026-03-20
 
 ### 🚀 核心调整

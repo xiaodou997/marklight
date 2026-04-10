@@ -112,7 +112,7 @@ html.focus-mode .focus-mode-editor {
   padding: 60px 24px;
 }
 
-html.focus-mode .focus-mode-editor .cm6-editor {
+html.focus-mode .focus-mode-editor .tiptap-editor {
   padding: 0 !important;
 }
 
@@ -168,7 +168,7 @@ html.dark .hljs {
     flex: none !important;
   }
 
-  .cm6-editor {
+  .tiptap-editor {
     max-width: 100% !important;
     padding: 0 !important;
     margin: 0 !important;

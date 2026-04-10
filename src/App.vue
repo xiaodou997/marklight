@@ -20,7 +20,7 @@ import TitleBar from './components/Layout/TitleBar.vue';
 import { isModKey, isMac } from './utils/platform';
 import pkg from '../package.json';
 
-const MarkdownEditorCM6 = defineAsyncComponent(() => import('./components/Editor/MarkdownEditorCM6.vue'));
+const MarkdownEditor = defineAsyncComponent(() => import('./components/Editor/MarkdownEditor.vue'));
 
 // --- Stores ---
 const fileStore = useFileStore();
@@ -370,7 +370,7 @@ onUnmounted(() => {
         :class="{ 'focus-mode-editor': settingsStore.isFocusMode }"
       >
         <!-- 实时渲染模式 -->
-        <MarkdownEditorCM6
+        <MarkdownEditor
           v-if="activeViewMode === 'editor' && !isSourceMode"
           :key="fileStore.currentFile.path || 'new-file'"
           ref="editorRef"

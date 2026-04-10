@@ -5,7 +5,7 @@
 <h1 align="center">墨光 (MarkLight)</h1>
 
 <p align="center">
-  <strong>一款基于 Tauri 2.0 与 CodeMirror 6 Live Preview 的高性能、本地优先 Markdown 编辑器</strong>
+  <strong>一款基于 Tauri 2.0 与 TipTap (ProseMirror) 的高性能、本地优先 Markdown 编辑器</strong>
 </p>
 
 <p align="center">
@@ -24,7 +24,7 @@
 
 ## ✨ 核心特性
 
-- **🚀 实时渲染编辑**：基于 CodeMirror 6 Live Preview，源码与渲染无缝切换，输入即是最终形态。
+- **🚀 所见即所得**：基于 TipTap (ProseMirror) 实时渲染，代码块、表格等可直接在渲染态编辑。
 - **📦 本地优先**：图片自动本地化存储至 `assets/` 目录，支持拖拽与剪贴板粘贴。
 - **🎯 专注模式**：沉浸式焦点写作模式，隐藏所有干扰，只留思考空间。
 - **⌨️ 效率专家**：全功能命令面板 (`Cmd+K`)，支持快速跳转文件与执行编辑指令。

@@ -293,9 +293,9 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
                 <div class="space-y-2">
                   <label class="block text-sm font-medium" style="color: var(--text-color);">编辑器引擎</label>
                   <div class="w-full px-3 py-2 border rounded-lg" style="border-color: var(--border-color); background-color: var(--sidebar-bg); color: var(--text-color);">
-                    CodeMirror 6（已启用）
+                    TipTap (ProseMirror)（已启用）
                   </div>
-                  <p class="text-xs" style="color: var(--muted-color);">当前版本仅支持 CodeMirror 6 引擎。</p>
+                  <p class="text-xs" style="color: var(--muted-color);">所见即所得编辑器引擎。</p>
                 </div>
 
                 <div class="flex items-center justify-between">
