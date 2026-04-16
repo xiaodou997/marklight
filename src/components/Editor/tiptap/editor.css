@@ -669,3 +669,131 @@ html.dark .mk-deco-highlight {
   vertical-align: sub;
   line-height: 0;
 }
+
+/* ── 斜杠命令菜单 ────────────────────────────────────────────── */
+.mk-slash-menu {
+  position: fixed;
+  z-index: 1000;
+  background-color: var(--bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+  min-width: 240px;
+  max-width: 320px;
+  overflow: hidden;
+}
+
+html.dark .mk-slash-menu {
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.mk-slash-menu-scroll {
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.mk-slash-menu-group {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted-color);
+  padding: 8px 12px 4px;
+}
+
+.mk-slash-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: background-color 0.1s;
+}
+
+.mk-slash-menu-item:hover,
+.mk-slash-menu-item--active {
+  background-color: var(--hover-bg, rgba(99, 102, 241, 0.08));
+}
+
+.mk-slash-menu-icon {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background-color: var(--sidebar-bg);
+  border: 1px solid var(--border-color);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-color);
+  flex-shrink: 0;
+}
+
+.mk-slash-menu-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.mk-slash-menu-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-color);
+  line-height: 1.3;
+}
+
+.mk-slash-menu-desc {
+  font-size: 11px;
+  color: var(--muted-color);
+  line-height: 1.3;
+}
+
+.mk-slash-menu-empty {
+  padding: 12px;
+  text-align: center;
+  color: var(--muted-color);
+  font-size: 13px;
+}
+
+/* ── 拖拽手柄 ────────────────────────────────────────────────── */
+.mk-drag-handle {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  cursor: grab;
+  color: var(--muted-color);
+  opacity: 0;
+  transition: opacity 0.15s, background-color 0.15s;
+  z-index: 50;
+}
+
+.mk-drag-handle:hover {
+  opacity: 1;
+  background-color: var(--hover-bg, rgba(0, 0, 0, 0.05));
+  color: var(--text-color);
+}
+
+.tiptap-editor:hover ~ .mk-drag-handle,
+.mk-editor:hover .mk-drag-handle {
+  opacity: 0.4;
+}
+
+.mk-drag-handle--dragging {
+  opacity: 0.8;
+  cursor: grabbing;
+}
+
+.mk-drop-indicator {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background-color: var(--primary-color);
+  border-radius: 1px;
+  pointer-events: none;
+}

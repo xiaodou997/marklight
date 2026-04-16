@@ -9,6 +9,11 @@
     </div>
 
     <BubbleMenuComponent ref="bubbleMenuRef" :on-action="onBubbleMenuAction" />
+    <SlashMenu
+      ref="slashMenuRef"
+      :items="slashMenuItems"
+      :command="slashMenuCommand"
+    />
     <SearchBar
       ref="searchBarRef"
       :visible="isSearchVisible"
@@ -54,7 +59,10 @@ import { MarkdownInputRules } from './tiptap/extensions/input-rules';
 import { InlineDecoPlugin } from './tiptap/extensions/inline-deco';
 import { Superscript, Subscript } from './tiptap/extensions/sub-sup';
 import { Wikilink } from './tiptap/extensions/wikilink';
+import { SlashCommands, slashCommandItems, type SlashCommandItem } from './tiptap/extensions/slash-commands';
+import { DragHandle } from './tiptap/extensions/drag-handle';
 import BubbleMenuComponent from './views/BubbleMenu.vue';
+import SlashMenu from './views/SlashMenu.vue';
 import SearchBar from './SearchBar.vue';
 import './tiptap/editor.css';
 import 'highlight.js/styles/github.css';
@@ -85,6 +93,9 @@ const settingsStore = useSettingsStore();
 const editorWrapRef = ref<HTMLElement | null>(null);
 const bubbleMenuRef = ref<InstanceType<typeof BubbleMenuComponent> | null>(null);
 const searchBarRef = ref<InstanceType<typeof SearchBar> | null>(null);
+const slashMenuRef = ref<InstanceType<typeof SlashMenu> | null>(null);
+const slashMenuItems = ref<SlashCommandItem[]>([]);
+const slashMenuCommand = ref<(item: SlashCommandItem) => void>(() => {});
 const customCssId = 'marklight-custom-editor-css';
 
 // 搜索状态
@@ -145,6 +156,46 @@ function createEditor(content: string) {
       Superscript,
       Subscript,
       Wikilink,
+      SlashCommands.configure({
+        suggestion: {
+          char: '/',
+          startOfLine: false,
+          items: ({ query }: { query: string }) => {
+            const q = query.toLowerCase();
+            return slashCommandItems.filter(
+              (item) =>
+                item.title.toLowerCase().includes(q) ||
+                item.description.toLowerCase().includes(q),
+            );
+          },
+          render: () => ({
+            onStart: (props: Record<string, unknown>) => {
+              slashMenuItems.value = props.items as SlashCommandItem[];
+              slashMenuCommand.value = props.command as (item: SlashCommandItem) => void;
+              const rect = (props.clientRect as (() => DOMRect | null))?.();
+              if (rect) slashMenuRef.value?.show({ top: rect.bottom + 4, left: rect.left });
+            },
+            onUpdate: (props: Record<string, unknown>) => {
+              slashMenuItems.value = props.items as SlashCommandItem[];
+              slashMenuCommand.value = props.command as (item: SlashCommandItem) => void;
+              const rect = (props.clientRect as (() => DOMRect | null))?.();
+              if (rect) slashMenuRef.value?.show({ top: rect.bottom + 4, left: rect.left });
+            },
+            onKeyDown: (props: Record<string, unknown>) => {
+              const event = props.event as KeyboardEvent;
+              if (event.key === 'Escape') {
+                slashMenuRef.value?.hide();
+                return true;
+              }
+              return slashMenuRef.value?.onKeyDown(event) ?? false;
+            },
+            onExit: () => {
+              slashMenuRef.value?.hide();
+            },
+          }),
+        },
+      }),
+      DragHandle,
     ],
     editorProps: {
       attributes: {
