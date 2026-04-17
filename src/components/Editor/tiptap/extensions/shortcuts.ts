@@ -37,6 +37,8 @@ export const CustomShortcuts = Extension.create({
 
       // 水平线
       'Mod-Shift--': () => this.editor.chain().focus().setHorizontalRule().run(),
+
+      // 标题开头 Backspace 的降级行为已迁移到 heading-marker.ts plugin
     };
   },
 });

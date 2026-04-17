@@ -24,10 +24,8 @@ interface MarkSyntax {
   className: string;
 }
 
+// Phase A: bold/italic/strike 已迁移到 mark-tokens.ts，从此表移除
 const MARK_SYNTAX: Record<string, MarkSyntax> = {
-  bold: { open: '**', close: '**', className: 'mk-deco-bold' },
-  italic: { open: '*', close: '*', className: 'mk-deco-italic' },
-  strike: { open: '~~', close: '~~', className: 'mk-deco-strike' },
   code: { open: '`', close: '`', className: 'mk-deco-code' },
   highlight: { open: '==', close: '==', className: 'mk-deco-highlight' },
   superscript: { open: '^', close: '^', className: 'mk-deco-sup' },
@@ -54,27 +52,6 @@ class SyntaxHintWidget {
 
   eq(other: SyntaxHintWidget) {
     return this.text === other.text && this.className === other.className;
-  }
-}
-
-// ── 标题前缀 Widget ──
-
-class HeadingHintWidget {
-  level: number;
-
-  constructor(level: number) {
-    this.level = level;
-  }
-
-  toDOM(): HTMLElement {
-    const span = document.createElement('span');
-    span.className = 'mk-syntax-hint mk-deco-heading';
-    span.textContent = '#'.repeat(this.level) + ' ';
-    return span;
-  }
-
-  eq(other: HeadingHintWidget) {
-    return this.level === other.level;
   }
 }
 
@@ -178,20 +155,7 @@ function buildDecorations(state: EditorState): DecorationSet {
       }
     }
 
-    // 2. 检查光标是否在标题节点中
-    const parent = $from.parent;
-    if (parent.type.name === 'heading') {
-      const level = parent.attrs.level as number;
-      const headingStart = $from.before($from.depth);
-
-      const headingWidget = new HeadingHintWidget(level);
-      decos.push(
-        Decoration.widget(headingStart + 1, () => headingWidget.toDOM(), {
-          side: -1,
-          key: `heading-${headingStart}`,
-        }),
-      );
-    }
+    // 标题前缀已升格为 headingMarker 节点（heading-marker.ts），此处不再渲染装饰
   }
 
   return DecorationSet.create(state.doc, decos);

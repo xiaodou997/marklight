@@ -621,6 +621,39 @@ html.dark .mk-deco-highlight {
   vertical-align: baseline;
 }
 
+/* ── 方案 C：headingMarker 节点（替代 .mk-deco-heading） ───────── */
+.tiptap-editor .mk-heading-marker {
+  display: inline-block;
+  color: var(--muted-color);
+  opacity: 0.5;
+  font-weight: normal;
+  font-size: 0.6em;
+  vertical-align: baseline;
+  font-family: var(--font-mono);
+  user-select: none;
+  white-space: pre;
+}
+
+.tiptap-editor .mk-heading-marker.ProseMirror-selectednode {
+  background-color: rgba(99, 102, 241, 0.18);
+  border-radius: 2px;
+  outline: 1px solid var(--primary-color);
+}
+
+/* ── Phase A: mark token 节点样式 ────────────────────────────── */
+.tiptap-editor .mk-tok {
+  display: inline;
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  color: var(--muted-color);
+  opacity: 0.6;
+  user-select: none;
+  pointer-events: none;
+  font-weight: normal;
+  font-style: normal;
+  text-decoration: none;
+}
+
 .mk-deco-link,
 .mk-deco-link-bracket {
   color: var(--muted-color);

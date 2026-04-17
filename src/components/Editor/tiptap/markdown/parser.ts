@@ -120,6 +120,10 @@ function getTokenHandlers(schema: Schema): Record<string, TokenHandler> {
   handlers.heading_open = (state, token) => {
     const level = parseInt(token.tag.slice(1));
     state.openNode(schema.nodes.heading, { level });
+    // 方案 C：marker 是文档实体，作为 heading 的第一个子节点
+    if (schema.nodes.headingMarker) {
+      state.addNode(schema.nodes.headingMarker, { level });
+    }
   };
   handlers.heading_close = (state) => {
     state.closeNode();
@@ -172,8 +176,8 @@ function getTokenHandlers(schema: Schema): Record<string, TokenHandler> {
     const lang = token.info?.trim()?.toLowerCase() || null;
     const content = token.content.replace(/\n$/, '');
 
-    // Mermaid 图表
-    if (lang === 'mermaid' || lang === 'flow' || lang === 'seq') {
+    // Mermaid 图表（仅 mermaid 语法；flow/seq 是 flowchart.js/js-sequence-diagrams 的不兼容语法）
+    if (lang === 'mermaid') {
       if (schema.nodes.mermaidBlock) {
         state.addNode(schema.nodes.mermaidBlock, {}, content ? [schema.text(content)] : undefined);
         return;

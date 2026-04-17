@@ -48,6 +48,11 @@ import { useSettingsStore } from '../../stores/settings';
 import { parseMarkdown } from './tiptap/markdown/parser';
 import { serializeMarkdown } from './tiptap/markdown/serializer';
 import { CustomCodeBlock } from './tiptap/extensions/code-block';
+import { HeadingMarker, HeadingWithMarker } from './tiptap/extensions/heading-marker';
+import {
+  BoldOpen, BoldClose, ItalicOpen, ItalicClose,
+  StrikeOpen, StrikeClose, MarkTokenSync,
+} from './tiptap/extensions/mark-tokens';
 import { CustomTable, CustomTableRow, CustomTableHeader, CustomTableCell } from './tiptap/extensions/table';
 import { CustomImage } from './tiptap/extensions/image';
 import { CustomShortcuts } from './tiptap/extensions/shortcuts';
@@ -129,7 +134,13 @@ function createEditor(content: string) {
       StarterKit.configure({
         // 禁用 StarterKit 内置的 codeBlock，使用 CodeBlockLowlight
         codeBlock: false,
+        // 禁用 StarterKit 内置的 link，下面单独配置
+        link: false,
+        // 禁用 StarterKit 内置的 heading，使用方案 C 的自定义 heading + marker
+        heading: false,
       }),
+      HeadingMarker,
+      HeadingWithMarker,
       CustomCodeBlock,
       CustomTable,
       CustomTableRow,
@@ -196,6 +207,11 @@ function createEditor(content: string) {
         },
       }),
       DragHandle,
+      // Phase A: mark token 实体化
+      BoldOpen, BoldClose,
+      ItalicOpen, ItalicClose,
+      StrikeOpen, StrikeClose,
+      MarkTokenSync,
     ],
     editorProps: {
       attributes: {
@@ -265,9 +281,13 @@ function extractOutline(ed: TiptapEditor): Array<{ level: number; text: string; 
   const outline: Array<{ level: number; text: string; pos: number }> = [];
   ed.state.doc.descendants((node, pos) => {
     if (node.type.name === 'heading') {
+      // 跳过开头的 headingMarker（占 1 个位置），仅保留正文文本
+      const text = node.firstChild?.type.name === 'headingMarker'
+        ? node.textBetween(1, node.content.size)
+        : node.textContent;
       outline.push({
         level: node.attrs.level,
-        text: node.textContent,
+        text,
         pos,
       });
     }
