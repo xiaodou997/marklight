@@ -51,7 +51,11 @@ import { CustomCodeBlock } from './tiptap/extensions/code-block';
 import { HeadingMarker, HeadingWithMarker } from './tiptap/extensions/heading-marker';
 import {
   BoldOpen, BoldClose, ItalicOpen, ItalicClose,
-  StrikeOpen, StrikeClose, MarkTokenSync,
+  StrikeOpen, StrikeClose,
+  HighlightOpen, HighlightClose,
+  SupOpen, SupClose, SubOpen, SubClose,
+  CodeOpen, CodeClose,
+  MarkTokenSync,
 } from './tiptap/extensions/mark-tokens';
 import { CustomTable, CustomTableRow, CustomTableHeader, CustomTableCell } from './tiptap/extensions/table';
 import { CustomImage } from './tiptap/extensions/image';
@@ -207,10 +211,14 @@ function createEditor(content: string) {
         },
       }),
       DragHandle,
-      // Phase A: mark token 实体化
+      // Phase A/B: mark token 实体化
       BoldOpen, BoldClose,
       ItalicOpen, ItalicClose,
       StrikeOpen, StrikeClose,
+      HighlightOpen, HighlightClose,
+      SupOpen, SupClose,
+      SubOpen, SubClose,
+      CodeOpen, CodeClose,
       MarkTokenSync,
     ],
     editorProps: {

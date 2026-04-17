@@ -26,8 +26,17 @@ const PHASE_A_TOKENS: TokenConfig[] = [
   { markName: 'strike', openName: 'strikeOpen', closeName: 'strikeClose', syntax: '~~', cssClass: 'mk-tok-strike' },
 ];
 
-// Phase B/C 后续追加到此数组
-const ALL_TOKENS: TokenConfig[] = [...PHASE_A_TOKENS];
+const PHASE_B_TOKENS: TokenConfig[] = [
+  { markName: 'highlight', openName: 'highlightOpen', closeName: 'highlightClose', syntax: '==', cssClass: 'mk-tok-highlight' },
+  { markName: 'superscript', openName: 'supOpen', closeName: 'supClose', syntax: '^', cssClass: 'mk-tok-sup' },
+  { markName: 'subscript', openName: 'subOpen', closeName: 'subClose', syntax: '~', cssClass: 'mk-tok-sub' },
+];
+
+const PHASE_C_TOKENS: TokenConfig[] = [
+  { markName: 'code', openName: 'codeOpen', closeName: 'codeClose', syntax: '`', cssClass: 'mk-tok-code' },
+];
+
+const ALL_TOKENS: TokenConfig[] = [...PHASE_A_TOKENS, ...PHASE_B_TOKENS, ...PHASE_C_TOKENS];
 
 // 用于快速查找的集合
 export const TOKEN_NODE_NAMES = new Set<string>();
@@ -72,6 +81,14 @@ export const ItalicOpen = createTokenNode('italicOpen', '*', 'mk-tok-italic');
 export const ItalicClose = createTokenNode('italicClose', '*', 'mk-tok-italic');
 export const StrikeOpen = createTokenNode('strikeOpen', '~~', 'mk-tok-strike');
 export const StrikeClose = createTokenNode('strikeClose', '~~', 'mk-tok-strike');
+export const HighlightOpen = createTokenNode('highlightOpen', '==', 'mk-tok-highlight');
+export const HighlightClose = createTokenNode('highlightClose', '==', 'mk-tok-highlight');
+export const SupOpen = createTokenNode('supOpen', '^', 'mk-tok-sup');
+export const SupClose = createTokenNode('supClose', '^', 'mk-tok-sup');
+export const SubOpen = createTokenNode('subOpen', '~', 'mk-tok-sub');
+export const SubClose = createTokenNode('subClose', '~', 'mk-tok-sub');
+export const CodeOpen = createTokenNode('codeOpen', '`', 'mk-tok-code');
+export const CodeClose = createTokenNode('codeClose', '`', 'mk-tok-code');
 
 // ── markTokenSync Plugin ─────────────────────────────────────
 

@@ -24,13 +24,8 @@ interface MarkSyntax {
   className: string;
 }
 
-// Phase A: bold/italic/strike 已迁移到 mark-tokens.ts，从此表移除
-const MARK_SYNTAX: Record<string, MarkSyntax> = {
-  code: { open: '`', close: '`', className: 'mk-deco-code' },
-  highlight: { open: '==', close: '==', className: 'mk-deco-highlight' },
-  superscript: { open: '^', close: '^', className: 'mk-deco-sup' },
-  subscript: { open: '~', close: '~', className: 'mk-deco-sub' },
-};
+// Phase A/B/C: 所有非链接 mark 已迁移到 mark-tokens.ts
+const MARK_SYNTAX: Record<string, MarkSyntax> = {};
 
 // ── 装饰 Widget ──
 

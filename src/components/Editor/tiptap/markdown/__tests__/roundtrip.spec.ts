@@ -56,6 +56,16 @@ function createTestSchema(): Schema {
       italicClose: { inline: true, group: 'inline', atom: true, selectable: false, toDOM: () => ['span', {}, '*'] },
       strikeOpen: { inline: true, group: 'inline', atom: true, selectable: false, toDOM: () => ['span', {}, '~~'] },
       strikeClose: { inline: true, group: 'inline', atom: true, selectable: false, toDOM: () => ['span', {}, '~~'] },
+      // mark tokens (Phase B)
+      highlightOpen: { inline: true, group: 'inline', atom: true, selectable: false, toDOM: () => ['span', {}, '=='] },
+      highlightClose: { inline: true, group: 'inline', atom: true, selectable: false, toDOM: () => ['span', {}, '=='] },
+      supOpen: { inline: true, group: 'inline', atom: true, selectable: false, toDOM: () => ['span', {}, '^'] },
+      supClose: { inline: true, group: 'inline', atom: true, selectable: false, toDOM: () => ['span', {}, '^'] },
+      subOpen: { inline: true, group: 'inline', atom: true, selectable: false, toDOM: () => ['span', {}, '~'] },
+      subClose: { inline: true, group: 'inline', atom: true, selectable: false, toDOM: () => ['span', {}, '~'] },
+      // mark tokens (Phase C)
+      codeOpen: { inline: true, group: 'inline', atom: true, selectable: false, toDOM: () => ['span', {}, '`'] },
+      codeClose: { inline: true, group: 'inline', atom: true, selectable: false, toDOM: () => ['span', {}, '`'] },
     },
     marks: {
       bold: { parseDOM: [{ tag: 'strong' }], toDOM: () => ['strong', 0] },
@@ -163,6 +173,38 @@ describe('Round-trip: parse → serialize', () => {
 
     it('horizontal rule', () => {
       expect(roundTrip('---\n')).toBe(normalize('---\n'));
+    });
+  });
+
+  describe('Phase B: highlight / superscript / subscript nesting', () => {
+    it('highlight with bold inside', () => {
+      expect(roundTrip('==**bold highlight**==\n')).toBe(normalize('**==bold highlight==**\n'));
+    });
+
+    it('multiple superscripts', () => {
+      expect(roundTrip('^2^+^3^\n')).toBe(normalize('^2^+^3^\n'));
+    });
+
+    it('subscript in list item', () => {
+      expect(roundTrip('- H~2~O\n')).toBe(normalize('- H~2~O\n'));
+    });
+
+    it('highlight in blockquote', () => {
+      expect(roundTrip('> ==important==\n')).toBe(normalize('> ==important==\n'));
+    });
+  });
+
+  describe('Phase C: inline code', () => {
+    it('code in list item', () => {
+      expect(roundTrip('- `code item`\n')).toBe(normalize('- `code item`\n'));
+    });
+
+    it('code in blockquote', () => {
+      expect(roundTrip('> `code quote`\n')).toBe(normalize('> `code quote`\n'));
+    });
+
+    it('code does not nest with bold (excludes)', () => {
+      expect(roundTrip('`code **not bold**`\n')).toBe(normalize('`code **not bold**`\n'));
     });
   });
 

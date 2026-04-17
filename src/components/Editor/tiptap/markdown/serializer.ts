@@ -192,13 +192,21 @@ const nodeSerializers: Record<string, NodeSerializer> = {
     state.write('#'.repeat(node.attrs.level) + ' ');
   },
 
-  // Phase A: mark token no-op（mark 边界的 ** * ~~ 由 markDelimiter 输出）
+  // Phase A/B/C: mark token no-op（mark 边界的语法符号由 markDelimiter 输出）
   boldOpen() {},
   boldClose() {},
   italicOpen() {},
   italicClose() {},
   strikeOpen() {},
   strikeClose() {},
+  highlightOpen() {},
+  highlightClose() {},
+  supOpen() {},
+  supClose() {},
+  subOpen() {},
+  subClose() {},
+  codeOpen() {},
+  codeClose() {},
 
   blockquote(state, node) {
     // 序列化引用块：逐行添加 > 前缀
