@@ -207,6 +207,10 @@ const nodeSerializers: Record<string, NodeSerializer> = {
   subClose() {},
   codeOpen() {},
   codeClose() {},
+  // Phase D: link token no-op
+  linkBracketOpen() {},
+  linkBracketClose() {},
+  linkUrl() {},
 
   blockquote(state, node) {
     // 序列化引用块：逐行添加 > 前缀

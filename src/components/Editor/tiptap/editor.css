@@ -654,11 +654,26 @@ html.dark .mk-deco-highlight {
   text-decoration: none;
 }
 
-.mk-deco-link,
-.mk-deco-link-bracket {
-  color: var(--muted-color);
-  opacity: 0.6;
-  font-size: 0.8em;
+/* ── Phase D: link token 样式 ──────────────────────────────── */
+.tiptap-editor .mk-tok-link-url {
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.tiptap-editor .mk-tok-link-url--editing {
+  opacity: 1;
+}
+
+.tiptap-editor .mk-link-url-input {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  color: var(--primary-color);
+  background: var(--bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  padding: 0 4px;
+  outline: none;
+  min-width: 120px;
 }
 
 /* ── Wikilink ────────────────────────────────────────────────── */

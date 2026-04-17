@@ -65,7 +65,9 @@ import { MermaidBlock } from './tiptap/extensions/mermaid-block';
 import { Callout } from './tiptap/extensions/callout';
 import { Frontmatter } from './tiptap/extensions/frontmatter';
 import { MarkdownInputRules } from './tiptap/extensions/input-rules';
-import { InlineDecoPlugin } from './tiptap/extensions/inline-deco';
+import {
+  LinkBracketOpen, LinkBracketClose, LinkUrl, LinkTokenSync,
+} from './tiptap/extensions/link-token';
 import { Superscript, Subscript } from './tiptap/extensions/sub-sup';
 import { Wikilink } from './tiptap/extensions/wikilink';
 import { SlashCommands, slashCommandItems, type SlashCommandItem } from './tiptap/extensions/slash-commands';
@@ -167,7 +169,7 @@ function createEditor(content: string) {
       Callout,
       Frontmatter,
       MarkdownInputRules,
-      InlineDecoPlugin,
+      LinkBracketOpen, LinkBracketClose, LinkUrl, LinkTokenSync,
       Superscript,
       Subscript,
       Wikilink,

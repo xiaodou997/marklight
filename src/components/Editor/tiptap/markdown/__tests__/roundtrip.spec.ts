@@ -66,6 +66,10 @@ function createTestSchema(): Schema {
       // mark tokens (Phase C)
       codeOpen: { inline: true, group: 'inline', atom: true, selectable: false, toDOM: () => ['span', {}, '`'] },
       codeClose: { inline: true, group: 'inline', atom: true, selectable: false, toDOM: () => ['span', {}, '`'] },
+      // mark tokens (Phase D)
+      linkBracketOpen: { inline: true, group: 'inline', atom: true, selectable: false, toDOM: () => ['span', {}, '['] },
+      linkBracketClose: { inline: true, group: 'inline', atom: true, selectable: false, toDOM: () => ['span', {}, ']'] },
+      linkUrl: { inline: true, group: 'inline', atom: true, selectable: true, attrs: { href: { default: '' }, title: { default: null } }, toDOM: () => ['span', {}, '(url)'] },
     },
     marks: {
       bold: { parseDOM: [{ tag: 'strong' }], toDOM: () => ['strong', 0] },
@@ -205,6 +209,28 @@ describe('Round-trip: parse → serialize', () => {
 
     it('code does not nest with bold (excludes)', () => {
       expect(roundTrip('`code **not bold**`\n')).toBe(normalize('`code **not bold**`\n'));
+    });
+  });
+
+  describe('Phase D: link tokens', () => {
+    it('link with title', () => {
+      expect(roundTrip('[text](https://example.com "title")\n'))
+        .toBe(normalize('[text](https://example.com "title")\n'));
+    });
+
+    it('link with bold inside (PM normalizes bold outside link)', () => {
+      expect(roundTrip('[**bold link**](https://example.com)\n'))
+        .toBe(normalize('**[bold link](https://example.com)**\n'));
+    });
+
+    it('link in list item', () => {
+      expect(roundTrip('- [link](https://example.com)\n'))
+        .toBe(normalize('- [link](https://example.com)\n'));
+    });
+
+    it('link in blockquote', () => {
+      expect(roundTrip('> [link](https://example.com)\n'))
+        .toBe(normalize('> [link](https://example.com)\n'));
     });
   });
 
