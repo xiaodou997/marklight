@@ -8,6 +8,8 @@
  */
 import { Node, Extension } from '@tiptap/vue-3';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
+import { Decoration, DecorationSet } from '@tiptap/pm/view';
+import type { EditorState } from '@tiptap/pm/state';
 import type { Node as PMNode, NodeType, MarkType } from '@tiptap/pm/model';
 
 // ── Token 配置表 ─────────────────────────────────────────────
@@ -366,12 +368,137 @@ function buildMarkTokenSyncPlugin(): Plugin {
   });
 }
 
+// ── Token 可见性 Plugin ──────────────────────────────────────
+// Typora 风格：token 默认隐藏，光标在 mark 范围内时显示
+
+const tokenVisibilityKey = new PluginKey('tokenVisibility');
+
+function buildTokenVisibilityDecos(state: EditorState): DecorationSet {
+  const { selection } = state;
+  if (!selection.empty) return DecorationSet.empty;
+
+  const { $from } = selection;
+  const parent = $from.parent;
+  if (!parent.isTextblock) return DecorationSet.empty;
+
+  const parentStart = $from.start($from.depth);
+  const cursorOffset = $from.parentOffset;
+  const decos: Decoration[] = [];
+
+  // ── 1. Heading marker：光标在标题内时显示 # ──
+  if (parent.type.name === 'heading' && parent.firstChild?.type.name === 'headingMarker') {
+    const markerPos = parentStart;
+    const markerSize = parent.firstChild.nodeSize;
+    decos.push(Decoration.node(markerPos, markerPos + markerSize, { class: 'mk-tok--visible' }));
+  }
+
+  // ── 2. Mark tokens：光标在 mark 范围内时显示定界符 ──
+  const cursorMarks = $from.marks();
+  if (cursorMarks.length === 0) {
+    return decos.length > 0 ? DecorationSet.create(state.doc, decos) : DecorationSet.empty;
+  }
+
+  // 收集光标所在的各个 mark run 范围（parentOffset 空间）
+  const activeRanges: { markName: string; from: number; to: number }[] = [];
+  for (const mark of cursorMarks) {
+    let runFrom = -1;
+    let runTo = -1;
+    let cursorInRun = false;
+
+    parent.forEach((child, offset) => {
+      const hasMark = child.isText && child.marks.some((m) => m.type.name === mark.type.name);
+      if (hasMark) {
+        if (runFrom === -1) runFrom = offset;
+        runTo = offset + child.nodeSize;
+        if (cursorOffset >= runFrom && cursorOffset <= runTo) {
+          cursorInRun = true;
+        }
+      } else {
+        if (runFrom !== -1 && cursorInRun) {
+          activeRanges.push({ markName: mark.type.name, from: runFrom, to: runTo });
+        }
+        runFrom = -1;
+        runTo = -1;
+        cursorInRun = false;
+      }
+    });
+
+    if (runFrom !== -1 && cursorInRun) {
+      activeRanges.push({ markName: mark.type.name, from: runFrom, to: runTo });
+    }
+  }
+
+  if (activeRanges.length === 0) {
+    return decos.length > 0 ? DecorationSet.create(state.doc, decos) : DecorationSet.empty;
+  }
+
+  // 对每个 active range，找到其 open/close token 并标记可见
+  parent.forEach((child, offset) => {
+    if (!TOKEN_NODE_NAMES.has(child.type.name)) return;
+
+    const absPos = parentStart + offset;
+
+    // 查找此 token 对应的 mark
+    const config = ALL_TOKENS.find(
+      (t) => t.openName === child.type.name || t.closeName === child.type.name,
+    );
+    if (config) {
+      const isOpen = child.type.name === config.openName;
+      for (const range of activeRanges) {
+        if (range.markName !== config.markName) continue;
+        if (isOpen && offset + child.nodeSize === range.from) {
+          decos.push(Decoration.node(absPos, absPos + child.nodeSize, { class: 'mk-tok--visible' }));
+        }
+        if (!isOpen && offset === range.to) {
+          decos.push(Decoration.node(absPos, absPos + child.nodeSize, { class: 'mk-tok--visible' }));
+        }
+      }
+    }
+
+    // 链接 token
+    const linkRange = activeRanges.find((r) => r.markName === 'link');
+    if (linkRange) {
+      if (child.type.name === 'linkBracketOpen' && offset + 1 === linkRange.from) {
+        decos.push(Decoration.node(absPos, absPos + 1, { class: 'mk-tok--visible' }));
+      } else if (child.type.name === 'linkBracketClose' && offset === linkRange.to) {
+        decos.push(Decoration.node(absPos, absPos + 1, { class: 'mk-tok--visible' }));
+      } else if (child.type.name === 'linkUrl' && offset === linkRange.to + 1) {
+        decos.push(Decoration.node(absPos, absPos + child.nodeSize, { class: 'mk-tok--visible' }));
+      }
+    }
+  });
+
+  return DecorationSet.create(state.doc, decos);
+}
+
+function buildTokenVisibilityPlugin(): Plugin {
+  return new Plugin({
+    key: tokenVisibilityKey,
+    state: {
+      init(_, state) {
+        return buildTokenVisibilityDecos(state);
+      },
+      apply(tr, oldDecos, _oldState, newState) {
+        if (tr.docChanged || tr.selectionSet) {
+          return buildTokenVisibilityDecos(newState);
+        }
+        return oldDecos;
+      },
+    },
+    props: {
+      decorations(state) {
+        return this.getState(state);
+      },
+    },
+  });
+}
+
 // ── TipTap 扩展入口 ─────────────────────────────────────────
 
 export const MarkTokenSync = Extension.create({
   name: 'markTokenSync',
 
   addProseMirrorPlugins() {
-    return [buildMarkTokenSyncPlugin()];
+    return [buildMarkTokenSyncPlugin(), buildTokenVisibilityPlugin()];
   },
 });

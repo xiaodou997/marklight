@@ -625,13 +625,23 @@ html.dark .mk-deco-highlight {
 .tiptap-editor .mk-heading-marker {
   display: inline-block;
   color: var(--muted-color);
-  opacity: 0.5;
   font-weight: normal;
-  font-size: 0.6em;
+  font-size: 0;
+  width: 0;
+  overflow: hidden;
+  opacity: 0;
   vertical-align: baseline;
   font-family: var(--font-mono);
   user-select: none;
   white-space: pre;
+  transition: font-size 0.1s, opacity 0.1s;
+}
+
+.tiptap-editor .mk-heading-marker.mk-tok--visible {
+  font-size: 0.6em;
+  width: auto;
+  overflow: visible;
+  opacity: 0.5;
 }
 
 .tiptap-editor .mk-heading-marker.ProseMirror-selectednode {
@@ -640,27 +650,40 @@ html.dark .mk-deco-highlight {
   outline: 1px solid var(--primary-color);
 }
 
-/* ── Phase A: mark token 节点样式 ────────────────────────────── */
+/* ── Mark token 节点样式（Typora 风格：默认隐藏，光标进入时显示）── */
 .tiptap-editor .mk-tok {
   display: inline;
   font-family: var(--font-mono);
-  font-size: 0.85em;
+  font-size: 0;
+  width: 0;
+  overflow: hidden;
   color: var(--muted-color);
-  opacity: 0.6;
+  opacity: 0;
   user-select: none;
   pointer-events: none;
   font-weight: normal;
   font-style: normal;
   text-decoration: none;
+  transition: font-size 0.1s, opacity 0.1s;
 }
 
-/* ── Phase D: link token 样式 ──────────────────────────────── */
-.tiptap-editor .mk-tok-link-url {
+.tiptap-editor .mk-tok--visible {
+  font-size: 0.85em;
+  width: auto;
+  overflow: visible;
+  opacity: 0.6;
+}
+
+/* ── Link token 样式 ──────────────────────────────────────── */
+.tiptap-editor .mk-tok-link-url.mk-tok--visible {
   pointer-events: auto;
   cursor: pointer;
 }
 
 .tiptap-editor .mk-tok-link-url--editing {
+  font-size: 0.85em;
+  width: auto;
+  overflow: visible;
   opacity: 1;
 }
 
