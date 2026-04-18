@@ -249,10 +249,12 @@ function createEditor(content: string) {
 // ── 更新回调 ──────────────────────────────────────────────────
 
 const debouncedUpdate = debounce((ed: TiptapEditor) => {
-  // 序列化为 markdown 并同步到 fileStore
   const markdown = serializeMarkdown(ed.state.doc);
-  fileStore.markUserEdit();
-  fileStore.setContent(markdown);
+  // 只有实际内容变化时才标记为 dirty（跳过 appendTransaction 等内部变更）
+  if (markdown !== fileStore.currentFile.content) {
+    fileStore.markUserEdit();
+    fileStore.setContent(markdown);
+  }
 
   // 统计信息
   const text = ed.state.doc.textContent;
