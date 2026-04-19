@@ -5,6 +5,8 @@ import { useSettingsStore } from '../../stores/settings';
 import { WECHAT_THEMES } from '../../utils/wechat-themes';
 import { isMac } from '../../utils/platform';
 import { getShortcutGroups, eventToKeyString, formatShortcutDisplay, checkKeyConflicts, type ShortcutDef, DEFAULT_SHORTCUTS } from '../../utils/shortcuts';
+import ThemeSelector from './ThemeSelector.vue';
+import ThemeEditor from './ThemeEditor.vue';
 
 const settingsStore = useSettingsStore();
 const settings = settingsStore.settings;
@@ -221,9 +223,17 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
             <div class="flex-1 p-6 overflow-y-auto">
               <!-- 外观设置 -->
               <div v-show="activeTab === 'appearance'" class="space-y-6">
-                <!-- 主题切换 -->
+                <!-- 颜色主题 -->
                 <div class="space-y-2">
-                  <label class="block text-sm font-medium" style="color: var(--text-color);">主题</label>
+                  <ThemeSelector />
+                </div>
+                <div class="space-y-2">
+                  <ThemeEditor />
+                </div>
+
+                <!-- 主题模式切换 -->
+                <div class="space-y-2">
+                  <label class="block text-sm font-medium" style="color: var(--text-color);">显示模式</label>
                   <div class="grid grid-cols-3 gap-2">
                     <button
                       v-for="opt in [{ value: 'light', label: '浅色', icon: '☀️' }, { value: 'dark', label: '深色', icon: '🌙' }, { value: 'system', label: '跟随系统', icon: '💻' }]"

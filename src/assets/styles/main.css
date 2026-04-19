@@ -8,17 +8,92 @@
 
 /* ── 浅色主题（默认） ──────────────────────────────────────── */
 :root {
+  /* 主色调 */
   --primary-color: #6366f1;
+  --primary-hover: #4f46e5;
+  --primary-light: rgba(99, 102, 241, 0.1);
+
+  /* 背景 & 文字 */
   --bg-color: #ffffff;
+  --bg-secondary: #f9fafb;
   --text-color: #1f2937;
+  --text-secondary: #4b5563;
+
+  /* 侧边栏 */
   --sidebar-bg: #f9fafb;
+  --sidebar-hover: rgba(0, 0, 0, 0.05);
+
+  /* 边框 */
   --border-color: #e5e7eb;
+  --border-light: #f3f4f6;
+
+  /* 弱化文字 */
   --muted-color: #6b7280;
+
+  /* 代码 */
   --code-bg: #f3f4f6;
+  --code-border: #e5e7eb;
+
+  /* 交互状态 */
   --hover-bg: rgba(0, 0, 0, 0.03);
+  --active-bg: rgba(0, 0, 0, 0.05);
+  --selected-bg: rgba(99, 102, 241, 0.1);
+
+  /* 引用 & 标签 */
   --quote-bg: rgba(99, 102, 241, 0.04);
   --tag-bg: rgba(99, 102, 241, 0.12);
   --tag-color: #6366f1;
+
+  /* 状态颜色 */
+  --success-color: #22c55e;
+  --success-bg: rgba(34, 197, 94, 0.1);
+  --warning-color: #f59e0b;
+  --warning-bg: rgba(245, 158, 11, 0.1);
+  --error-color: #ef4444;
+  --error-bg: rgba(239, 68, 68, 0.1);
+  --info-color: #3b82f6;
+  --info-bg: rgba(59, 130, 246, 0.1);
+
+  /* 阴影 */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+
+  /* 圆角 */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+
+  /* 弹窗/模态框 */
+  --modal-bg: #ffffff;
+  --modal-border: #e5e7eb;
+  --modal-overlay: rgba(0, 0, 0, 0.5);
+  --modal-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+
+  /* 输入框 */
+  --input-bg: #ffffff;
+  --input-border: #e5e7eb;
+  --input-focus-border: #6366f1;
+  --input-focus-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+  --input-placeholder: #9ca3af;
+
+  /* 按钮 */
+  --btn-primary-bg: #6366f1;
+  --btn-primary-hover: #4f46e5;
+  --btn-primary-text: #ffffff;
+  --btn-secondary-bg: rgba(0, 0, 0, 0.05);
+  --btn-secondary-hover: rgba(0, 0, 0, 0.1);
+  --btn-secondary-text: #374151;
+  --btn-ghost-bg: transparent;
+  --btn-ghost-hover: rgba(0, 0, 0, 0.05);
+
+  /* 浮动菜单 */
+  --popover-bg: #ffffff;
+  --popover-border: #e5e7eb;
+  --popover-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+
   /* Callout */
   --callout-note: #3b82f6;
   --callout-note-bg: rgba(59, 130, 246, 0.07);
@@ -30,21 +105,98 @@
   --callout-danger-bg: rgba(239, 68, 68, 0.07);
   --callout-success: #22c55e;
   --callout-success-bg: rgba(34, 197, 94, 0.07);
+  --callout-quote: #6b7280;
+  --callout-quote-bg: rgba(107, 114, 128, 0.07);
 }
 
 /* ── 深色主题 ─────────────────────────────────────────────── */
 html.dark {
+  /* 主色调 */
   --primary-color: #818cf8;
+  --primary-hover: #a5b4fc;
+  --primary-light: rgba(129, 140, 248, 0.15);
+
+  /* 背景 & 文字 */
   --bg-color: #1e1e2e;
+  --bg-secondary: #181825;
   --text-color: #cdd6f4;
+  --text-secondary: #bac2de;
+
+  /* 侧边栏 */
   --sidebar-bg: #181825;
+  --sidebar-hover: rgba(255, 255, 255, 0.05);
+
+  /* 边框 */
   --border-color: #313244;
+  --border-light: #45475a;
+
+  /* 弱化文字 */
   --muted-color: #6c7086;
+
+  /* 代码 */
   --code-bg: #181825;
+  --code-border: #313244;
+
+  /* 交互状态 */
   --hover-bg: rgba(255, 255, 255, 0.04);
+  --active-bg: rgba(255, 255, 255, 0.08);
+  --selected-bg: rgba(129, 140, 248, 0.15);
+
+  /* 引用 & 标签 */
   --quote-bg: rgba(129, 140, 248, 0.06);
   --tag-bg: rgba(129, 140, 248, 0.15);
   --tag-color: #818cf8;
+
+  /* 状态颜色 */
+  --success-color: #4ade80;
+  --success-bg: rgba(74, 222, 128, 0.15);
+  --warning-color: #fbbf24;
+  --warning-bg: rgba(251, 191, 36, 0.15);
+  --error-color: #f87171;
+  --error-bg: rgba(248, 113, 113, 0.15);
+  --info-color: #60a5fa;
+  --info-bg: rgba(96, 165, 250, 0.15);
+
+  /* 阴影 */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -2px rgba(0, 0, 0, 0.2);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
+
+  /* 圆角 (共用) */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+
+  /* 弹窗/模态框 */
+  --modal-bg: #1e1e2e;
+  --modal-border: #313244;
+  --modal-overlay: rgba(0, 0, 0, 0.7);
+  --modal-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+
+  /* 输入框 */
+  --input-bg: #181825;
+  --input-border: #313244;
+  --input-focus-border: #818cf8;
+  --input-focus-shadow: 0 0 0 3px rgba(129, 140, 248, 0.2);
+  --input-placeholder: #6c7086;
+
+  /* 按钮 */
+  --btn-primary-bg: #818cf8;
+  --btn-primary-hover: #a5b4fc;
+  --btn-primary-text: #1e1e2e;
+  --btn-secondary-bg: rgba(255, 255, 255, 0.08);
+  --btn-secondary-hover: rgba(255, 255, 255, 0.12);
+  --btn-secondary-text: #cdd6f4;
+  --btn-ghost-bg: transparent;
+  --btn-ghost-hover: rgba(255, 255, 255, 0.05);
+
+  /* 浮动菜单 */
+  --popover-bg: #1e1e2e;
+  --popover-border: #313244;
+  --popover-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+
   /* Callout */
   --callout-note: #60a5fa;
   --callout-note-bg: rgba(96, 165, 250, 0.1);
@@ -56,6 +208,8 @@ html.dark {
   --callout-danger-bg: rgba(248, 113, 113, 0.1);
   --callout-success: #4ade80;
   --callout-success-bg: rgba(74, 222, 128, 0.1);
+  --callout-quote: #6c7086;
+  --callout-quote-bg: rgba(108, 112, 134, 0.1);
 }
 
 /* ── 基础布局 ──────────────────────────────────────────────── */
