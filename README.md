@@ -37,9 +37,13 @@
 | 模块 | 技术方案 |
 | :--- | :--- |
 | **桌面框架** | [Tauri 2.0](https://tauri.app/) (Rust + Webview2/WebKit) |
-| **编辑器内核** | [CodeMirror 6](https://codemirror.net/) |
+| **编辑器内核** | [TipTap](https://tiptap.dev/) (ProseMirror) - 所见即所得 |
 | **前端框架** | Vue 3 (Composition API) + TypeScript |
 | **样式方案** | Tailwind CSS 4.0 |
+| **Markdown 解析** | markdown-it + 自定义解析器/序列化器 |
+| **代码高亮** | lowlight + highlight.js |
+| **数学公式** | KaTeX |
+| **图表渲染** | Mermaid |
 | **数据管理** | Pinia + 文件系统实时监听 (notify) |
 
 ## 🚀 快速开始

@@ -1,6 +1,6 @@
 [package]
 name = "marklight"
-version = "0.2.2"
+version = "1.0.0"
 description = "MarkLight - A lightweight Markdown editor"
 authors = ["luoxiaodou"]
 license = "Apache-2.0"
