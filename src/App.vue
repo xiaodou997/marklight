@@ -17,6 +17,7 @@ import SettingsModal from './components/Settings/SettingsModal.vue';
 import ShortcutsModal from './components/Editor/ShortcutsModal.vue';
 import CommandPalette from './components/Editor/CommandPalette.vue';
 import TitleBar from './components/Layout/TitleBar.vue';
+import { getCurrentWebview } from '@tauri-apps/api/webview';
 import { isModKey, isMac } from './utils/platform';
 import pkg from '../package.json';
 
@@ -77,6 +78,9 @@ const outlineItems = ref<OutlineItem[]>([]);
 
 // --- File operations wrappers ---
 async function checkUnsavedChanges() {
+  if (!fileStore.currentFile.path && !fileStore.currentFile.content.trim()) {
+    return true;
+  }
   if (fileStore.currentFile.isDirty) {
     const confirmed = await confirm('当前文件有未保存的更改，是否放弃更改？', {
       title: '未保存的更改',
@@ -266,10 +270,40 @@ useMenuEvents({
 // --- Lifecycle ---
 let cleanupAutoSave: (() => void) | null = null;
 
+// --- 阻止拖放文件导致 WebView 页面导航 ---
+function handleDragOver(e: DragEvent) {
+  e.preventDefault();
+}
+
+function handleDrop(e: DragEvent) {
+  e.preventDefault();
+}
+
+// --- Tauri 原生拖放事件：处理 .md 文件拖入 ---
+let unlistenDragDrop: (() => void) | null = null;
+
+async function setupAppDragDrop() {
+  const webview = getCurrentWebview();
+  unlistenDragDrop = await webview.onDragDropEvent(async (event) => {
+    if (event.payload.type !== 'drop') return;
+    const paths = event.payload.paths;
+    if (!paths?.length) return;
+    // 找到第一个 Markdown 文件并打开
+    const mdPath = paths.find(p => /\.(md|markdown|txt)$/i.test(p));
+    if (mdPath) {
+      await handleOpenFile(mdPath);
+    }
+    // 图片文件的拖放由 MarkdownEditor 中的 onDragDropEvent 处理
+  });
+}
+
 onMounted(async () => {
   updateWindowTitle();
   await settingsStore.init();
   document.addEventListener('copy', onCopy);
+  document.addEventListener('dragover', handleDragOver);
+  document.addEventListener('drop', handleDrop);
+  await setupAppDragDrop();
 
   cleanupAutoSave = setupAutoSave(autoSaveStatus);
   window.addEventListener('image-paste-warning', handleImagePasteWarning as EventListener);
@@ -306,6 +340,9 @@ function handleKeyDown(e: KeyboardEvent) {
 
 onUnmounted(() => {
   document.removeEventListener('copy', onCopy);
+  document.removeEventListener('dragover', handleDragOver);
+  document.removeEventListener('drop', handleDrop);
+  unlistenDragDrop?.();
   window.removeEventListener('keydown', handleKeyDown);
   window.removeEventListener('image-paste-warning', handleImagePasteWarning as EventListener);
   cleanupAutoSave?.();

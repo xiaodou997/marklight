@@ -104,7 +104,7 @@ interface MarkRun {
 
 /**
  * 在一个 textblock 内收集所有 mark run
- * 返回按 from 升序排列的 run 数组
+ * Token 节点对扫描透明——不会切断 mark run
  */
 function collectMarkRuns(
   block: PMNode,
@@ -115,24 +115,28 @@ function collectMarkRuns(
 
   for (const markName of syncedMarks) {
     let runFrom = -1;
+    let runTo = -1;
 
     block.forEach((child, offset) => {
+      // token 节点透明：不切断 mark run
+      if (TOKEN_NODE_NAMES.has(child.type.name)) return;
+
       const absPos = blockStart + offset;
       const hasMark = child.isText && child.marks.some((m) => m.type.name === markName);
 
       if (hasMark) {
         if (runFrom === -1) runFrom = absPos;
+        runTo = absPos + child.nodeSize;
       } else {
         if (runFrom !== -1) {
-          runs.push({ markName, from: runFrom, to: absPos });
+          runs.push({ markName, from: runFrom, to: runTo });
           runFrom = -1;
         }
       }
     });
 
-    // run 延伸到 block 末尾
     if (runFrom !== -1) {
-      runs.push({ markName, from: runFrom, to: blockStart + block.content.size });
+      runs.push({ markName, from: runFrom, to: runTo });
     }
   }
 
@@ -141,16 +145,34 @@ function collectMarkRuns(
 }
 
 /**
- * 检查位置 pos 处是否有指定类型的 token 节点
+ * 从 pos 开始向 direction 方向搜索指定 token，跳过其他 token 节点
  */
-function hasTokenAt(doc: PMNode, pos: number, tokenTypeName: string): boolean {
-  if (pos < 0 || pos >= doc.content.size) return false;
-  try {
-    const node = doc.nodeAt(pos);
-    return node?.type.name === tokenTypeName;
-  } catch {
-    return false;
+function findTokenNearby(
+  doc: PMNode,
+  pos: number,
+  tokenTypeName: string,
+  direction: 'before' | 'after',
+  limit: number,
+): boolean {
+  let p = direction === 'before' ? pos - 1 : pos;
+  const bound = direction === 'before' ? Math.max(0, pos - limit) : Math.min(doc.content.size, pos + limit);
+
+  while (direction === 'before' ? p >= bound : p < bound) {
+    if (p < 0 || p >= doc.content.size) break;
+    try {
+      const node = doc.nodeAt(p);
+      if (!node) break;
+      if (node.type.name === tokenTypeName) return true;
+      if (TOKEN_NODE_NAMES.has(node.type.name)) {
+        p += direction === 'before' ? -1 : node.nodeSize;
+        continue;
+      }
+      break;
+    } catch {
+      break;
+    }
   }
+  return false;
 }
 
 type Action =
@@ -276,22 +298,20 @@ function buildMarkTokenSyncPlugin(): Plugin {
           const openTokenName = markToOpen.get(run.markName)!;
           const closeTokenName = markToClose.get(run.markName)!;
 
-          // 检查 open token：应在 run.from 之前
-          const openPos = run.from - 1;
-          if (!hasTokenAt(newState.doc, openPos, openTokenName)) {
-            // 确保不会在 blockStart 之前插入
+          // 检查 open token：在 run.from 之前搜索（跳过其他 token）
+          if (!findTokenNearby(newState.doc, run.from, openTokenName, 'before', 10)) {
             if (run.from >= blockStart) {
               actions.push({ kind: 'insert', pos: run.from, tokenName: openTokenName });
             }
           }
 
-          // 检查 close token：应在 run.to 处
-          if (!hasTokenAt(newState.doc, run.to, closeTokenName)) {
+          // 检查 close token：在 run.to 之后搜索（跳过其他 token）
+          if (!findTokenNearby(newState.doc, run.to, closeTokenName, 'after', 10)) {
             actions.push({ kind: 'insert', pos: run.to, tokenName: closeTokenName });
           }
         }
 
-        // 检查孤儿 token（没有对应 mark run 的 token）
+        // 检查孤儿 token：搜索附近是否有对应 mark 的文本（跳过其他 token）
         node.forEach((child, childOffset) => {
           if (!TOKEN_NODE_NAMES.has(child.type.name)) return;
 
@@ -302,24 +322,25 @@ function buildMarkTokenSyncPlugin(): Plugin {
           if (!config) return;
 
           const isOpen = child.type.name === config.openName;
-          // 验证是否紧邻一个对应 mark run
-          const adjacentPos = isOpen ? absPos + 1 : absPos - 1;
           let hasAdjacentRun = false;
-          try {
-            const adjacentNode = newState.doc.nodeAt(adjacentPos);
-            if (adjacentNode?.isText && adjacentNode.marks.some((m) => m.type.name === config.markName)) {
-              hasAdjacentRun = true;
-            }
-          } catch { /* out of bounds */ }
 
-          // 对于 closeToken，也检查左侧
-          if (!isOpen) {
+          // 向对应方向扫描，跳过 token 节点，找文本节点
+          let p = isOpen ? absPos + child.nodeSize : absPos - 1;
+          while (p >= blockStart - 1 && p < blockStart + node.content.size) {
+            if (p < 0) break;
             try {
-              const leftNode = newState.doc.nodeAt(absPos - 1);
-              if (leftNode?.isText && leftNode.marks.some((m) => m.type.name === config.markName)) {
+              const n = newState.doc.nodeAt(p);
+              if (!n) break;
+              if (n.isText && n.marks.some((m) => m.type.name === config.markName)) {
                 hasAdjacentRun = true;
+                break;
               }
-            } catch { /* out of bounds */ }
+              if (TOKEN_NODE_NAMES.has(n.type.name)) {
+                p += isOpen ? n.nodeSize : -1;
+                continue;
+              }
+              break;
+            } catch { break; }
           }
 
           if (!hasAdjacentRun) {

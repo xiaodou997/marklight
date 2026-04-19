@@ -286,6 +286,60 @@ const LINK_TOKEN_NAMES = new Set(['linkBracketOpen', 'linkBracketClose', 'linkUr
 // 注册到全局 TOKEN_NODE_NAMES
 LINK_TOKEN_NAMES.forEach((name) => TOKEN_NODE_NAMES.add(name));
 
+// ── 搜索辅助函数 ──────────────────────────────────────────
+
+function searchTokenBefore(
+  doc: PMNode, pos: number, tokenName: string, lowerBound: number,
+): boolean {
+  let p = pos - 1;
+  while (p >= lowerBound) {
+    try {
+      const node = doc.nodeAt(p);
+      if (!node) break;
+      if (node.type.name === tokenName) return true;
+      if (TOKEN_NODE_NAMES.has(node.type.name)) { p--; continue; }
+      break;
+    } catch { break; }
+  }
+  return false;
+}
+
+function searchTokenAfter(
+  doc: PMNode, pos: number, tokenName: string, upperBound: number,
+): { pos: number } | null {
+  let p = pos;
+  while (p < upperBound) {
+    try {
+      const node = doc.nodeAt(p);
+      if (!node) break;
+      if (node.type.name === tokenName) return { pos: p };
+      if (TOKEN_NODE_NAMES.has(node.type.name)) { p += node.nodeSize; continue; }
+      break;
+    } catch { break; }
+  }
+  return null;
+}
+
+function hasLinkTextNearby(
+  doc: PMNode, pos: number, direction: 'before' | 'after', bound: number,
+): boolean {
+  let p = direction === 'before' ? pos - 1 : pos;
+  while (direction === 'before' ? p >= bound : p < bound) {
+    if (p < 0 || p >= doc.content.size) break;
+    try {
+      const node = doc.nodeAt(p);
+      if (!node) break;
+      if (node.isText && node.marks.some((m) => m.type.name === 'link')) return true;
+      if (TOKEN_NODE_NAMES.has(node.type.name)) {
+        p += direction === 'before' ? -1 : node.nodeSize;
+        continue;
+      }
+      break;
+    } catch { break; }
+  }
+  return false;
+}
+
 // ── Link Token 同步 Plugin ─────────────────────────────────
 
 interface LinkRun {
@@ -298,10 +352,14 @@ interface LinkRun {
 function collectLinkRuns(block: PMNode, blockStart: number): LinkRun[] {
   const runs: LinkRun[] = [];
   let runFrom = -1;
+  let runTo = -1;
   let runHref = '';
   let runTitle: string | null = null;
 
   block.forEach((child, offset) => {
+    // token 节点透明：不切断 link run
+    if (TOKEN_NODE_NAMES.has(child.type.name)) return;
+
     const absPos = blockStart + offset;
     const linkMark = child.isText
       ? child.marks.find((m) => m.type.name === 'link')
@@ -313,16 +371,17 @@ function collectLinkRuns(block: PMNode, blockStart: number): LinkRun[] {
         runHref = linkMark.attrs.href ?? '';
         runTitle = linkMark.attrs.title ?? null;
       }
+      runTo = absPos + child.nodeSize;
     } else {
       if (runFrom !== -1) {
-        runs.push({ from: runFrom, to: absPos, href: runHref, title: runTitle });
+        runs.push({ from: runFrom, to: runTo, href: runHref, title: runTitle });
         runFrom = -1;
       }
     }
   });
 
   if (runFrom !== -1) {
-    runs.push({ from: runFrom, to: blockStart + block.content.size, href: runHref, title: runTitle });
+    runs.push({ from: runFrom, to: runTo, href: runHref, title: runTitle });
   }
 
   return runs;
@@ -352,74 +411,44 @@ function buildLinkTokenSyncPlugin(): Plugin {
         const runs = collectLinkRuns(node, blockStart);
 
         for (const run of runs) {
-          // 检查 linkBracketOpen：应在 run.from 之前
-          const openPos = run.from - 1;
-          if (openPos >= blockStart) {
-            const nodeAtOpen = newState.doc.nodeAt(openPos);
-            if (!nodeAtOpen || nodeAtOpen.type.name !== 'linkBracketOpen') {
-              actions.push({ kind: 'insert', pos: run.from, tokenName: 'linkBracketOpen' });
-            }
-          } else {
+          // 检查 linkBracketOpen：在 run.from 之前搜索（跳过其他 token）
+          if (!searchTokenBefore(newState.doc, run.from, 'linkBracketOpen', blockStart)) {
             actions.push({ kind: 'insert', pos: run.from, tokenName: 'linkBracketOpen' });
           }
 
-          // 检查 linkBracketClose：应在 run.to 处
-          const nodeAtClose = newState.doc.nodeAt(run.to);
-          if (!nodeAtClose || nodeAtClose.type.name !== 'linkBracketClose') {
+          // 检查 linkBracketClose：在 run.to 之后搜索
+          if (!searchTokenAfter(newState.doc, run.to, 'linkBracketClose', blockStart + node.content.size)) {
             actions.push({ kind: 'insert', pos: run.to, tokenName: 'linkBracketClose' });
           }
 
-          // 检查 linkUrl：应在 linkBracketClose 之后
-          const linkUrlPos = run.to + (nodeAtClose?.type.name === 'linkBracketClose' ? 1 : 0);
-          const nodeAtUrl = newState.doc.nodeAt(linkUrlPos);
-          if (nodeAtUrl?.type.name === 'linkUrl') {
-            // 检查 attrs 是否需要更新
-            if (nodeAtUrl.attrs.href !== run.href || nodeAtUrl.attrs.title !== run.title) {
-              actions.push({ kind: 'updateAttrs', pos: linkUrlPos, attrs: { href: run.href, title: run.title } });
+          // 检查 linkUrl：在 linkBracketClose 之后搜索
+          const urlFound = searchTokenAfter(newState.doc, run.to, 'linkUrl', blockStart + node.content.size);
+          if (urlFound) {
+            const nodeAtUrl = newState.doc.nodeAt(urlFound.pos);
+            if (nodeAtUrl && (nodeAtUrl.attrs.href !== run.href || nodeAtUrl.attrs.title !== run.title)) {
+              actions.push({ kind: 'updateAttrs', pos: urlFound.pos, attrs: { href: run.href, title: run.title } });
             }
           } else {
-            // linkUrl 不存在，需要插入
-            // 插在 linkBracketClose 后面
-            const insertUrlPos = run.to + (nodeAtClose?.type.name === 'linkBracketClose' ? 1 : 0);
-            actions.push({ kind: 'insert', pos: insertUrlPos, tokenName: 'linkUrl', attrs: { href: run.href, title: run.title } });
+            actions.push({ kind: 'insert', pos: run.to, tokenName: 'linkUrl', attrs: { href: run.href, title: run.title } });
           }
         }
 
-        // 检查孤儿 link token
+        // 检查孤儿 link token：搜索附近是否有 link mark 文本（跳过其他 token）
         node.forEach((child, childOffset) => {
           if (!LINK_TOKEN_NAMES.has(child.type.name)) return;
           const absPos = blockStart + childOffset;
 
           if (child.type.name === 'linkBracketOpen') {
-            // 右侧应该有带 link mark 的文本
-            const nextPos = absPos + 1;
-            const nextNode = newState.doc.nodeAt(nextPos);
-            const hasLinkNext = nextNode?.isText && nextNode.marks.some((m) => m.type.name === 'link');
-            if (!hasLinkNext) {
+            if (!hasLinkTextNearby(newState.doc, absPos + child.nodeSize, 'after', blockStart + node.content.size)) {
               actions.push({ kind: 'delete', from: absPos, to: absPos + 1 });
             }
           } else if (child.type.name === 'linkBracketClose') {
-            // 左侧应该有带 link mark 的文本
-            let hasLinkLeft = false;
-            if (absPos > blockStart) {
-              const prevNode = newState.doc.nodeAt(absPos - 1);
-              if (prevNode?.isText && prevNode.marks.some((m) => m.type.name === 'link')) {
-                hasLinkLeft = true;
-              }
-            }
-            if (!hasLinkLeft) {
+            if (!hasLinkTextNearby(newState.doc, absPos, 'before', blockStart)) {
               actions.push({ kind: 'delete', from: absPos, to: absPos + 1 });
             }
           } else if (child.type.name === 'linkUrl') {
-            // 左侧应该有 linkBracketClose
-            let hasCloseLeft = false;
-            if (absPos > blockStart) {
-              const prevNode = newState.doc.nodeAt(absPos - 1);
-              if (prevNode?.type.name === 'linkBracketClose') {
-                hasCloseLeft = true;
-              }
-            }
-            if (!hasCloseLeft) {
+            // 左侧应有 linkBracketClose（可能隔着其他 token）
+            if (!searchTokenBefore(newState.doc, absPos, 'linkBracketClose', blockStart)) {
               actions.push({ kind: 'delete', from: absPos, to: absPos + child.nodeSize });
             }
           }

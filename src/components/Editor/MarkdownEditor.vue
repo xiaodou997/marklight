@@ -244,14 +244,21 @@ function createEditor(content: string) {
   }
 
   editor.value = e;
+
+  // 同步基线：setContent + appendTransaction 完成后，序列化结果作为 store 基准
+  // 避免 parser/serializer round-trip 差异导致误判 dirty
+  const baseline = serializeMarkdown(e.state.doc);
+  fileStore.setContent(baseline);
 }
 
 // ── 更新回调 ──────────────────────────────────────────────────
 
 const debouncedUpdate = debounce((ed: TiptapEditor) => {
   const markdown = serializeMarkdown(ed.state.doc);
-  // 只有实际内容变化时才标记为 dirty（跳过 appendTransaction 等内部变更）
-  if (markdown !== fileStore.currentFile.content) {
+  // 规范化比较：序列化器总是追加 \n，store 初始值可能是 ''
+  const normalizedStored = fileStore.currentFile.content.replace(/\n+$/, '');
+  const normalizedNew = markdown.replace(/\n+$/, '');
+  if (normalizedNew !== normalizedStored) {
     fileStore.markUserEdit();
     fileStore.setContent(markdown);
   }
