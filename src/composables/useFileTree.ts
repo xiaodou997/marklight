@@ -13,6 +13,11 @@ interface FileInfo {
   is_image: boolean;
 }
 
+export interface FileChangePayload {
+  kind: string;
+  paths: string[];
+}
+
 export interface TreeNode {
   name: string;
   path: string;
@@ -26,6 +31,16 @@ export interface TreeNode {
 
 function fileInfoToNode(info: FileInfo): TreeNode {
   return { ...info, expanded: false, children: info.is_dir ? null : [] };
+}
+
+export function normalizeWatchPath(path: string): string {
+  return path.replace(/\\/g, '/').replace(/\/+$/, '') || '/';
+}
+
+export function isPathInTreeRoot(path: string, rootPath: string): boolean {
+  const normalizedPath = normalizeWatchPath(path);
+  const normalizedRootPath = normalizeWatchPath(rootPath);
+  return normalizedPath === normalizedRootPath || normalizedPath.startsWith(`${normalizedRootPath}/`);
 }
 
 function findNode(nodes: TreeNode[], path: string): TreeNode | null {
@@ -227,16 +242,15 @@ export function useFileTree() {
     }
   }
 
-  async function setupFileChangeListener() {
-    unlistenFileChanged = await listen<{ kind: string; paths: string[] }>('file-changed', (event) => {
+  async function setupFileChangeListener(onRelevantChange?: (payload: FileChangePayload) => void) {
+    unlistenFileChanged = await listen<FileChangePayload>('file-changed', (event) => {
       if (!rootFolder.value) return;
       const payload = event.payload;
       if (!payload?.paths?.length) return;
-      // 只要变更路径在根目录下就刷新
-      const relevant = payload.paths.some(p =>
-        p.startsWith(rootFolder.value! + '/') || p === rootFolder.value
-      );
-      if (relevant) refreshTree();
+      const relevant = payload.paths.some((path) => isPathInTreeRoot(path, rootFolder.value!));
+      if (!relevant) return;
+      void refreshTree();
+      onRelevantChange?.(payload);
     });
   }
 

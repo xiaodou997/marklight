@@ -7,7 +7,7 @@ import { useSettingsStore } from './stores/settings';
 import { useFileOperations, type AutoSaveStatus } from './composables/useFileOperations';
 import { useExportActions } from './composables/useExportActions';
 import { useMenuEvents } from './composables/useMenuEvents';
-import { useFileTree } from './composables/useFileTree';
+import { useFileTree, type FileChangePayload } from './composables/useFileTree';
 import { useImagePreview } from './composables/useImagePreview';
 import { useWindowEvents, confirmUnsavedChanges } from './composables/useWindowEvents';
 import EditorToolbar from './components/Toolbar/EditorToolbar.vue';
@@ -28,7 +28,7 @@ const fileStore = useFileStore();
 const settingsStore = useSettingsStore();
 
 // --- Composables ---
-const { handleNew, handleOpen, handleSave, handleSaveAs, setupAutoSave } = useFileOperations();
+const { loadFileFromPath, handleNew, handleOpen, handleSave, handleSaveAs, setupAutoSave } = useFileOperations();
 type EditorExpose = {
   scrollToPos: (pos: number) => void;
   openSearch: (showReplace?: boolean) => void;
@@ -68,6 +68,8 @@ const autoSaveStatus = ref<AutoSaveStatus | null>(null);
 const imagePasteWarning = ref<string | null>(null);
 const isCommandPaletteOpen = ref(false);
 const isShortcutsModalOpen = ref(false);
+const externalFileWarning = ref<string | null>(null);
+let externalFileWarningTimer: ReturnType<typeof setTimeout> | null = null;
 
 const stats = reactive({
   wordCount: 0,
@@ -93,12 +95,10 @@ async function checkUnsavedChanges() {
 
 async function handleOpenFile(path: string) {
   if (!await checkUnsavedChanges()) return;
-  try {
-    const content = await invoke<string>('read_file', { path });
-    fileStore.setFile(content, path);
+  const loaded = await loadFileFromPath(path);
+  if (loaded) {
+    clearExternalFileWarning();
     resetToEditor();
-  } catch (error) {
-    console.error('Failed to read file:', error);
   }
 }
 
@@ -108,6 +108,46 @@ function handleOpenFolder() {
 
 function handleFileDeletedWrapper(path: string) {
   fileTreeDeleteFile(path, () => { activeViewMode.value = 'editor'; });
+}
+
+function clearExternalFileWarning() {
+  if (externalFileWarningTimer) {
+    clearTimeout(externalFileWarningTimer);
+    externalFileWarningTimer = null;
+  }
+  externalFileWarning.value = null;
+}
+
+function showExternalFileWarning(message: string) {
+  clearExternalFileWarning();
+  externalFileWarning.value = message;
+  externalFileWarningTimer = setTimeout(() => {
+    externalFileWarning.value = null;
+    externalFileWarningTimer = null;
+  }, 4000);
+}
+
+async function handleRelevantFileChange(payload: FileChangePayload) {
+  const currentPath = fileStore.currentFile.path;
+  if (!currentPath || !payload.paths.includes(currentPath)) return;
+
+  if (payload.kind === 'remove') {
+    fileStore.reset();
+    resetToEditor();
+    showExternalFileWarning('当前文件已在外部被删除');
+    return;
+  }
+
+  if (payload.kind !== 'modify' && payload.kind !== 'create') return;
+  if (fileStore.currentFile.isDirty) {
+    showExternalFileWarning('检测到外部修改，保存时会再次确认');
+    return;
+  }
+
+  const loaded = await loadFileFromPath(currentPath);
+  if (loaded) {
+    showExternalFileWarning('已同步外部修改');
+  }
 }
 
 function handleFileCreatedWrapper(name: string, isFolder: boolean) {
@@ -313,7 +353,7 @@ onMounted(async () => {
 
   // 窗口事件
   await setupWindowEvents();
-  await setupFileChangeListener();
+  await setupFileChangeListener(handleRelevantFileChange);
 });
 
 function handleKeyDown(e: KeyboardEvent) {
@@ -345,6 +385,7 @@ onUnmounted(() => {
   unlistenDragDrop?.();
   window.removeEventListener('keydown', handleKeyDown);
   window.removeEventListener('image-paste-warning', handleImagePasteWarning as EventListener);
+  clearExternalFileWarning();
   cleanupAutoSave?.();
   cleanupFileTree();
   cleanupWindowEvents();
@@ -459,6 +500,7 @@ onUnmounted(() => {
         :selection-text="stats.selectionText"
         :auto-save-status="autoSaveStatus"
         :image-paste-warning="imagePasteWarning"
+        :external-file-warning="externalFileWarning"
       />
     </div>
 

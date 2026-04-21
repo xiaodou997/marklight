@@ -17,6 +17,9 @@
       <div v-if="imagePasteWarning" class="text-orange-500 font-medium">
         ⚠️ {{ imagePasteWarning }}
       </div>
+      <div v-else-if="externalFileWarning" class="text-amber-500 font-medium">
+        {{ externalFileWarning }}
+      </div>
       <template v-else>
         <span>{{ wordCount }} 字</span>
         <span>预计阅读 {{ readingTime }} 分钟</span>
@@ -47,6 +50,7 @@ const props = defineProps<{
   selectionText: string;
   autoSaveStatus?: AutoSaveStatus | null;
   imagePasteWarning?: string | null;
+  externalFileWarning?: string | null;
 }>();
 
 const fileStore = useFileStore();

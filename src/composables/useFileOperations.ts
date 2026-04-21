@@ -13,6 +13,23 @@ export function useFileOperations() {
   const fileStore = useFileStore();
   const settingsStore = useSettingsStore();
 
+  async function loadFileFromPath(path: string): Promise<boolean> {
+    try {
+      fileStore.setLoading(true);
+      const [content, mtime] = await Promise.all([
+        invoke<string>('read_file', { path }),
+        invoke<number>('get_file_modified_time', { path })
+      ]);
+      fileStore.setFile(content, path, mtime);
+      return true;
+    } catch (error) {
+      console.error('Failed to read file:', error);
+      return false;
+    } finally {
+      fileStore.setLoading(false);
+    }
+  }
+
   async function handleNew() {
     if (fileStore.currentFile.isDirty) {
       const confirmed = await confirm('当前更改尚未保存，确定要新建吗？', {
@@ -30,16 +47,7 @@ export function useFileOperations() {
       filters: [{ name: 'Markdown', extensions: ['md', 'markdown', 'txt'] }] 
     });
     if (selected && typeof selected === 'string') {
-      try {
-        fileStore.setLoading(true);
-        const content = await invoke<string>('read_file', { path: selected });
-        const mtime = await invoke<number>('get_file_modified_time', { path: selected });
-        fileStore.setFile(content, selected, mtime);
-      } catch (error) { 
-        console.error('Failed to read file:', error); 
-      } finally {
-        fileStore.setLoading(false);
-      }
+      await loadFileFromPath(selected);
     }
   }
 
@@ -152,6 +160,7 @@ export function useFileOperations() {
   }
 
   return {
+    loadFileFromPath,
     handleNew,
     handleOpen,
     handleSave,
