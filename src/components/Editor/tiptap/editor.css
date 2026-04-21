@@ -193,12 +193,60 @@ html.dark .tiptap-editor mark {
 }
 
 /* ── 代码块 ────────────────────────────────────────────────── */
+.tiptap-editor .mk-code-block-shell {
+  margin: 0.75em 0;
+}
+
+.tiptap-editor .mk-code-block-header {
+  display: flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 0 12px;
+  border: 1px solid var(--border-color);
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  background-color: var(--sidebar-bg);
+}
+
+.tiptap-editor .mk-code-block-language-button {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--muted-color);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.tiptap-editor .mk-code-block-language-button:hover {
+  color: var(--text-color);
+}
+
+.tiptap-editor .mk-code-block-language-input {
+  width: 140px;
+  height: 22px;
+  padding: 0 6px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  outline: none;
+}
+
 .tiptap-editor pre {
   background-color: var(--code-bg);
   border: 1px solid var(--border-color);
-  border-radius: 6px;
+  border-radius: 0 0 6px 6px;
   padding: 12px 16px;
-  margin: 0.5em 0;
+  margin: 0;
   overflow-x: auto;
   font-family: var(--font-mono);
   font-size: 13px;
