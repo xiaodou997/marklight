@@ -44,9 +44,25 @@ function createTestSchema(): Schema {
       hardBreak: { inline: true, group: 'inline', selectable: false, parseDOM: [{ tag: 'br' }], toDOM: () => ['br'] },
       horizontalRule: { group: 'block', parseDOM: [{ tag: 'hr' }], toDOM: () => ['hr'] },
       image: {
-        inline: false, group: 'block',
+        inline: true, group: 'inline',
         attrs: { src: { default: '' }, alt: { default: '' }, title: { default: null } },
         parseDOM: [{ tag: 'img' }], toDOM: () => ['img'],
+      },
+      mathInline: {
+        inline: true,
+        group: 'inline',
+        atom: true,
+        attrs: { latex: { default: '' } },
+        parseDOM: [{ tag: 'span[data-type="math-inline"]' }],
+        toDOM: () => ['span', { 'data-type': 'math-inline' }, 0],
+      },
+      mathBlock: {
+        group: 'block',
+        content: 'text*',
+        marks: '',
+        code: true,
+        parseDOM: [{ tag: 'div[data-type="math-block"]' }],
+        toDOM: () => ['div', { 'data-type': 'math-block' }, 0],
       },
       text: { group: 'inline' },
       // mark tokens (Phase A)
@@ -144,6 +160,10 @@ describe('Round-trip: parse → serialize', () => {
       expect(roundTrip('`code`\n')).toBe(normalize('`code`\n'));
     });
 
+    it('inline math', () => {
+      expect(roundTrip('$E = mc^2$\n')).toBe(normalize('$E = mc^2$\n'));
+    });
+
     it('highlight', () => {
       expect(roundTrip('==highlight==\n')).toBe(normalize('==highlight==\n'));
     });
@@ -165,6 +185,16 @@ describe('Round-trip: parse → serialize', () => {
   describe('block contexts', () => {
     it('bold in list item', () => {
       expect(roundTrip('- **bold item**\n')).toBe(normalize('- **bold item**\n'));
+    });
+
+    it('block math', () => {
+      const md = '$$\n\\begin{aligned}\nd_{i, j} &\\leftarrow d_{i, j} + 1 \\\\\nd_{i, y + 1} &\\leftarrow d_{i, y + 1} - 1 \\\\\nd_{x + 1, j} &\\leftarrow d_{x + 1, j} - 1 \\\\\nd_{x + 1, y + 1} &\\leftarrow d_{x + 1, y + 1} + 1\n\\end{aligned}\n$$\n';
+      expect(roundTrip(md)).toBe(normalize(md));
+    });
+
+    it('inline image', () => {
+      const md = '![doocs](https://cdn-doocs.oss-cn-shenzhen.aliyuncs.com/gh/doocs/md/images/logo-2.png)\n';
+      expect(roundTrip(md)).toBe(normalize(md));
     });
 
     it('bold in blockquote', () => {

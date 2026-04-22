@@ -61,6 +61,7 @@ import { CustomTable, CustomTableRow, CustomTableHeader, CustomTableCell } from 
 import { CustomImage } from './tiptap/extensions/image';
 import { CustomShortcuts } from './tiptap/extensions/shortcuts';
 import { MathBlock } from './tiptap/extensions/math-block';
+import { MathInline } from './tiptap/extensions/math-inline';
 import { MermaidBlock } from './tiptap/extensions/mermaid-block';
 import { Callout } from './tiptap/extensions/callout';
 import { Frontmatter } from './tiptap/extensions/frontmatter';
@@ -77,6 +78,7 @@ import SlashMenu from './views/SlashMenu.vue';
 import SearchBar from './SearchBar.vue';
 import './tiptap/editor.css';
 import 'highlight.js/styles/github.css';
+import 'katex/dist/katex.min.css';
 
 // 深色模式 highlight.js 主题切换
 const hljsDarkCssId = 'hljs-dark-theme';
@@ -165,6 +167,7 @@ function createEditor(content: string) {
       }),
       CustomShortcuts,
       MathBlock,
+      MathInline,
       MermaidBlock,
       Callout,
       Frontmatter,

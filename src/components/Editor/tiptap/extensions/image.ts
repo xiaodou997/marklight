@@ -7,7 +7,7 @@
 import Image from '@tiptap/extension-image';
 
 export const CustomImage = Image.configure({
-  inline: false,
+  inline: true,
   allowBase64: true,
   HTMLAttributes: {
     class: 'mk-image',

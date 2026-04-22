@@ -178,6 +178,12 @@ const nodeSerializers: Record<string, NodeSerializer> = {
   },
 
   paragraph(state, node) {
+    if (node.childCount === 0) {
+      state.write('\u00a0');
+      state.closeBlock(node);
+      return;
+    }
+
     state.renderInline(node);
     state.closeBlock(node);
   },
@@ -274,6 +280,10 @@ const nodeSerializers: Record<string, NodeSerializer> = {
     } else {
       state.write(`![${alt}](${src})`);
     }
+  },
+
+  mathInline(state, node) {
+    state.write(`$${node.attrs.latex || ''}$`);
   },
 
   // ── 表格 ──

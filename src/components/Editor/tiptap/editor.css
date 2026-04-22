@@ -25,6 +25,16 @@
   margin: 0.5em 0;
 }
 
+.tiptap-editor p:has(> .mk-image:only-child) {
+  min-height: 0;
+}
+
+.tiptap-editor p.is-empty,
+.tiptap-editor p:has(> br:only-child),
+.tiptap-editor p:has(> .ProseMirror-trailingBreak:only-child) {
+  min-height: 0.85em;
+}
+
 /* ── 标题 ──────────────────────────────────────────────────── */
 .tiptap-editor h1 {
   font-size: 1.875em;
@@ -368,6 +378,12 @@ html.dark .tiptap-editor mark {
 }
 
 /* ── 数学公式块 ────────────────────────────────────────────── */
+.tiptap-editor .mk-math-inline {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 0.18em;
+}
+
 .tiptap-editor .mk-math-block {
   border: 1px solid var(--border-color);
   border-radius: 6px;

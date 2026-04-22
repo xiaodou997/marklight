@@ -14,6 +14,8 @@ import markdownItTaskLists from 'markdown-it-task-lists';
 import markdownItMark from 'markdown-it-mark';
 import markdownItSub from 'markdown-it-sub';
 import markdownItSup from 'markdown-it-sup';
+import markdownItTexmath from 'markdown-it-texmath';
+import katex from 'katex';
 
 // ── markdown-it 实例 ───────────────────────────────────────────
 
@@ -25,6 +27,11 @@ function createMarkdownIt(): MarkdownIt {
   md.use(markdownItMark);
   md.use(markdownItSub);
   md.use(markdownItSup);
+  md.use(markdownItTexmath, {
+    engine: katex,
+    delimiters: 'dollars',
+    katexOptions: { throwOnError: false },
+  });
 
   return md;
 }
@@ -239,6 +246,19 @@ function getTokenHandlers(schema: Schema): Record<string, TokenHandler> {
     state.addNode(schema.nodes.image, { src, alt, title });
   };
 
+  if (schema.nodes.mathInline) {
+    handlers.math_inline = (state, token) => {
+      state.addNode(schema.nodes.mathInline, { latex: token.content.trim() });
+    };
+  }
+
+  if (schema.nodes.mathBlock) {
+    handlers.math_block = (state, token) => {
+      const latex = token.content.replace(/^\n|\n$/g, '');
+      state.addNode(schema.nodes.mathBlock, {}, latex ? [schema.text(latex)] : undefined);
+    };
+  }
+
   // ── 行内标记 ──
 
   handlers.em_open = (state) => {
@@ -384,19 +404,6 @@ function extractFrontmatter(content: string): { frontmatter: string | null; body
 }
 
 /**
- * 提取 $$ ... $$ 数学块，替换为占位符以便 markdown-it 处理后恢复
- */
-function extractMathBlocks(content: string): { processed: string; mathBlocks: string[] } {
-  const mathBlocks: string[] = [];
-  const processed = content.replace(/^\$\$\s*\n([\s\S]*?)\n\$\$\s*$/gm, (_match, latex) => {
-    const index = mathBlocks.length;
-    mathBlocks.push(latex);
-    return `\n<!--MATH_BLOCK_${index}-->\n`;
-  });
-  return { processed, mathBlocks };
-}
-
-/**
  * 提取 > [!TYPE] 形式的 Callout 块，替换为占位符
  */
 function extractCallouts(content: string): { processed: string; callouts: Array<{ type: string; title: string; body: string }> } {
@@ -419,12 +426,9 @@ export function parseMarkdown(schema: Schema, content: string): PMNode {
   const { frontmatter, body: bodyAfterFm } = extractFrontmatter(content);
 
   // 2. 提取 callout 块
-  const { processed: bodyAfterCallouts, callouts } = extractCallouts(bodyAfterFm);
+  const { processed: bodyFinal, callouts } = extractCallouts(bodyAfterFm);
 
-  // 3. 提取数学块
-  const { processed: bodyFinal, mathBlocks } = extractMathBlocks(bodyAfterCallouts);
-
-  // 4. 用 markdown-it 解析主体内容
+  // 3. 用 markdown-it 解析主体内容
   const tokens = md.parse(bodyFinal, {});
   const state = new MarkdownParseState(schema);
   const handlers = getTokenHandlers(schema);
@@ -437,33 +441,21 @@ export function parseMarkdown(schema: Schema, content: string): PMNode {
   for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i];
 
-    // 检查 HTML 注释占位符
-    if (token.type === 'html_block') {
-      const mathMatch = token.content.match(/<!--MATH_BLOCK_(\d+)-->/);
-      if (mathMatch && schema.nodes.mathBlock) {
-        const idx = parseInt(mathMatch[1]);
-        const latex = mathBlocks[idx] || '';
-        state.addNode(schema.nodes.mathBlock, {}, latex ? [schema.text(latex)] : undefined);
-        continue;
-      }
-
-      const calloutMatch = token.content.match(/<!--CALLOUT_BLOCK_(\d+)-->/);
-      if (calloutMatch && schema.nodes.callout) {
-        const idx = parseInt(calloutMatch[1]);
-        const callout = callouts[idx];
-        if (callout) {
-          state.openNode(schema.nodes.callout, { type: callout.type, title: callout.title || callout.type });
-          // 解析 callout 内容为段落
-          if (callout.body) {
-            state.openNode(schema.nodes.paragraph);
-            state.addText(callout.body);
-            state.closeNode();
-          } else {
-            state.addNode(schema.nodes.paragraph);
-          }
+    const calloutMatch = token.content.match(/<!--CALLOUT_BLOCK_(\d+)-->/);
+    if ((token.type === 'html_block' || token.type === 'inline') && calloutMatch && schema.nodes.callout) {
+      const idx = parseInt(calloutMatch[1]);
+      const callout = callouts[idx];
+      if (callout) {
+        state.openNode(schema.nodes.callout, { type: callout.type, title: callout.title || callout.type });
+        if (callout.body) {
+          state.openNode(schema.nodes.paragraph);
+          state.addText(callout.body);
           state.closeNode();
-          continue;
+        } else {
+          state.addNode(schema.nodes.paragraph);
         }
+        state.closeNode();
+        continue;
       }
     }
 
