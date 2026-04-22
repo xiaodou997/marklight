@@ -13,6 +13,7 @@ import TableCell from '@tiptap/extension-table-cell';
 
 export const CustomTable = Table.configure({
   resizable: false,
+  renderWrapper: true,
   HTMLAttributes: {
     class: 'mk-table',
   },
