@@ -7,6 +7,8 @@
 
 /* ── 编辑器基础 ────────────────────────────────────────────── */
 .tiptap-editor {
+  --mk-heading-gutter-width: 1.9rem;
+  --mk-heading-gutter-gap: 0.25rem;
   outline: none;
   font-family: var(--font-text);
   color: var(--text-color);
@@ -14,6 +16,7 @@
   font-size: 15px;
   caret-color: var(--primary-color);
   min-height: 100%;
+  padding-left: var(--mk-heading-gutter-width);
 }
 
 .tiptap-editor > *:first-child {
@@ -36,6 +39,15 @@
 }
 
 /* ── 标题 ──────────────────────────────────────────────────── */
+.tiptap-editor h1,
+.tiptap-editor h2,
+.tiptap-editor h3,
+.tiptap-editor h4,
+.tiptap-editor h5,
+.tiptap-editor h6 {
+  position: relative;
+}
+
 .tiptap-editor h1 {
   font-size: 1.875em;
   font-weight: 700;
@@ -696,27 +708,30 @@ html.dark .mk-deco-highlight {
   vertical-align: baseline;
 }
 
-/* ── 方案 C：headingMarker 节点（替代 .mk-deco-heading） ───────── */
+/* ── 方案 C：headingMarker 节点（固定宽度左侧槽位） ───────────────── */
 .tiptap-editor .mk-heading-marker {
-  display: inline-block;
+  position: absolute;
+  left: calc(-1 * var(--mk-heading-gutter-width));
+  top: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  width: calc(var(--mk-heading-gutter-width) - var(--mk-heading-gutter-gap));
+  line-height: 1;
   color: var(--muted-color);
-  font-weight: normal;
-  font-size: 0;
-  width: 0;
-  overflow: hidden;
-  opacity: 0;
-  vertical-align: baseline;
   font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  opacity: 0.58;
+  pointer-events: none;
   user-select: none;
-  white-space: pre;
-  transition: font-size 0.1s, opacity 0.1s;
+  white-space: nowrap;
+  transform: translateY(-50%);
 }
 
 .tiptap-editor .mk-heading-marker.mk-tok--visible {
-  font-size: 0.6em;
-  width: auto;
-  overflow: visible;
-  opacity: 0.5;
+  opacity: 0.58;
 }
 
 .tiptap-editor .mk-heading-marker.ProseMirror-selectednode {

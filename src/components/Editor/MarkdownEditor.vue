@@ -4,7 +4,7 @@
     style="background-color: var(--bg-color);"
     @click="handleContainerClick"
   >
-    <div ref="editorWrapRef" class="mk-editor h-full px-12 py-8 overflow-y-auto outline-none">
+    <div ref="editorWrapRef" class="mk-editor h-full px-6 py-8 overflow-y-auto outline-none">
       <EditorContent v-if="editor" :editor="editor" />
     </div>
 

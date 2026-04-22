@@ -53,7 +53,7 @@ export const HeadingMarker = Node.create({
         class: 'mk-heading-marker',
         contenteditable: 'false',
       }),
-      '#'.repeat(level) + ' ',
+      `H${level}`,
     ];
   },
 });
