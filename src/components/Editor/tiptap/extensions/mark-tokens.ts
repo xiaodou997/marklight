@@ -396,8 +396,6 @@ const tokenVisibilityKey = new PluginKey('tokenVisibility');
 
 function buildTokenVisibilityDecos(state: EditorState): DecorationSet {
   const { selection } = state;
-  if (!selection.empty) return DecorationSet.empty;
-
   const { $from } = selection;
   const parent = $from.parent;
   if (!parent.isTextblock) return DecorationSet.empty;
@@ -406,14 +404,11 @@ function buildTokenVisibilityDecos(state: EditorState): DecorationSet {
   const cursorOffset = $from.parentOffset;
   const decos: Decoration[] = [];
 
-  // ── 1. Heading marker：光标在标题内时显示 # ──
-  if (parent.type.name === 'heading' && parent.firstChild?.type.name === 'headingMarker') {
-    const markerPos = parentStart;
-    const markerSize = parent.firstChild.nodeSize;
-    decos.push(Decoration.node(markerPos, markerPos + markerSize, { class: 'mk-tok--visible' }));
+  // ── 1. Mark tokens：光标在 mark 范围内时显示定界符 ──
+  if (!selection.empty) {
+    return decos.length > 0 ? DecorationSet.create(state.doc, decos) : DecorationSet.empty;
   }
 
-  // ── 2. Mark tokens：光标在 mark 范围内时显示定界符 ──
   const cursorMarks = $from.marks();
   if (cursorMarks.length === 0) {
     return decos.length > 0 ? DecorationSet.create(state.doc, decos) : DecorationSet.empty;
