@@ -2,6 +2,8 @@
  * Theme manager.
  */
 
+import { invoke } from '@tauri-apps/api/core';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import type { Theme, ThemeAppearance, ThemeColors } from './types';
 import { CSS_VAR_MAP } from './types';
 
@@ -62,9 +64,27 @@ function applyDarkClass(appearance: ThemeAppearance) {
   document.documentElement.classList.toggle('dark', isDarkMode);
 }
 
+async function syncNativeWindowTheme(appearance: ThemeAppearance) {
+  try {
+    await getCurrentWindow().setTheme(appearance);
+  } catch {
+    // Ignore in unsupported environments.
+  }
+}
+
+async function syncNativeWindowBackground(bgColor: string) {
+  try {
+    await invoke('set_window_background_color', { color: bgColor });
+  } catch {
+    // Ignore in unsupported environments.
+  }
+}
+
 export function applyTheme(theme: Theme) {
   applyDarkClass(theme.appearance);
   injectColors(theme.colors);
+  void syncNativeWindowTheme(theme.appearance);
+  void syncNativeWindowBackground(theme.colors.bgColor);
 }
 
 export function getPresetTheme(id: string): Theme | undefined {

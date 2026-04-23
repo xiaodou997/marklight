@@ -34,7 +34,8 @@ const settingsStore = useSettingsStore();
 const { settings, isLoaded } = storeToRefs(settingsStore);
 
 // --- Composables ---
-const { loadFileFromPath, handleNew, handleOpen, handleSave, handleSaveAs, setupAutoSave } = useFileOperations();
+const { loadFileFromPath, handleNew, handleOpen, handleSave, handleSaveAs, setupAutoSave } =
+  useFileOperations();
 type EditorExpose = {
   scrollToPos: (pos: number) => void;
   openSearch: (showReplace?: boolean) => void;
@@ -49,24 +50,37 @@ const editorRef = ref<EditorExpose | null>(null);
 const appVersion = pkg.version;
 
 const {
-  activeViewMode, imagePreviewUrl, isFullscreenPreview,
-  handleOpenImage, closeFullscreenPreview, resetToEditor
+  activeViewMode,
+  imagePreviewUrl,
+  isFullscreenPreview,
+  handleOpenImage,
+  closeFullscreenPreview,
+  resetToEditor,
 } = useImagePreview();
 
 const { exportHtml, exportPdf, copyToWechat } = useExportActions({
-  editorRef, activeViewMode, fileStore, settingsStore
+  editorRef,
+  activeViewMode,
+  fileStore,
+  settingsStore,
 });
 
 const {
-  rootFolder, treeNodes, flatFiles, pendingRenamePath,
+  rootFolder,
+  treeNodes,
+  flatFiles,
+  pendingRenamePath,
   handleOpenFolder: fileTreeOpenFolder,
   toggleDir,
   refreshTree,
-  handleFileRenamed, handleFileDeleted: fileTreeDeleteFile,
+  handleFileRenamed,
+  handleFileDeleted: fileTreeDeleteFile,
   handleFileCreated: fileTreeCreateFile,
-  handleRenameCompleted, handleRevealInFinder,
-  syncFolderFromFilePath, setupFileChangeListener,
-  cleanup: cleanupFileTree
+  handleRenameCompleted,
+  handleRevealInFinder,
+  syncFolderFromFilePath,
+  setupFileChangeListener,
+  cleanup: cleanupFileTree,
 } = useFileTree();
 
 const { syncMenuShortcuts, stopWatching: stopWatchingMenuShortcuts } = useMenuShortcutsSync({
@@ -88,7 +102,7 @@ let externalFileWarningTimer: ReturnType<typeof setTimeout> | null = null;
 const stats = reactive({
   wordCount: 0,
   cursor: { line: 1, col: 1 },
-  selectionText: ''
+  selectionText: '',
 });
 const outlineItems = ref<OutlineItem[]>([]);
 
@@ -100,7 +114,7 @@ async function checkUnsavedChanges() {
   if (fileStore.currentFile.isDirty) {
     const confirmed = await confirm('当前文件有未保存的更改，是否放弃更改？', {
       title: '未保存的更改',
-      kind: 'warning'
+      kind: 'warning',
     });
     return confirmed;
   }
@@ -108,7 +122,7 @@ async function checkUnsavedChanges() {
 }
 
 async function handleOpenFile(path: string) {
-  if (!await checkUnsavedChanges()) return;
+  if (!(await checkUnsavedChanges())) return;
   const loaded = await loadFileFromPath(path);
   if (loaded) {
     clearExternalFileWarning();
@@ -117,11 +131,15 @@ async function handleOpenFile(path: string) {
 }
 
 function handleOpenFolder() {
-  fileTreeOpenFolder((mode) => { sidebarMode.value = mode; });
+  fileTreeOpenFolder((mode) => {
+    sidebarMode.value = mode;
+  });
 }
 
 function handleFileDeletedWrapper(path: string) {
-  fileTreeDeleteFile(path, () => { activeViewMode.value = 'editor'; });
+  fileTreeDeleteFile(path, () => {
+    activeViewMode.value = 'editor';
+  });
 }
 
 function clearExternalFileWarning() {
@@ -170,7 +188,11 @@ function handleFileCreatedWrapper(name: string, isFolder: boolean) {
 }
 
 // --- Window events ---
-const { setup: setupWindowEvents, cleanup: cleanupWindowEvents, appWindow } = useWindowEvents({
+const {
+  setup: setupWindowEvents,
+  cleanup: cleanupWindowEvents,
+  appWindow,
+} = useWindowEvents({
   handleOpenFile,
   handleSave,
   isDirty: () => fileStore.currentFile.isDirty,
@@ -206,17 +228,21 @@ function onCopy(event: ClipboardEvent) {
   event.preventDefault();
 }
 
-// --- Window title ---
-function updateWindowTitle() {
+const windowTitle = computed(() => {
   const file = fileStore.currentFile;
   let fileName = '未命名';
+
   if (activeViewMode.value === 'editor') {
     fileName = file.path ? file.path.split(/[/\\]/).pop() || '未命名' : '未命名';
   } else if (activeViewMode.value === 'image' && imagePreviewUrl.value) {
     fileName = '查看图片';
   }
-  const title = file.isDirty ? `${fileName} ●` : fileName;
-  appWindow.setTitle(title).catch(err => {
+
+  return file.isDirty ? `${fileName} ●` : fileName;
+});
+
+function updateWindowTitle() {
+  appWindow.setTitle(windowTitle.value).catch((err) => {
     if (!err.includes('window.set_title not allowed')) {
       console.error('Failed to set window title:', err);
     }
@@ -229,14 +255,17 @@ async function handleOpenNewWindow(path?: string) {
 }
 
 function showAbout() {
-  message(`墨光 (MarkLight) v${appVersion}\n\n一款高性能、自研内核的 Markdown 编辑器\n\nGitHub: https://github.com/xiaodou997/marklight\nGitee: https://gitee.com/xiaodou997/marklight\n\n© 2026 luoxiaodou`, {
-    title: '关于',
-    kind: 'info'
-  });
+  message(
+    `墨光 (MarkLight) v${appVersion}\n\n一款高性能、自研内核的 Markdown 编辑器\n\nGitHub: https://github.com/xiaodou997/marklight\nGitee: https://gitee.com/xiaodou997/marklight\n\n© 2026 luoxiaodou`,
+    {
+      title: '关于',
+      kind: 'info',
+    },
+  );
 }
 
 async function toggleFullscreen() {
-  await appWindow.setFullscreen(!await appWindow.isFullscreen());
+  await appWindow.setFullscreen(!(await appWindow.isFullscreen()));
 }
 
 async function handleQuit() {
@@ -286,16 +315,22 @@ const handleImagePasteWarning = (event: Event) => {
   const detail = (event as CustomEvent).detail as string | undefined;
   if (!detail) return;
   imagePasteWarning.value = detail;
-  setTimeout(() => { imagePasteWarning.value = null; }, 3000);
+  setTimeout(() => {
+    imagePasteWarning.value = null;
+  }, 3000);
 };
 
 // --- Watchers ---
-watch(() => [fileStore.currentFile, activeViewMode.value, imagePreviewUrl.value], () => {
-  if (fileStore.currentFile.path && activeViewMode.value === 'editor') {
-    syncFolderFromFilePath(fileStore.currentFile.path);
-  }
-  updateWindowTitle();
-}, { deep: true });
+watch(
+  () => [fileStore.currentFile, activeViewMode.value, imagePreviewUrl.value],
+  () => {
+    if (fileStore.currentFile.path && activeViewMode.value === 'editor') {
+      syncFolderFromFilePath(fileStore.currentFile.path);
+    }
+    updateWindowTitle();
+  },
+  { deep: true },
+);
 
 // --- Menu events ---
 useMenuEvents(async (commandId) => {
@@ -324,7 +359,7 @@ async function setupAppDragDrop() {
     const paths = event.payload.paths;
     if (!paths?.length) return;
     // 找到第一个 Markdown 文件并打开
-    const mdPath = paths.find(p => /\.(md|markdown|txt)$/i.test(p));
+    const mdPath = paths.find((p) => /\.(md|markdown|txt)$/i.test(p));
     if (mdPath) {
       await handleOpenFile(mdPath);
     }
@@ -395,12 +430,10 @@ onUnmounted(() => {
   <div
     class="h-screen flex flex-col overflow-hidden font-sans select-none"
     :class="{ 'focus-mode': settingsStore.isFocusMode }"
-    style="background-color: var(--bg-color); color: var(--text-color);"
+    style="background-color: var(--bg-color); color: var(--text-color)"
   >
-    <!-- Windows/Linux 自定义标题栏 -->
     <TitleBar v-if="!isMac" />
 
-    <!-- 工具栏 -->
     <div
       class="toolbar-container transition-opacity duration-300"
       :class="{ 'opacity-0 pointer-events-none': settingsStore.isFocusMode }"
@@ -414,7 +447,6 @@ onUnmounted(() => {
     </div>
 
     <div class="flex-1 flex overflow-hidden">
-      <!-- 侧边栏 -->
       <aside
         v-show="isSidebarOpen && !isSourceMode && !settingsStore.isFocusMode"
         class="w-64 flex-shrink-0 transition-all duration-300"
@@ -441,12 +473,10 @@ onUnmounted(() => {
         />
       </aside>
 
-      <!-- 编辑器区域 -->
       <main
         class="flex-1 relative overflow-hidden select-text"
         :class="{ 'focus-mode-editor': settingsStore.isFocusMode }"
       >
-        <!-- 实时渲染模式 -->
         <MarkdownEditor
           v-if="activeViewMode === 'editor' && !isSourceMode"
           :key="fileStore.currentFile.path || 'new-file'"
@@ -455,40 +485,43 @@ onUnmounted(() => {
           @update="handleEditorUpdate"
         />
 
-        <!-- 图片查看模式 -->
         <div
           v-else-if="activeViewMode === 'image' && imagePreviewUrl"
           class="h-full w-full flex items-center justify-center p-12 overflow-auto"
-          style="background-color: var(--bg-color);"
+          style="background-color: var(--bg-color)"
         >
           <div class="relative group max-w-full max-h-full">
             <img
               :src="imagePreviewUrl"
               class="max-w-full max-h-full object-contain shadow-md rounded cursor-zoom-in"
-              style="border: 1px solid var(--border-color); background-color: var(--bg-color);"
+              style="border: 1px solid var(--border-color); background-color: var(--bg-color)"
               title="双击全屏预览"
               @dblclick="isFullscreenPreview = true"
             />
-            <div class="absolute bottom-4 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 text-white text-[10px] px-3 py-1 rounded-full backdrop-blur-sm pointer-events-none">
+            <div
+              class="absolute bottom-4 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 text-white text-[10px] px-3 py-1 rounded-full backdrop-blur-sm pointer-events-none"
+            >
               双击全屏查看
             </div>
           </div>
         </div>
 
-        <!-- 源码模式 -->
         <div v-else class="h-full w-full p-8">
           <textarea
             class="w-full h-full resize-none outline-none font-mono text-sm leading-relaxed p-4 rounded-lg"
-            style="color: var(--text-color); background-color: var(--sidebar-bg); border: 1px solid var(--border-color);"
+            style="
+              color: var(--text-color);
+              background-color: var(--sidebar-bg);
+              border: 1px solid var(--border-color);
+            "
             :value="fileStore.currentFile.content"
-            @input="e => fileStore.setContent((e.target as HTMLTextAreaElement).value)"
+            @input="(e) => fileStore.setContent((e.target as HTMLTextAreaElement).value)"
             placeholder="在此输入 Markdown 源码..."
           ></textarea>
         </div>
       </main>
     </div>
 
-    <!-- 状态栏 -->
     <div
       class="statusbar-container transition-opacity duration-300"
       :class="{ 'opacity-0 pointer-events-none': settingsStore.isFocusMode }"
@@ -503,26 +536,19 @@ onUnmounted(() => {
       />
     </div>
 
-    <!-- 设置弹窗 -->
     <SettingsModal />
 
-    <!-- 快捷键弹窗 -->
-    <ShortcutsModal
-      :visible="isShortcutsModalOpen"
-      @close="isShortcutsModalOpen = false"
-    />
+    <ShortcutsModal :visible="isShortcutsModalOpen" @close="isShortcutsModalOpen = false" />
 
-    <!-- 命令面板 -->
     <CommandPalette
       :visible="isCommandPaletteOpen"
       :files="flatFiles"
       :current-folder="rootFolder"
       @close="isCommandPaletteOpen = false"
-      @execute="command => executeCommand(command.id, 'palette')"
+      @execute="(command) => executeCommand(command.id, 'palette')"
       @open-file="handleOpenFile"
     />
 
-    <!-- 图片全屏预览弹窗 -->
     <Teleport to="body">
       <Transition name="fade">
         <div
@@ -530,16 +556,14 @@ onUnmounted(() => {
           class="fixed inset-0 z-[2000] bg-black/90 backdrop-blur-md flex items-center justify-center p-8 cursor-zoom-out"
           @click="closeFullscreenPreview"
         >
-          <img
-            :src="imagePreviewUrl"
-            class="max-w-full max-h-full object-contain"
-            @click.stop
-          />
+          <img :src="imagePreviewUrl" class="max-w-full max-h-full object-contain" @click.stop />
           <button
             class="absolute top-6 right-6 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors"
             @click="closeFullscreenPreview"
           >
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12" stroke-width="2" stroke-linecap="round"/></svg>
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path d="M18 6L6 18M6 6l12 12" stroke-width="2" stroke-linecap="round" />
+            </svg>
           </button>
         </div>
       </Transition>
@@ -547,7 +571,13 @@ onUnmounted(() => {
   </div>
 </template>
 
-<style>
-.fade-enter-active, .fade-leave-active { transition: opacity 0.2s ease; }
-.fade-enter-from, .fade-leave-to { opacity: 0; }
+<style scoped>
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
 </style>

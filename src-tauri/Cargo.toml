@@ -29,3 +29,6 @@ notify = "6.1"
 reqwest = { version = "0.12", features = ["json"] }
 base64 = "0.22"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2-app-kit = "0.3.2"

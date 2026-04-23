@@ -4,8 +4,8 @@ mod menu;
 use commands::*;
 use notify::{Config, EventKind, RecommendedWatcher, Watcher};
 use std::collections::HashMap;
-use tauri::{Emitter, Manager};
 use std::sync::Mutex;
+use tauri::{Emitter, Manager};
 
 #[derive(Default)]
 struct StartupOpenFile(Mutex<Option<String>>);
@@ -21,16 +21,25 @@ fn consume_startup_open_file(state: tauri::State<'_, StartupOpenFile>) -> Option
 fn notify_frontend_ready(app: tauri::AppHandle, state: tauri::State<'_, StartupOpenFile>) {
     eprintln!("[marklight] notify_frontend_ready called");
     if let Ok(mut guard) = state.0.lock() {
-        eprintln!("[marklight] StartupOpenFile at notify_frontend_ready = {:?}", *guard);
+        eprintln!(
+            "[marklight] StartupOpenFile at notify_frontend_ready = {:?}",
+            *guard
+        );
         if let Some(path) = guard.take() {
-            eprintln!("[marklight] Pushing startup file via notify_frontend_ready: {}", path);
+            eprintln!(
+                "[marklight] Pushing startup file via notify_frontend_ready: {}",
+                path
+            );
             let _ = app.emit("open-startup-file", path);
         }
     }
 }
 
 #[tauri::command]
-fn refresh_menu_shortcuts(app: tauri::AppHandle, shortcuts: HashMap<String, String>) -> Result<(), String> {
+fn refresh_menu_shortcuts(
+    app: tauri::AppHandle,
+    shortcuts: HashMap<String, String>,
+) -> Result<(), String> {
     menu::setup_menu(&app, &shortcuts).map_err(|e| e.to_string())
 }
 
@@ -50,7 +59,10 @@ pub fn run() {
             // 因此这里只做诊断日志，不发送事件（监听器还没就绪）。
             // 实际推送由 notify_frontend_ready 完成（在监听器注册后由前端主动调用）。
             if payload.event() == PageLoadEvent::Finished {
-                eprintln!("[marklight] on_page_load::Finished for url={}", payload.url());
+                eprintln!(
+                    "[marklight] on_page_load::Finished for url={}",
+                    payload.url()
+                );
                 if let Some(state) = webview.app_handle().try_state::<StartupOpenFile>() {
                     if let Ok(guard) = state.0.lock() {
                         eprintln!("[marklight] StartupOpenFile at page_load = {:?}", *guard);
@@ -82,12 +94,12 @@ pub fn run() {
 
             // 设置文件监听器
             let (tx, rx) = std::sync::mpsc::channel();
-            let watcher =
-                RecommendedWatcher::new(tx, Config::default()).map_err(|e: notify::Error| e.to_string())?;
+            let watcher = RecommendedWatcher::new(tx, Config::default())
+                .map_err(|e: notify::Error| e.to_string())?;
 
             // 在后台线程处理监听事件，携带变更路径和类型
             std::thread::spawn(move || {
-                use std::time::{Instant, Duration};
+                use std::time::{Duration, Instant};
                 let mut last_emit = Instant::now() - Duration::from_secs(1);
 
                 for res in rx {
@@ -105,7 +117,8 @@ pub fn run() {
                                 EventKind::Remove(_) => "remove",
                                 _ => "other",
                             };
-                            let paths: Vec<String> = event.paths
+                            let paths: Vec<String> = event
+                                .paths
                                 .iter()
                                 .map(|p| p.to_string_lossy().to_string())
                                 .collect();
@@ -116,10 +129,13 @@ pub fn run() {
                                 paths: Vec<String>,
                             }
 
-                            let _ = handle.emit("file-changed", FileChangePayload {
-                                kind: kind.to_string(),
-                                paths,
-                            });
+                            let _ = handle.emit(
+                                "file-changed",
+                                FileChangePayload {
+                                    kind: kind.to_string(),
+                                    paths,
+                                },
+                            );
                         }
                         Err(e) => println!("watch error: {:?}", e),
                     }
@@ -134,6 +150,9 @@ pub fn run() {
             if let Some(main_window) = app.get_webview_window("main") {
                 #[cfg(any(target_os = "windows", target_os = "linux"))]
                 main_window.set_decorations(false).map_err(|e| e.to_string())?;
+
+                #[cfg(target_os = "macos")]
+                apply_macos_window_background(&main_window, "#ffffff")?;
 
                 attach_close_interceptor(&main_window);
             }
@@ -162,7 +181,8 @@ pub fn run() {
             write_config,
             refresh_menu_shortcuts,
             consume_startup_open_file,
-            notify_frontend_ready
+            notify_frontend_ready,
+            set_window_background_color
         ])
         .build(tauri::generate_context!())
         .expect("error while running tauri application")

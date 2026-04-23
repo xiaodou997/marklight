@@ -1,9 +1,10 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 /* ── 字体变量 ──────────────────────────────────────────────── */
 :root {
   --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  --font-text: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  --font-text:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
 }
 
 /* ── 浅色主题（默认） ──────────────────────────────────────── */
@@ -213,7 +214,9 @@ html.dark {
 }
 
 /* ── 基础布局 ──────────────────────────────────────────────── */
-html, body, #app {
+html,
+body,
+#app {
   height: 100%;
   margin: 0;
   padding: 0;
@@ -222,9 +225,11 @@ html, body, #app {
 
 body {
   font-family: var(--font-text);
-  background-color: var(--bg-color);
+  background-color: transparent;
   color: var(--text-color);
-  transition: background-color 0.2s, color 0.2s;
+  transition:
+    background-color 0.2s,
+    color 0.2s;
 }
 
 /* ── 标题栏拖拽 ────────────────────────────────────────────── */
@@ -236,7 +241,14 @@ body {
   -webkit-app-region: drag;
 }
 
-[data-tauri-drag-region] * {
+[data-tauri-no-drag],
+[data-tauri-no-drag] *,
+[data-tauri-drag-region] button,
+[data-tauri-drag-region] input,
+[data-tauri-drag-region] textarea,
+[data-tauri-drag-region] select,
+[data-tauri-drag-region] a,
+[data-tauri-drag-region] [role='button'] {
   -webkit-app-region: no-drag;
 }
 
@@ -313,7 +325,9 @@ html.dark .hljs {
     display: none !important;
   }
 
-  body, #app, .h-screen {
+  body,
+  #app,
+  .h-screen {
     height: auto !important;
     overflow: visible !important;
   }
@@ -328,12 +342,22 @@ html.dark .hljs {
     margin: 0 !important;
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     break-after: avoid;
     page-break-after: avoid;
   }
 
-  p, blockquote, ul, ol, pre, table {
+  p,
+  blockquote,
+  ul,
+  ol,
+  pre,
+  table {
     break-inside: avoid;
     page-break-inside: avoid;
   }

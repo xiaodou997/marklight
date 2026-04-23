@@ -2286,6 +2286,7 @@ version = "1.0.0"
 dependencies = [
  "base64 0.22.1",
  "notify",
+ "objc2-app-kit",
  "reqwest 0.12.28",
  "serde",
  "serde_json",
