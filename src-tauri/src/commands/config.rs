@@ -79,3 +79,48 @@ fn atomic_write(path: &std::path::Path, content: &[u8]) -> Result<(), String> {
 
     fs::rename(temp_path, path).map_err(|e| e.to_string())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::atomic_write;
+    use std::fs;
+    use std::path::PathBuf;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn test_dir() -> PathBuf {
+        let millis = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|duration| duration.as_millis())
+            .unwrap_or(0);
+        let dir = std::env::temp_dir().join(format!("marklight-config-test-{}", millis));
+        fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    #[test]
+    fn atomic_write_replaces_existing_config_content() {
+        let dir = test_dir();
+        let file = dir.join("settings.json");
+
+        atomic_write(&file, br#"{"theme":"light"}"#).unwrap();
+        atomic_write(&file, br#"{"theme":"dark"}"#).unwrap();
+
+        let saved = fs::read_to_string(&file).unwrap();
+        assert_eq!(saved, r#"{"theme":"dark"}"#);
+
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn atomic_write_creates_parent_directory() {
+        let dir = test_dir();
+        let nested = dir.join("nested").join("settings.json");
+
+        atomic_write(&nested, br#"{"autoSave":true}"#).unwrap();
+
+        let saved = fs::read_to_string(&nested).unwrap();
+        assert_eq!(saved, r#"{"autoSave":true}"#);
+
+        let _ = fs::remove_dir_all(dir);
+    }
+}
