@@ -98,6 +98,15 @@ export function useWindowEvents(options: WindowEventsOptions) {
         if (startupFile) options.handleOpenFile(startupFile);
       } catch { /* ignore */ }
     }
+
+    try {
+      const pendingFile = await invoke<string | null>('consume_pending_window_open_file');
+      if (pendingFile) {
+        options.handleOpenFile(pendingFile);
+      }
+    } catch {
+      // ignore pending file fetch failures for older runtimes
+    }
   }
 
   function cleanup() {

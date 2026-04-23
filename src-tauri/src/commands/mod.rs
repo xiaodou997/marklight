@@ -10,5 +10,8 @@ pub use fs::{
     rename_file, save_file,
 };
 pub use image::{fetch_remote_image, resolve_image_path, save_image};
-pub use window::{open_new_window, print_document, reveal_in_finder};
+pub use window::{
+    attach_close_interceptor, consume_pending_window_open_file, open_new_window, print_document,
+    reveal_in_finder, PendingWindowOpenFiles,
+};
 pub use watch::{unwatch_directory, watch_directory};

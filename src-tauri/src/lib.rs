@@ -61,6 +61,7 @@ pub fn run() {
         .setup(|app| {
             let handle = app.handle().clone();
             app.manage(StartupOpenFile::default());
+            app.manage(PendingWindowOpenFiles::default());
 
             // 所有平台均支持命令行参数打开文件（macOS 用于 dev 模式调试）
             // 生产环境 macOS 通过 RunEvent::Opened 处理，CLI 参数作为补充
@@ -134,13 +135,7 @@ pub fn run() {
                 #[cfg(any(target_os = "windows", target_os = "linux"))]
                 main_window.set_decorations(false).map_err(|e| e.to_string())?;
 
-                let window_clone = main_window.clone();
-                main_window.on_window_event(move |event| {
-                    if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                        api.prevent_close();
-                        let _ = window_clone.emit("window-close-requested", ());
-                    }
-                });
+                attach_close_interceptor(&main_window);
             }
 
             Ok(())
@@ -159,6 +154,7 @@ pub fn run() {
             create_file,
             create_folder,
             reveal_in_finder,
+            consume_pending_window_open_file,
             get_file_modified_time,
             watch_directory,
             unwatch_directory,

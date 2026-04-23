@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { ref } from 'vue';
 import { useCommandDispatcher } from '../useCommandDispatcher';
 
 vi.mock('@tauri-apps/plugin-opener', () => ({
@@ -28,19 +29,17 @@ function createDispatcher() {
   const toggleFullscreen = vi.fn();
   const handleQuit = vi.fn();
 
-  const activeViewMode = { value: 'editor' as const };
-  const isSourceMode = { value: false };
-  const isSidebarOpen = { value: false };
-  const sidebarMode = { value: 'outline' as const };
+  const activeViewMode = ref<'editor' | 'image'>('editor');
+  const isSourceMode = ref(false);
+  const isSidebarOpen = ref(false);
+  const sidebarMode = ref<'outline' | 'files'>('outline');
 
   const dispatcher = useCommandDispatcher({
-    editorRef: {
-      value: {
-        executeCommand: editorExecute,
-        hasFocus,
-        openSearch,
-      },
-    },
+    editorRef: ref({
+      executeCommand: editorExecute,
+      hasFocus,
+      openSearch,
+    }),
     activeViewMode,
     isSourceMode,
     isSidebarOpen,
