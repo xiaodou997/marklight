@@ -1,70 +1,56 @@
 /**
- * 主题类型定义
- *
- * 定义主题的颜色变量结构和相关类型
+ * Theme type definitions.
  */
 
-/** 主题 ID */
+/** Theme ID */
 export type ThemeId = string;
 
-/** 主题类型 */
+/** Theme type */
 export type ThemeType = 'preset' | 'custom';
 
-/** 主题元数据 */
+/** Theme appearance */
+export type ThemeAppearance = 'light' | 'dark';
+
+/** Theme metadata */
 export interface ThemeMeta {
-  /** 主题唯一标识 */
+  /** Theme unique identifier */
   id: ThemeId;
-  /** 主题名称 */
+  /** Theme display name */
   name: string;
-  /** 主题类型 */
+  /** Theme source */
   type: ThemeType;
-  /** 作者 */
+  /** Theme appearance */
+  appearance: ThemeAppearance;
+  /** Theme author */
   author?: string;
-  /** 描述 */
+  /** Theme description */
   description?: string;
-  /** 版本 */
+  /** Theme version */
   version?: string;
 }
 
-/** 主题颜色配置 */
+/** Theme colors */
 export interface ThemeColors {
-  // 主色调
   primaryColor: string;
   primaryHover: string;
   primaryLight: string;
-
-  // 背景
   bgColor: string;
   bgSecondary: string;
-
-  // 文字
   textColor: string;
   textSecondary: string;
   mutedColor: string;
-
-  // 边框
   borderColor: string;
   borderLight: string;
-
-  // 侧边栏
   sidebarBg: string;
   sidebarHover: string;
-
-  // 代码
   codeBg: string;
   codeBorder: string;
-
-  // 交互状态
   hoverBg: string;
   activeBg: string;
   selectedBg: string;
-
-  // 引用 & 标签
   quoteBg: string;
   tagBg: string;
   tagColor: string;
-
-  // 状态颜色
   successColor: string;
   successBg: string;
   warningColor: string;
@@ -73,33 +59,23 @@ export interface ThemeColors {
   errorBg: string;
   infoColor: string;
   infoBg: string;
-
-  // 阴影
   shadowSm: string;
   shadowMd: string;
   shadowLg: string;
   shadowXl: string;
-
-  // 圆角
   radiusSm: string;
   radiusMd: string;
   radiusLg: string;
   radiusXl: string;
-
-  // 弹窗
   modalBg: string;
   modalBorder: string;
   modalOverlay: string;
   modalShadow: string;
-
-  // 输入框
   inputBg: string;
   inputBorder: string;
   inputFocusBorder: string;
   inputFocusShadow: string;
   inputPlaceholder: string;
-
-  // 按钮
   btnPrimaryBg: string;
   btnPrimaryHover: string;
   btnPrimaryText: string;
@@ -108,13 +84,9 @@ export interface ThemeColors {
   btnSecondaryText: string;
   btnGhostBg: string;
   btnGhostHover: string;
-
-  // 浮动菜单
   popoverBg: string;
   popoverBorder: string;
   popoverShadow: string;
-
-  // Callout
   calloutNote: string;
   calloutNoteBg: string;
   calloutTip: string;
@@ -129,28 +101,21 @@ export interface ThemeColors {
   calloutQuoteBg: string;
 }
 
-/** 完整主题定义 */
+/** Single theme definition */
 export interface Theme extends ThemeMeta {
-  /** 浅色模式颜色 */
-  light: ThemeColors;
-  /** 深色模式颜色 */
-  dark: ThemeColors;
+  /** Theme colors */
+  colors: ThemeColors;
 }
 
-/** 主题切换模式 */
-export type ThemeMode = 'light' | 'dark' | 'system';
-
-/** 主题管理状态 */
+/** Theme state */
 export interface ThemeState {
-  /** 当前主题 ID */
+  /** Current theme ID */
   activeThemeId: ThemeId;
-  /** 主题模式 */
-  themeMode: ThemeMode;
-  /** 自定义主题列表 */
+  /** Custom themes */
   customThemes: Theme[];
 }
 
-/** CSS 变量映射 */
+/** CSS variable map */
 export const CSS_VAR_MAP: Record<keyof ThemeColors, string> = {
   primaryColor: '--primary-color',
   primaryHover: '--primary-hover',
@@ -222,14 +187,20 @@ export const CSS_VAR_MAP: Record<keyof ThemeColors, string> = {
   calloutQuoteBg: '--callout-quote-bg',
 };
 
-/** 预设主题 ID */
+/** Preset theme IDs */
 export const PRESET_THEME_IDS = [
-  'default',
-  'ocean',
-  'forest',
-  'sepia',
-  'purple',
-  'minimal',
+  'default-light',
+  'default-dark',
+  'ocean-light',
+  'ocean-dark',
+  'forest-light',
+  'forest-dark',
+  'sepia-light',
+  'sepia-dark',
+  'purple-light',
+  'purple-dark',
+  'minimal-light',
+  'minimal-dark',
 ] as const;
 
 export type PresetThemeId = (typeof PRESET_THEME_IDS)[number];

@@ -1,45 +1,56 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useSettingsStore } from '../../stores/settings';
-import type { Theme, ThemeColors, ThemeId } from '../../themes/types';
-import { cloneTheme, generateThemeId, exportTheme, importTheme } from '../../themes/manager';
-import { getPresetTheme } from '../../themes/manager';
+import type { Theme, ThemeAppearance, ThemeColors, ThemeId } from '../../themes/types';
+import { cloneTheme, exportTheme, generateThemeId, getPresetTheme, importTheme } from '../../themes/manager';
 
 const props = defineProps<{
   themeId?: ThemeId;
 }>();
 
-const emit = defineEmits<{
+defineEmits<{
   (e: 'close'): void;
 }>();
 
 const settingsStore = useSettingsStore();
 
-// 编辑状态
 const isEditing = ref(false);
 const editTheme = ref<Theme | null>(null);
-const editMode = ref<'light' | 'dark'>('light');
-
-// 主题名称
 const themeName = ref('');
+const editingThemeId = ref<ThemeId | null>(null);
 
-// 颜色编辑组
+const currentTheme = computed(() => settingsStore.currentTheme);
+const currentCustomTheme = computed(() => {
+  const theme = currentTheme.value;
+  return theme?.type === 'custom' ? theme : null;
+});
+const lightPresetThemes = computed(() =>
+  settingsStore.presetThemes.filter((theme) => theme.appearance === 'light'),
+);
+const darkPresetThemes = computed(() =>
+  settingsStore.presetThemes.filter((theme) => theme.appearance === 'dark'),
+);
+
 const colorGroups = [
   {
     name: '主色调',
-    keys: ['primaryColor', 'primaryHover'] as (keyof ThemeColors)[],
+    keys: ['primaryColor', 'primaryHover', 'primaryLight'] as (keyof ThemeColors)[],
   },
   {
     name: '背景',
-    keys: ['bgColor', 'bgSecondary', 'sidebarBg'] as (keyof ThemeColors)[],
+    keys: ['bgColor', 'bgSecondary', 'sidebarBg', 'sidebarHover'] as (keyof ThemeColors)[],
   },
   {
     name: '文字',
     keys: ['textColor', 'textSecondary', 'mutedColor'] as (keyof ThemeColors)[],
   },
   {
-    name: '边框',
-    keys: ['borderColor', 'borderLight'] as (keyof ThemeColors)[],
+    name: '边框与交互',
+    keys: ['borderColor', 'borderLight', 'hoverBg', 'activeBg', 'selectedBg'] as (keyof ThemeColors)[],
+  },
+  {
+    name: '代码与弹层',
+    keys: ['codeBg', 'codeBorder', 'popoverBg', 'popoverBorder', 'modalBg', 'modalBorder'] as (keyof ThemeColors)[],
   },
   {
     name: '状态色',
@@ -47,119 +58,199 @@ const colorGroups = [
   },
   {
     name: 'Callout',
-    keys: ['calloutNote', 'calloutTip', 'calloutWarning', 'calloutDanger', 'calloutSuccess'] as (keyof ThemeColors)[],
+    keys: ['calloutNote', 'calloutTip', 'calloutWarning', 'calloutDanger', 'calloutSuccess', 'calloutQuote'] as (keyof ThemeColors)[],
   },
 ];
 
-// 开始编辑
-function startEdit(themeId?: ThemeId) {
-  if (themeId) {
-    const theme = getPresetTheme(themeId) || settingsStore.settings.customThemes.find(t => t.id === themeId);
-    if (theme) {
-      editTheme.value = cloneTheme(theme);
-      themeName.value = theme.name;
-      editTheme.value.id = generateThemeId();
-      editTheme.value.type = 'custom';
-    }
-  } else {
-    // 创建新主题，基于默认主题
-    const defaultTheme = getPresetTheme('default');
-    if (defaultTheme) {
-      editTheme.value = cloneTheme(defaultTheme);
-      editTheme.value.id = generateThemeId();
-      editTheme.value.type = 'custom';
-      themeName.value = '新主题';
-    }
+function getAppearanceLabel(appearance: ThemeAppearance) {
+  return appearance === 'dark' ? '深色主题' : '浅色主题';
+}
+
+function createThemeDraft(baseTheme: Theme, preserveId: boolean) {
+  const nextTheme = cloneTheme(baseTheme);
+  nextTheme.type = 'custom';
+
+  if (!preserveId) {
+    nextTheme.id = generateThemeId();
   }
+
+  return nextTheme;
+}
+
+function beginEditing(theme: Theme, options: { preserveId?: boolean; nextName?: string } = {}) {
+  const preserveId = options.preserveId ?? false;
+  editTheme.value = createThemeDraft(theme, preserveId);
+  themeName.value = options.nextName ?? theme.name;
+  editingThemeId.value = preserveId ? theme.id : null;
   isEditing.value = true;
 }
 
-// 取消编辑
+function startEdit(themeId?: ThemeId) {
+  const theme = themeId
+    ? getPresetTheme(themeId) || settingsStore.settings.customThemes.find((item) => item.id === themeId)
+    : currentCustomTheme.value;
+
+  if (!theme) {
+    return;
+  }
+
+  beginEditing(theme, {
+    preserveId: theme.type === 'custom',
+    nextName: theme.name,
+  });
+}
+
+function startCopyCurrentTheme() {
+  if (!currentTheme.value) {
+    return;
+  }
+
+  beginEditing(currentTheme.value, {
+    nextName: `${currentTheme.value.name} 副本`,
+  });
+}
+
+function startCreate(appearance: ThemeAppearance) {
+  const baseTheme = getPresetTheme(`default-${appearance}`);
+  if (!baseTheme) {
+    return;
+  }
+
+  beginEditing(baseTheme, {
+    nextName: appearance === 'dark' ? '新深色主题' : '新浅色主题',
+  });
+}
+
+function startFromPreset(themeId: ThemeId) {
+  const baseTheme = getPresetTheme(themeId);
+  if (!baseTheme) {
+    return;
+  }
+
+  beginEditing(baseTheme, {
+    nextName: `${baseTheme.name} 副本`,
+  });
+}
+
 function cancelEdit() {
   isEditing.value = false;
   editTheme.value = null;
+  themeName.value = '';
+  editingThemeId.value = null;
 }
 
-// 保存主题
 function saveTheme() {
-  if (!editTheme.value) return;
+  if (!editTheme.value) {
+    return;
+  }
 
-  editTheme.value.name = themeName.value;
-  settingsStore.addCustomTheme(editTheme.value);
+  const nextTheme: Theme = {
+    ...editTheme.value,
+    name: themeName.value.trim() || editTheme.value.name,
+    type: 'custom',
+  };
+
+  if (editingThemeId.value) {
+    settingsStore.updateCustomTheme(editingThemeId.value, nextTheme);
+    settingsStore.setColorTheme(editingThemeId.value);
+  } else {
+    settingsStore.addCustomTheme(nextTheme);
+    settingsStore.setColorTheme(nextTheme.id);
+  }
+
   cancelEdit();
 }
 
-// 更新颜色
 function updateColor(key: keyof ThemeColors, value: string) {
-  if (!editTheme.value) return;
-
-  if (editMode.value === 'light') {
-    editTheme.value.light[key] = value;
-  } else {
-    editTheme.value.dark[key] = value;
+  if (!editTheme.value) {
+    return;
   }
+
+  editTheme.value.colors[key] = value;
 }
 
-// 导出主题
 function exportCurrentTheme() {
-  if (!editTheme.value) return;
+  if (!editTheme.value) {
+    return;
+  }
 
-  const json = exportTheme(editTheme.value);
+  const json = exportTheme({
+    ...editTheme.value,
+    name: themeName.value.trim() || editTheme.value.name,
+  });
   const blob = new Blob([json], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = `${editTheme.value.name}.json`;
-  a.click();
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = `${themeName.value || editTheme.value.name}.json`;
+  anchor.click();
   URL.revokeObjectURL(url);
 }
 
-// 导入主题
 async function importThemeFile(event: Event) {
   const input = event.target as HTMLInputElement;
   const file = input.files?.[0];
-  if (!file) return;
+  if (!file) {
+    return;
+  }
 
   try {
     const text = await file.text();
-    const theme = importTheme(text);
-    editTheme.value = theme;
-    themeName.value = theme.name;
-  } catch (e) {
-    console.error('导入主题失败:', e);
+    const importedTheme = importTheme(text, editTheme.value?.appearance ?? 'light');
+    editTheme.value = {
+      ...importedTheme,
+      id: editTheme.value?.id ?? generateThemeId(),
+      type: 'custom',
+    };
+    themeName.value = importedTheme.name;
+  } catch (error) {
+    console.error('导入主题失败:', error);
     alert('导入主题失败：无效的 JSON 文件');
   }
 
   input.value = '';
 }
 
-// 监听 props.themeId 变化
-watch(() => props.themeId, (newId) => {
-  if (newId && !isEditing.value) {
-    startEdit(newId);
-  }
-}, { immediate: true });
+function formatColorLabel(key: keyof ThemeColors) {
+  return key
+    .replace(/Color|Bg|Border|Shadow|Hover|Light|Secondary/g, (match) => ` ${match}`)
+    .replace(/([A-Z])/g, ' $1')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
 
-// 暴露方法
+watch(
+  () => props.themeId,
+  (nextThemeId) => {
+    if (nextThemeId && !isEditing.value) {
+      startEdit(nextThemeId);
+    }
+  },
+  { immediate: true },
+);
+
 defineExpose({
   startEdit,
+  startCreate,
+  startCopyCurrentTheme,
 });
 </script>
 
 <template>
   <div class="theme-editor">
-    <!-- 编辑界面 -->
     <div v-if="isEditing && editTheme" class="theme-editor-content">
-      <!-- 头部 -->
       <div class="theme-editor-header">
-        <input
-          v-model="themeName"
-          type="text"
-          class="theme-name-input"
-          placeholder="主题名称"
-        />
+        <div class="theme-editor-heading">
+          <input
+            v-model="themeName"
+            type="text"
+            class="theme-name-input"
+            placeholder="主题名称"
+          />
+          <span class="theme-appearance-badge">{{ getAppearanceLabel(editTheme.appearance) }}</span>
+        </div>
         <div class="theme-editor-actions">
-          <button class="theme-action-btn" @click="exportCurrentTheme" title="导出">
+          <button class="theme-action-btn" title="导出" @click="exportCurrentTheme">
             <svg class="theme-action-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
             </svg>
@@ -173,43 +264,48 @@ defineExpose({
         </div>
       </div>
 
-      <!-- 模式切换 -->
-      <div class="mode-switch">
-        <button
-          class="mode-btn"
-          :class="{ 'mode-btn--active': editMode === 'light' }"
-          @click="editMode = 'light'"
+      <div class="theme-preview-card">
+        <div
+          class="theme-preview-surface"
+          :style="{
+            backgroundColor: editTheme.colors.bgColor,
+            borderColor: editTheme.colors.borderColor,
+            color: editTheme.colors.textColor,
+          }"
         >
-          浅色
-        </button>
-        <button
-          class="mode-btn"
-          :class="{ 'mode-btn--active': editMode === 'dark' }"
-          @click="editMode = 'dark'"
-        >
-          深色
-        </button>
+          <div
+            class="theme-preview-chip"
+            :style="{ backgroundColor: editTheme.colors.primaryColor }"
+          />
+          <div
+            class="theme-preview-text"
+            :style="{ backgroundColor: editTheme.colors.textColor }"
+          />
+          <div
+            class="theme-preview-text theme-preview-text--muted"
+            :style="{ backgroundColor: editTheme.colors.textSecondary }"
+          />
+        </div>
       </div>
 
-      <!-- 颜色编辑 -->
       <div class="color-groups">
         <div v-for="group in colorGroups" :key="group.name" class="color-group">
           <div class="color-group-name">{{ group.name }}</div>
           <div class="color-items">
             <div v-for="key in group.keys" :key="key" class="color-item">
-              <label class="color-label">{{ key.replace(/Color$/, '').replace(/^callout/, '') }}</label>
+              <label class="color-label">{{ formatColorLabel(key) }}</label>
               <div class="color-input-wrapper">
                 <input
                   type="color"
-                  :value="editTheme[editMode][key]"
+                  :value="editTheme.colors[key]"
                   class="color-input"
-                  @input="(e) => updateColor(key, (e.target as HTMLInputElement).value)"
+                  @input="(event) => updateColor(key, (event.target as HTMLInputElement).value)"
                 />
                 <input
                   type="text"
-                  :value="editTheme[editMode][key]"
+                  :value="editTheme.colors[key]"
                   class="color-text-input"
-                  @input="(e) => updateColor(key, (e.target as HTMLInputElement).value)"
+                  @input="(event) => updateColor(key, (event.target as HTMLInputElement).value)"
                 />
               </div>
             </div>
@@ -217,28 +313,56 @@ defineExpose({
         </div>
       </div>
 
-      <!-- 底部操作 -->
       <div class="theme-editor-footer">
         <button class="theme-cancel-btn" @click="cancelEdit">取消</button>
         <button class="theme-save-btn" @click="saveTheme">保存</button>
       </div>
     </div>
 
-    <!-- 初始界面 -->
     <div v-else class="theme-editor-start">
-      <p class="theme-editor-hint">选择一个主题作为基础开始编辑，或创建新主题</p>
-      <div class="theme-editor-buttons">
-        <button class="theme-create-btn" @click="startEdit()">
-          创建新主题
-        </button>
-        <button
-          v-for="theme in settingsStore.presetThemes"
-          :key="theme.id"
-          class="theme-base-btn"
-          @click="startEdit(theme.id)"
-        >
-          基于 {{ theme.name }}
-        </button>
+      <div class="theme-editor-panel">
+        <p class="theme-editor-hint">你可以复制当前主题，或从预设主题开始创建一个新的浅色/深色主题。</p>
+
+        <div class="theme-editor-buttons">
+          <button class="theme-create-btn" @click="startCopyCurrentTheme">复制当前主题</button>
+          <button
+            v-if="currentCustomTheme"
+            class="theme-base-btn"
+            @click="startEdit(currentCustomTheme.id)"
+          >
+            编辑当前主题
+          </button>
+          <button class="theme-base-btn" @click="startCreate('light')">创建浅色主题</button>
+          <button class="theme-base-btn" @click="startCreate('dark')">创建深色主题</button>
+        </div>
+      </div>
+
+      <div class="theme-editor-panel">
+        <div class="theme-editor-section-title">从浅色预设开始</div>
+        <div class="theme-editor-buttons">
+          <button
+            v-for="theme in lightPresetThemes"
+            :key="theme.id"
+            class="theme-base-btn"
+            @click="startFromPreset(theme.id)"
+          >
+            基于 {{ theme.name }}
+          </button>
+        </div>
+      </div>
+
+      <div class="theme-editor-panel">
+        <div class="theme-editor-section-title">从深色预设开始</div>
+        <div class="theme-editor-buttons">
+          <button
+            v-for="theme in darkPresetThemes"
+            :key="theme.id"
+            class="theme-base-btn"
+            @click="startFromPreset(theme.id)"
+          >
+            基于 {{ theme.name }}
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -251,22 +375,34 @@ defineExpose({
   overflow-y: auto;
 }
 
+.theme-editor-content {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 .theme-editor-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
+  justify-content: space-between;
   gap: 12px;
-  margin-bottom: 16px;
+}
+
+.theme-editor-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
 }
 
 .theme-name-input {
-  flex: 1;
-  padding: 8px 12px;
-  font-size: 14px;
-  font-weight: 500;
-  background-color: var(--input-bg);
-  border: 1px solid var(--input-border);
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
+  background: var(--input-bg);
   color: var(--text-color);
+  font-size: 14px;
   outline: none;
 }
 
@@ -275,56 +411,77 @@ defineExpose({
   box-shadow: var(--input-focus-shadow);
 }
 
+.theme-appearance-badge {
+  width: fit-content;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--primary-light);
+  color: var(--primary-color);
+  font-size: 12px;
+  font-weight: 600;
+}
+
 .theme-editor-actions {
   display: flex;
-  gap: 4px;
+  gap: 8px;
 }
 
 .theme-action-btn {
-  padding: 8px;
-  border-radius: var(--radius-md);
-  background-color: transparent;
-  border: none;
-  cursor: pointer;
-  transition: background-color 0.15s;
-}
-
-.theme-action-btn:hover {
-  background-color: var(--hover-bg);
-}
-
-.theme-action-icon {
-  width: 18px;
-  height: 18px;
-  color: var(--muted-color);
-}
-
-.hidden {
-  display: none;
-}
-
-.mode-switch {
+  width: 36px;
+  height: 36px;
   display: flex;
-  gap: 4px;
-  margin-bottom: 16px;
-}
-
-.mode-btn {
-  padding: 6px 16px;
-  font-size: 13px;
-  font-weight: 500;
-  background-color: transparent;
+  align-items: center;
+  justify-content: center;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
+  background: var(--bg-color);
   color: var(--text-color);
   cursor: pointer;
   transition: background-color 0.15s, border-color 0.15s;
 }
 
-.mode-btn--active {
-  background-color: var(--primary-light);
+.theme-action-btn:hover {
+  background: var(--hover-bg);
   border-color: var(--primary-color);
-  color: var(--primary-color);
+}
+
+.theme-action-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.theme-preview-card {
+  padding: 14px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  background: var(--sidebar-bg);
+}
+
+.theme-preview-surface {
+  min-height: 88px;
+  padding: 16px;
+  border: 1px solid;
+  border-radius: var(--radius-lg);
+}
+
+.theme-preview-chip {
+  width: 56px;
+  height: 12px;
+  border-radius: 999px;
+}
+
+.theme-preview-text {
+  width: 78%;
+  height: 10px;
+  margin-top: 18px;
+  border-radius: 999px;
+  opacity: 0.9;
+}
+
+.theme-preview-text--muted {
+  width: 52%;
+  margin-top: 10px;
+  opacity: 0.55;
 }
 
 .color-groups {
@@ -334,114 +491,127 @@ defineExpose({
 }
 
 .color-group {
-  border: 1px solid var(--border-light);
-  border-radius: var(--radius-md);
-  padding: 12px;
+  padding: 14px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-color);
+  background: var(--bg-color);
 }
 
 .color-group-name {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--muted-color);
   margin-bottom: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  color: var(--text-color);
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .color-items {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
 }
 
 .color-item {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
 .color-label {
-  font-size: 11px;
   color: var(--muted-color);
+  font-size: 12px;
 }
 
 .color-input-wrapper {
   display: flex;
-  align-items: center;
-  gap: 4px;
+  gap: 8px;
 }
 
 .color-input {
-  width: 32px;
-  height: 32px;
+  width: 40px;
+  height: 36px;
+  padding: 0;
   border: 1px solid var(--border-color);
-  border-radius: var(--radius-sm);
-  padding: 2px;
-  cursor: pointer;
+  border-radius: var(--radius-md);
+  background: none;
 }
 
 .color-text-input {
   flex: 1;
-  padding: 4px 8px;
-  font-size: 12px;
-  font-family: var(--font-mono);
-  background-color: var(--input-bg);
-  border: 1px solid var(--input-border);
-  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background: var(--input-bg);
   color: var(--text-color);
-  outline: none;
+  font-family: 'SFMono-Regular', 'JetBrains Mono', monospace;
 }
 
 .theme-editor-footer {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid var(--border-color);
+}
+
+.theme-cancel-btn,
+.theme-save-btn,
+.theme-create-btn,
+.theme-base-btn {
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.theme-cancel-btn,
+.theme-save-btn {
+  padding: 10px 14px;
 }
 
 .theme-cancel-btn {
-  padding: 8px 16px;
-  font-size: 13px;
-  font-weight: 500;
-  background-color: var(--btn-secondary-bg);
-  border: none;
-  border-radius: var(--radius-md);
-  color: var(--btn-secondary-text);
-  cursor: pointer;
-  transition: background-color 0.15s;
+  background: var(--bg-color);
+  color: var(--text-color);
 }
 
 .theme-cancel-btn:hover {
-  background-color: var(--btn-secondary-hover);
+  background: var(--hover-bg);
 }
 
-.theme-save-btn {
-  padding: 8px 16px;
-  font-size: 13px;
-  font-weight: 500;
-  background-color: var(--btn-primary-bg);
-  border: none;
-  border-radius: var(--radius-md);
-  color: var(--btn-primary-text);
-  cursor: pointer;
-  transition: background-color 0.15s;
+.theme-save-btn,
+.theme-create-btn {
+  background: var(--btnPrimaryBg);
+  border-color: var(--btnPrimaryBg);
+  color: var(--btnPrimaryText);
 }
 
-.theme-save-btn:hover {
-  background-color: var(--btn-primary-hover);
+.theme-save-btn:hover,
+.theme-create-btn:hover {
+  background: var(--btnPrimaryHover);
+  border-color: var(--btnPrimaryHover);
 }
 
 .theme-editor-start {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
+}
+
+.theme-editor-panel {
+  padding: 14px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  background: var(--bg-color);
 }
 
 .theme-editor-hint {
-  font-size: 13px;
+  margin: 0 0 12px;
   color: var(--muted-color);
+  font-size: 13px;
+}
+
+.theme-editor-section-title {
+  margin-bottom: 10px;
+  color: var(--text-color);
+  font-size: 13px;
+  font-weight: 600;
 }
 
 .theme-editor-buttons {
@@ -450,35 +620,19 @@ defineExpose({
   gap: 8px;
 }
 
-.theme-create-btn {
-  padding: 10px 16px;
+.theme-create-btn,
+.theme-base-btn {
+  padding: 8px 12px;
   font-size: 13px;
-  font-weight: 500;
-  background-color: var(--btn-primary-bg);
-  border: none;
-  border-radius: var(--radius-md);
-  color: var(--btn-primary-text);
-  cursor: pointer;
-  transition: background-color 0.15s;
-}
-
-.theme-create-btn:hover {
-  background-color: var(--btn-primary-hover);
 }
 
 .theme-base-btn {
-  padding: 10px 16px;
-  font-size: 13px;
-  font-weight: 500;
-  background-color: var(--btn-secondary-bg);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  color: var(--btn-secondary-text);
-  cursor: pointer;
-  transition: background-color 0.15s;
+  background: var(--bg-color);
+  color: var(--text-color);
 }
 
 .theme-base-btn:hover {
-  background-color: var(--btn-secondary-hover);
+  background: var(--hover-bg);
+  border-color: var(--primary-color);
 }
 </style>

@@ -1,87 +1,120 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useSettingsStore } from '../../stores/settings';
-import type { ThemeId } from '../../themes/types';
+import type { ThemeAppearance, ThemeId } from '../../themes/types';
 
 const settingsStore = useSettingsStore();
 
-// 所有可用主题
-const allThemes = computed(() => settingsStore.allThemes);
+const appearanceFilter = ref<'all' | ThemeAppearance>('all');
 
-// 当前选中的主题
+const allThemes = computed(() => settingsStore.allThemes);
 const activeThemeId = computed(() => settingsStore.settings.activeThemeId);
 
-// 选择主题
+const filteredThemes = computed(() => {
+  if (appearanceFilter.value === 'all') {
+    return allThemes.value;
+  }
+
+  return allThemes.value.filter((theme) => theme.appearance === appearanceFilter.value);
+});
+
 function selectTheme(id: ThemeId) {
   settingsStore.setColorTheme(id);
 }
 
-// 判断是否是预设主题
 function isPresetTheme(id: ThemeId): boolean {
-  return settingsStore.presetThemes.some(t => t.id === id);
+  return settingsStore.presetThemes.some((theme) => theme.id === id);
 }
 
-// 删除自定义主题
 function deleteCustomTheme(id: ThemeId) {
   settingsStore.removeCustomTheme(id);
+}
+
+function getAppearanceLabel(appearance: ThemeAppearance) {
+  return appearance === 'dark' ? '深色' : '浅色';
 }
 </script>
 
 <template>
   <div class="theme-selector">
     <div class="theme-selector-header">
-      <span class="theme-selector-title">颜色主题</span>
+      <div>
+        <div class="theme-selector-title">应用主题</div>
+        <div class="theme-selector-subtitle">应用只保留一个当前主题，浅色和深色主题独立选择。</div>
+      </div>
+
+      <div class="theme-filter-group">
+        <button
+          v-for="option in [
+            { value: 'all', label: '全部' },
+            { value: 'light', label: '浅色' },
+            { value: 'dark', label: '深色' },
+          ]"
+          :key="option.value"
+          class="theme-filter-btn"
+          :class="{ 'theme-filter-btn--active': appearanceFilter === option.value }"
+          @click="appearanceFilter = option.value as 'all' | ThemeAppearance"
+        >
+          {{ option.label }}
+        </button>
+      </div>
     </div>
 
     <div class="theme-grid">
       <div
-        v-for="theme in allThemes"
+        v-for="theme in filteredThemes"
         :key="theme.id"
         class="theme-card"
         :class="{ 'theme-card--active': activeThemeId === theme.id }"
         @click="selectTheme(theme.id)"
       >
-        <!-- 主题预览 -->
-        <div class="theme-preview">
+        <div
+          class="theme-preview"
+          :style="{
+            backgroundColor: theme.colors.bgColor,
+            borderColor: theme.colors.borderColor,
+            boxShadow: theme.colors.shadowSm,
+          }"
+        >
           <div
-            class="theme-preview-light"
-            :style="{ backgroundColor: theme.light.bgColor, borderColor: theme.light.borderColor }"
-          >
+            class="theme-preview-sidebar"
+            :style="{ backgroundColor: theme.colors.sidebarBg }"
+          />
+          <div class="theme-preview-body">
             <div
               class="theme-preview-accent"
-              :style="{ backgroundColor: theme.light.primaryColor }"
-            ></div>
-          </div>
-          <div
-            class="theme-preview-dark"
-            :style="{ backgroundColor: theme.dark.bgColor, borderColor: theme.dark.borderColor }"
-          >
+              :style="{ backgroundColor: theme.colors.primaryColor }"
+            />
             <div
-              class="theme-preview-accent"
-              :style="{ backgroundColor: theme.dark.primaryColor }"
-            ></div>
+              class="theme-preview-line"
+              :style="{ backgroundColor: theme.colors.textColor }"
+            />
+            <div
+              class="theme-preview-line theme-preview-line--muted"
+              :style="{ backgroundColor: theme.colors.textSecondary }"
+            />
           </div>
         </div>
 
-        <!-- 主题信息 -->
         <div class="theme-info">
-          <span class="theme-name">{{ theme.name }}</span>
-          <span v-if="theme.type === 'custom'" class="theme-badge">自定义</span>
+          <div class="theme-name-row">
+            <span class="theme-name">{{ theme.name }}</span>
+            <span v-if="theme.type === 'custom'" class="theme-badge">自定义</span>
+          </div>
+          <span class="theme-appearance">{{ getAppearanceLabel(theme.appearance) }}</span>
         </div>
 
-        <!-- 删除按钮（仅自定义主题） -->
         <button
           v-if="!isPresetTheme(theme.id)"
           class="theme-delete-btn"
-          @click.stop="deleteCustomTheme(theme.id)"
           title="删除主题"
+          @click.stop="deleteCustomTheme(theme.id)"
         >
           <svg class="theme-delete-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
 
-        <!-- 激活指示器 -->
         <div v-if="activeThemeId === theme.id" class="theme-active-indicator">
           <svg class="theme-active-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
@@ -98,6 +131,10 @@ function deleteCustomTheme(id: ThemeId) {
 }
 
 .theme-selector-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
   margin-bottom: 16px;
 }
 
@@ -107,57 +144,109 @@ function deleteCustomTheme(id: ThemeId) {
   color: var(--text-color);
 }
 
+.theme-selector-subtitle {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--muted-color);
+}
+
+.theme-filter-group {
+  display: inline-flex;
+  gap: 6px;
+  padding: 4px;
+  border-radius: var(--radius-lg);
+  background: var(--sidebar-bg);
+}
+
+.theme-filter-btn {
+  padding: 6px 10px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--muted-color);
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.theme-filter-btn--active {
+  background: var(--bg-color);
+  color: var(--primary-color);
+  box-shadow: var(--shadow-sm);
+}
+
 .theme-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 12px;
 }
 
 .theme-card {
   position: relative;
   padding: 12px;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   border: 1px solid var(--border-color);
-  background-color: var(--bg-color);
+  background: var(--bg-color);
   cursor: pointer;
-  transition: border-color 0.15s, background-color 0.15s;
+  transition: border-color 0.15s, background-color 0.15s, transform 0.15s;
 }
 
 .theme-card:hover {
   border-color: var(--primary-color);
-  background-color: var(--hover-bg);
+  background: var(--hover-bg);
+  transform: translateY(-1px);
 }
 
 .theme-card--active {
   border-color: var(--primary-color);
-  background-color: var(--primary-light);
+  background: var(--primary-light);
 }
 
 .theme-preview {
   display: flex;
-  gap: 4px;
-  height: 48px;
-  border-radius: var(--radius-sm);
+  gap: 10px;
+  min-height: 78px;
+  padding: 10px;
+  border: 1px solid;
+  border-radius: var(--radius-md);
   overflow: hidden;
-  margin-bottom: 8px;
 }
 
-.theme-preview-light,
-.theme-preview-dark {
+.theme-preview-sidebar {
+  width: 22%;
+  border-radius: 10px;
+}
+
+.theme-preview-body {
   flex: 1;
   display: flex;
-  align-items: center;
+  flex-direction: column;
   justify-content: center;
-  border: 1px solid;
+  gap: 10px;
 }
 
 .theme-preview-accent {
-  width: 12px;
+  width: 42px;
   height: 12px;
-  border-radius: 50%;
+  border-radius: 999px;
+}
+
+.theme-preview-line {
+  width: 86%;
+  height: 8px;
+  border-radius: 999px;
+  opacity: 0.9;
+}
+
+.theme-preview-line--muted {
+  width: 64%;
+  opacity: 0.5;
 }
 
 .theme-info {
+  margin-top: 10px;
+}
+
+.theme-name-row {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -165,26 +254,38 @@ function deleteCustomTheme(id: ThemeId) {
 
 .theme-name {
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-color);
 }
 
 .theme-badge {
   font-size: 10px;
   padding: 2px 6px;
-  border-radius: var(--radius-sm);
-  background-color: var(--primary-light);
+  border-radius: 999px;
+  background: var(--primary-light);
   color: var(--primary-color);
+}
+
+.theme-appearance {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--muted-color);
 }
 
 .theme-delete-btn {
   position: absolute;
   top: 8px;
   right: 8px;
-  padding: 4px;
-  border-radius: var(--radius-sm);
-  background-color: transparent;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--error-color);
   cursor: pointer;
   opacity: 0;
   transition: opacity 0.15s, background-color 0.15s;
@@ -195,31 +296,30 @@ function deleteCustomTheme(id: ThemeId) {
 }
 
 .theme-delete-btn:hover {
-  background-color: var(--error-bg);
+  background: var(--error-bg);
 }
 
 .theme-delete-icon {
   width: 14px;
   height: 14px;
-  color: var(--error-color);
 }
 
 .theme-active-indicator {
   position: absolute;
-  bottom: 8px;
   right: 8px;
+  bottom: 8px;
+  width: 20px;
+  height: 20px;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  background-color: var(--primary-color);
+  border-radius: 999px;
+  background: var(--primary-color);
 }
 
 .theme-active-icon {
-  width: 12px;
-  height: 12px;
-  color: var(--btn-primary-text);
+  width: 14px;
+  height: 14px;
+  color: white;
 }
 </style>

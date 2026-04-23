@@ -228,31 +228,11 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
             <div class="flex-1 p-6 overflow-y-auto">
               <!-- 外观设置 -->
               <div v-show="activeTab === 'appearance'" class="space-y-6">
-                <!-- 颜色主题 -->
                 <div class="space-y-2">
                   <ThemeSelector />
                 </div>
                 <div class="space-y-2">
                   <ThemeEditor />
-                </div>
-
-                <!-- 主题模式切换 -->
-                <div class="space-y-2">
-                  <label class="block text-sm font-medium" style="color: var(--text-color);">显示模式</label>
-                  <div class="grid grid-cols-3 gap-2">
-                    <button
-                      v-for="opt in [{ value: 'light', label: '浅色', icon: '☀️' }, { value: 'dark', label: '深色', icon: '🌙' }, { value: 'system', label: '跟随系统', icon: '💻' }]"
-                      :key="opt.value"
-                      class="flex flex-col items-center gap-1 py-2 px-3 rounded-lg border-2 transition-all text-sm"
-                      :style="settings.theme === opt.value
-                        ? 'border-color: var(--primary-color); background-color: rgba(99,102,241,0.08); color: var(--primary-color);'
-                        : 'border-color: var(--border-color); color: var(--text-color);'"
-                      @click="settings.theme = opt.value as any"
-                    >
-                      <span class="text-lg">{{ opt.icon }}</span>
-                      <span>{{ opt.label }}</span>
-                    </button>
-                  </div>
                 </div>
 
                 <div class="space-y-2">
@@ -502,7 +482,7 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
               <!-- 导出设置 -->
               <div v-show="activeTab === 'export'" class="space-y-6">
                 <div class="space-y-2">
-                  <label class="block text-sm font-medium" style="color: var(--text-color);">微信导出主题</label>
+                  <label class="block text-sm font-medium" style="color: var(--text-color);">导出主题</label>
                   <p class="text-xs mt-1" style="color: var(--muted-color);">选择复制到微信时的排版风格</p>
 
                   <div class="grid grid-cols-2 gap-3 mt-3">
