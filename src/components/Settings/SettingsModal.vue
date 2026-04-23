@@ -360,14 +360,6 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
 
               <!-- 编辑器设置 -->
               <div v-show="activeTab === 'editor'" class="space-y-6">
-                <div class="space-y-2">
-                  <label class="block text-sm font-medium" style="color: var(--text-color);">编辑器引擎</label>
-                  <div class="w-full px-3 py-2 border rounded-lg" style="border-color: var(--border-color); background-color: var(--sidebar-bg); color: var(--text-color);">
-                    TipTap (ProseMirror)（已启用）
-                  </div>
-                  <p class="text-xs" style="color: var(--muted-color);">所见即所得编辑器引擎。</p>
-                </div>
-
                 <div class="flex items-center justify-between">
                   <div>
                     <label class="block text-sm font-medium" style="color: var(--text-color);">显示行号</label>
@@ -375,12 +367,15 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
                   </div>
                   <button
                     @click="settings.showLineNumbers = !settings.showLineNumbers"
-                    class="relative w-12 h-6 rounded-full transition-colors"
-                    :class="settings.showLineNumbers ? 'bg-blue-500' : 'bg-gray-300'"
+                    type="button"
+                    class="settings-switch"
+                    :class="{ 'settings-switch--on': settings.showLineNumbers }"
+                    :aria-checked="settings.showLineNumbers"
+                    aria-label="切换显示行号"
                   >
                     <span
-                      class="absolute top-1 w-4 h-4 bg-white rounded-full transition-transform"
-                      :class="settings.showLineNumbers ? 'translate-x-7' : 'translate-x-1'"
+                      class="settings-switch__thumb"
+                      :class="{ 'settings-switch__thumb--on': settings.showLineNumbers }"
                     />
                   </button>
                 </div>
@@ -411,12 +406,15 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
                   </div>
                   <button
                     @click="settings.spellCheck = !settings.spellCheck"
-                    class="relative w-12 h-6 rounded-full transition-colors"
-                    :class="settings.spellCheck ? 'bg-blue-500' : 'bg-gray-300'"
+                    type="button"
+                    class="settings-switch"
+                    :class="{ 'settings-switch--on': settings.spellCheck }"
+                    :aria-checked="settings.spellCheck"
+                    aria-label="切换拼写检查"
                   >
                     <span
-                      class="absolute top-1 w-4 h-4 bg-white rounded-full transition-transform"
-                      :class="settings.spellCheck ? 'translate-x-7' : 'translate-x-1'"
+                      class="settings-switch__thumb"
+                      :class="{ 'settings-switch__thumb--on': settings.spellCheck }"
                     />
                   </button>
                 </div>
@@ -428,12 +426,15 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
                   </div>
                   <button
                     @click="settings.outlineExpanded = !settings.outlineExpanded"
-                    class="relative w-12 h-6 rounded-full transition-colors"
-                    :class="settings.outlineExpanded ? 'bg-blue-500' : 'bg-gray-300'"
+                    type="button"
+                    class="settings-switch"
+                    :class="{ 'settings-switch--on': settings.outlineExpanded }"
+                    :aria-checked="settings.outlineExpanded"
+                    aria-label="切换大纲默认展开"
                   >
                     <span
-                      class="absolute top-1 w-4 h-4 bg-white rounded-full transition-transform"
-                      :class="settings.outlineExpanded ? 'translate-x-7' : 'translate-x-1'"
+                      class="settings-switch__thumb"
+                      :class="{ 'settings-switch__thumb--on': settings.outlineExpanded }"
                     />
                   </button>
                 </div>
@@ -524,12 +525,15 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
                   </div>
                   <button
                     @click="settings.autoSave = !settings.autoSave"
-                    class="relative w-12 h-6 rounded-full transition-colors"
-                    :class="settings.autoSave ? 'bg-blue-500' : 'bg-gray-300'"
+                    type="button"
+                    class="settings-switch"
+                    :class="{ 'settings-switch--on': settings.autoSave }"
+                    :aria-checked="settings.autoSave"
+                    aria-label="切换自动保存"
                   >
                     <span
-                      class="absolute top-1 w-4 h-4 bg-white rounded-full transition-transform"
-                      :class="settings.autoSave ? 'translate-x-7' : 'translate-x-1'"
+                      class="settings-switch__thumb"
+                      :class="{ 'settings-switch__thumb--on': settings.autoSave }"
                     />
                   </button>
                 </div>
@@ -776,6 +780,42 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
 
 .settings-footer {
   box-shadow: 0 -1px 0 rgba(15, 23, 42, 0.02);
+}
+
+.settings-switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 48px;
+  height: 28px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--border-color) 82%, #cbd5e1 18%);
+  cursor: pointer;
+  transition: background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.settings-switch:hover {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-light) 72%, transparent 28%);
+}
+
+.settings-switch--on {
+  background: var(--primary-color);
+}
+
+.settings-switch__thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.16);
+  transition: transform 0.18s ease;
+}
+
+.settings-switch__thumb--on {
+  transform: translateX(20px);
 }
 
 /* 快捷键输入框样式 */
