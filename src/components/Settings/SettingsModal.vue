@@ -51,6 +51,32 @@ const tabs = [
   { key: 'export', label: '导出', icon: '📤' },
 ];
 
+const tabMeta = {
+  appearance: {
+    title: '外观与主题',
+    description: '管理应用主题、字体与排版风格，让界面更贴近你的使用习惯。',
+  },
+  editor: {
+    title: '编辑器偏好',
+    description: '调整编辑器行为、显示细节和写作体验相关设置。',
+  },
+  shortcuts: {
+    title: '快捷键',
+    description: '查看并修改命令快捷键，建立更顺手的操作路径。',
+  },
+  save: {
+    title: '保存策略',
+    description: '控制自动保存与文件持久化行为。',
+  },
+  export: {
+    title: '导出',
+    description: '设置复制到微信等导出场景的排版风格。',
+  },
+} as const;
+
+const activeTabMeta = computed(() => tabMeta[activeTab.value]);
+const currentThemeName = computed(() => settingsStore.currentTheme?.name ?? '未选择主题');
+
 // 关闭弹窗
 function close() {
   settingsStore.closeModal();
@@ -189,7 +215,7 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
           @click.stop
         >
           <!-- 头部 -->
-          <div class="flex items-center justify-between px-6 py-4 border-b" style="border-color: var(--border-color);">
+          <div class="flex items-center justify-between px-7 py-5 border-b" style="border-color: var(--border-color);">
             <h2 class="text-lg font-semibold" style="color: var(--text-color);">设置</h2>
             <button
               class="p-1 rounded-lg transition-colors"
@@ -205,13 +231,14 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
           </div>
 
           <!-- 主体 -->
-          <div class="flex flex-1 overflow-hidden">
+          <div class="flex flex-1 overflow-hidden settings-shell">
             <!-- 侧边导航 -->
-            <nav class="w-40 p-4 border-r shrink-0" style="border-color: var(--border-color);">
+            <nav class="w-44 p-4 border-r shrink-0 settings-sidebar" style="border-color: var(--border-color);">
+              <div class="settings-sidebar-label">偏好设置</div>
               <button
                 v-for="tab in tabs"
                 :key="tab.key"
-                class="w-full text-left px-3 py-2 rounded-lg mb-1 transition-colors flex items-center gap-2"
+                class="w-full text-left px-3 py-2.5 rounded-xl mb-1 transition-colors flex items-center gap-2 settings-nav-btn"
                 :style="activeTab === tab.key
                   ? 'background-color: rgba(99,102,241,0.1); color: var(--primary-color);'
                   : `color: var(--text-color);`"
@@ -225,62 +252,110 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
             </nav>
 
             <!-- 设置内容 -->
-            <div class="flex-1 p-6 overflow-y-auto">
-              <!-- 外观设置 -->
-              <div v-show="activeTab === 'appearance'" class="space-y-6">
-                <div class="space-y-2">
-                  <ThemeSelector />
-                </div>
-                <div class="space-y-2">
-                  <ThemeEditor />
-                </div>
-
-                <div class="space-y-2">
-                  <label class="block text-sm font-medium" style="color: var(--text-color);">
-                    字体大小: {{ settings.fontSize }}px
-                  </label>
-                  <input
-                    v-model.number="settings.fontSize"
-                    type="range"
-                    min="12"
-                    max="24"
-                    step="1"
-                    class="w-full h-2 rounded-lg appearance-none cursor-pointer accent-blue-500"
-                    style="background-color: var(--border-color);"
-                  />
-                  <div class="flex justify-between text-xs" style="color: var(--muted-color);">
-                    <span>12px</span>
-                    <span>24px</span>
+            <div class="flex-1 overflow-y-auto settings-content-area" style="background-color: var(--bg-secondary);">
+              <div class="settings-content">
+                <div class="settings-page-header">
+                  <div>
+                    <h3 class="settings-page-title">{{ activeTabMeta.title }}</h3>
+                    <p class="settings-page-desc">{{ activeTabMeta.description }}</p>
+                  </div>
+                  <div v-if="activeTab === 'appearance'" class="settings-page-badge">
+                    当前主题：{{ currentThemeName }}
                   </div>
                 </div>
 
-                <div class="space-y-2">
-                  <label class="block text-sm font-medium" style="color: var(--text-color);">字体族</label>
-                  <select
-                    v-model="settings.fontFamily"
-                    class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono"
-                    style="border-color: var(--border-color); background-color: var(--bg-color); color: var(--text-color);"
-                  >
-                    <option v-for="opt in fontOptions" :key="opt.value" :value="opt.value">
-                      {{ opt.label }}
-                    </option>
-                  </select>
-                </div>
+              <!-- 外观设置 -->
+              <div v-show="activeTab === 'appearance'" class="space-y-6">
+                <section class="settings-section-card settings-section-card--hero">
+                  <div>
+                    <div class="settings-section-title">当前主题</div>
+                    <p class="settings-section-desc">
+                      主题选择会立即生效。默认先从主题库里挑选风格，只有在需要个性化时再进入高级编辑。
+                    </p>
+                  </div>
+                  <div class="settings-hero-metrics">
+                    <div class="settings-hero-chip">应用主题：{{ currentThemeName }}</div>
+                    <div class="settings-hero-chip">字体：{{ settings.fontFamily }}</div>
+                    <div class="settings-hero-chip">字号：{{ settings.fontSize }}px</div>
+                  </div>
+                </section>
 
-                <div class="space-y-2">
-                  <label class="block text-sm font-medium" style="color: var(--text-color);">
-                    行高: {{ settings.lineHeight }}
-                  </label>
-                  <input
-                    v-model.number="settings.lineHeight"
-                    type="range"
-                    min="1.2"
-                    max="2.4"
-                    step="0.1"
-                    class="w-full h-2 rounded-lg appearance-none cursor-pointer accent-blue-500"
-                    style="background-color: var(--border-color);"
-                  />
-                </div>
+                <section class="settings-section-card">
+                  <div class="settings-section-heading">
+                    <div>
+                      <div class="settings-section-title">主题库</div>
+                      <p class="settings-section-desc">所有主题默认直接展示，方便快速横向比较。</p>
+                    </div>
+                  </div>
+                  <ThemeSelector />
+                </section>
+
+                <section class="settings-section-card">
+                  <div class="settings-section-heading">
+                    <div>
+                      <div class="settings-section-title">主题定制</div>
+                      <p class="settings-section-desc">复制当前主题后进入高级编辑，调整颜色并另存为新的自定义主题。</p>
+                    </div>
+                  </div>
+                  <ThemeEditor />
+                </section>
+
+                <section class="settings-section-card">
+                  <div class="settings-section-heading">
+                    <div>
+                      <div class="settings-section-title">排版与阅读</div>
+                      <p class="settings-section-desc">统一控制字体、字号和行高，保持写作与阅读体验协调。</p>
+                    </div>
+                  </div>
+                  <div class="settings-form-grid">
+                    <div class="space-y-2 settings-form-item">
+                      <label class="block text-sm font-medium" style="color: var(--text-color);">
+                        字体大小: {{ settings.fontSize }}px
+                      </label>
+                      <input
+                        v-model.number="settings.fontSize"
+                        type="range"
+                        min="12"
+                        max="24"
+                        step="1"
+                        class="w-full h-2 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                        style="background-color: var(--border-color);"
+                      />
+                      <div class="flex justify-between text-xs" style="color: var(--muted-color);">
+                        <span>12px</span>
+                        <span>24px</span>
+                      </div>
+                    </div>
+
+                    <div class="space-y-2 settings-form-item">
+                      <label class="block text-sm font-medium" style="color: var(--text-color);">字体族</label>
+                      <select
+                        v-model="settings.fontFamily"
+                        class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono"
+                        style="border-color: var(--border-color); background-color: var(--bg-color); color: var(--text-color);"
+                      >
+                        <option v-for="opt in fontOptions" :key="opt.value" :value="opt.value">
+                          {{ opt.label }}
+                        </option>
+                      </select>
+                    </div>
+
+                    <div class="space-y-2 settings-form-item">
+                      <label class="block text-sm font-medium" style="color: var(--text-color);">
+                        行高: {{ settings.lineHeight }}
+                      </label>
+                      <input
+                        v-model.number="settings.lineHeight"
+                        type="range"
+                        min="1.2"
+                        max="2.4"
+                        step="0.1"
+                        class="w-full h-2 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                        style="background-color: var(--border-color);"
+                      />
+                    </div>
+                  </div>
+                </section>
               </div>
 
               <!-- 编辑器设置 -->
@@ -520,11 +595,12 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
                   </div>
                 </div>
               </div>
+              </div>
             </div>
           </div>
 
           <!-- 底部 -->
-          <div class="flex items-center justify-between px-6 py-4 border-t" style="border-color: var(--border-color); background-color: var(--sidebar-bg);">
+          <div class="flex items-center justify-between px-7 py-4 border-t settings-footer" style="border-color: var(--border-color); background-color: var(--sidebar-bg);">
             <button
               class="px-4 py-2 text-sm transition-colors"
               style="color: var(--muted-color);"
@@ -565,6 +641,141 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
 .modal-leave-to > div {
   transform: scale(0.95);
   opacity: 0;
+}
+
+.settings-shell {
+  min-height: 0;
+}
+
+.settings-sidebar {
+  background: color-mix(in srgb, var(--bg-color) 92%, white 8%);
+}
+
+.settings-sidebar-label {
+  margin-bottom: 12px;
+  padding: 0 4px;
+  color: var(--muted-color);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.settings-nav-btn {
+  font-weight: 600;
+}
+
+.settings-content-area {
+  min-width: 0;
+}
+
+.settings-content {
+  width: min(100%, 760px);
+  margin: 0 auto;
+  padding: 28px 28px 32px;
+}
+
+.settings-page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.settings-page-title {
+  margin: 0;
+  color: var(--text-color);
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.settings-page-desc {
+  margin: 8px 0 0;
+  color: var(--muted-color);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.settings-page-badge {
+  flex-shrink: 0;
+  padding: 8px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 999px;
+  background: var(--bg-color);
+  color: var(--primary-color);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.settings-section-card {
+  padding: 18px;
+  border: 1px solid var(--border-color);
+  border-radius: 22px;
+  background: var(--bg-color);
+  box-shadow: var(--shadow-sm);
+}
+
+.settings-section-card--hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  background:
+    radial-gradient(circle at top right, color-mix(in srgb, var(--primary-light) 85%, transparent 15%), transparent 45%),
+    var(--bg-color);
+}
+
+.settings-section-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.settings-section-title {
+  color: var(--text-color);
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.settings-section-desc {
+  margin: 6px 0 0;
+  color: var(--muted-color);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.settings-hero-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.settings-hero-chip {
+  padding: 7px 11px;
+  border-radius: 999px;
+  background: var(--primary-light);
+  color: var(--primary-color);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.settings-form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.settings-form-item {
+  min-width: 0;
+}
+
+.settings-footer {
+  box-shadow: 0 -1px 0 rgba(15, 23, 42, 0.02);
 }
 
 /* 快捷键输入框样式 */
@@ -616,5 +827,20 @@ input[type="range"]::-moz-range-thumb {
   border-radius: 50%;
   cursor: pointer;
   border: none;
+}
+
+@media (max-width: 960px) {
+  .settings-page-header,
+  .settings-section-card--hero {
+    flex-direction: column;
+  }
+
+  .settings-hero-metrics {
+    justify-content: flex-start;
+  }
+
+  .settings-form-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
