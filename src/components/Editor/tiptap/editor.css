@@ -804,23 +804,52 @@ html.dark .mk-deco-highlight {
   cursor: pointer;
 }
 
+.tiptap-editor .mk-link-url-editor {
+  display: none;
+  white-space: pre-wrap;
+  word-break: break-word;
+  outline: none;
+}
+
+.tiptap-editor .mk-tok-link-url.mk-tok--visible .mk-link-url-editor,
+.tiptap-editor .mk-tok-link-url--editing .mk-link-url-editor,
+.tiptap-editor .mk-tok-link-url--invalid .mk-link-url-editor {
+  display: inline;
+}
+
 .tiptap-editor .mk-tok-link-url--editing {
   font-size: 0.85em;
   width: auto;
   overflow: visible;
   opacity: 1;
+  color: var(--text-color);
+  pointer-events: auto;
 }
 
-.tiptap-editor .mk-link-url-input {
-  font-family: var(--font-mono);
+.tiptap-editor .mk-tok-link-url--invalid {
   font-size: 0.85em;
-  color: var(--primary-color);
-  background: var(--bg-color);
-  border: 1px solid var(--border-color);
-  border-radius: 3px;
-  padding: 0 4px;
-  outline: none;
-  min-width: 120px;
+  width: auto;
+  overflow: visible;
+  opacity: 1;
+  color: #ef4444;
+  pointer-events: auto;
+}
+
+.tiptap-editor h1 .mk-tok-link-url,
+.tiptap-editor h2 .mk-tok-link-url,
+.tiptap-editor h3 .mk-tok-link-url,
+.tiptap-editor h4 .mk-tok-link-url,
+.tiptap-editor h5 .mk-tok-link-url,
+.tiptap-editor h6 .mk-tok-link-url,
+.tiptap-editor h1 .mk-link-url-editor,
+.tiptap-editor h2 .mk-link-url-editor,
+.tiptap-editor h3 .mk-link-url-editor,
+.tiptap-editor h4 .mk-link-url-editor,
+.tiptap-editor h5 .mk-link-url-editor,
+.tiptap-editor h6 .mk-link-url-editor {
+  display: inline;
+  vertical-align: baseline;
+  line-height: inherit;
 }
 
 /* ── Wikilink ────────────────────────────────────────────────── */

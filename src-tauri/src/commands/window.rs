@@ -1,9 +1,12 @@
+use std::sync::atomic::{AtomicU64, Ordering};
 use tauri::{Emitter, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
+
+static WINDOW_COUNTER: AtomicU64 = AtomicU64::new(1);
 
 /// 打开新窗口
 #[tauri::command]
 pub async fn open_new_window(app: tauri::AppHandle, path: Option<String>) -> Result<(), String> {
-    let window_label = format!("main-{}", std::process::id());
+    let window_label = format!("main-{}", WINDOW_COUNTER.fetch_add(1, Ordering::Relaxed));
     let builder = WebviewWindowBuilder::new(&app, &window_label, WebviewUrl::App("index.html".into()))
         .title("未命名")
         .inner_size(1200.0, 800.0)

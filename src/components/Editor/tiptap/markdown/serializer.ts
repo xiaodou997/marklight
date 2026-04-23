@@ -58,7 +58,8 @@ class MarkdownSerializerState {
     parent.forEach((child, _offset, index) => {
       if (child.isText) {
         this.renderMarks(child, parent, index, true);
-        this.write(this.escapeInline(child.text ?? ''));
+        const hasCodeMark = child.marks.some((mark) => mark.type.name === 'code');
+        this.write(hasCodeMark ? (child.text ?? '') : this.escapeInline(child.text ?? ''));
         this.renderMarks(child, parent, index, false);
       } else {
         this.renderMarks(child, parent, index, true);
@@ -106,7 +107,7 @@ class MarkdownSerializerState {
       case 'subscript': return '~';
       case 'link':
         if (_opening) return '[';
-        return `](${mark.attrs.href}${mark.attrs.title ? ` "${mark.attrs.title}"` : ''})`;
+        return `](${mark.attrs.href}${mark.attrs.title ? ` "${escapeLinkTitle(mark.attrs.title as string)}"` : ''})`;
       default: return '';
     }
   }
@@ -120,9 +121,9 @@ class MarkdownSerializerState {
   }
 
   private escapeInline(text: string): string {
-    // 对行内 markdown 特殊字符进行最小化转义
-    // 不转义 # < > 等因为它们只在行首有意义
-    return text;
+    return text
+      .replace(/\\/g, '\\\\')
+      .replace(/([`[\]()*~^=!?|])/g, '\\$1');
   }
 
   /** 序列化节点 */
@@ -276,7 +277,7 @@ const nodeSerializers: Record<string, NodeSerializer> = {
     const src = node.attrs.src || '';
     const title = node.attrs.title;
     if (title) {
-      state.write(`![${alt}](${src} "${title}")`);
+      state.write(`![${alt}](${src} "${escapeLinkTitle(title as string)}")`);
     } else {
       state.write(`![${alt}](${src})`);
     }
@@ -393,6 +394,10 @@ function cellToText(cell: PMNode): string {
     }
   });
   return s.output.trim();
+}
+
+function escapeLinkTitle(title: string): string {
+  return title.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 }
 
 // ── 导出 ─────────────────��────────────��───────────────────────

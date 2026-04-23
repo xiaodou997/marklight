@@ -74,12 +74,12 @@ const DEFAULT_SETTINGS: Settings = {
   wechatTheme: 'blue',
   customShortcuts: {},
   customEditorCSS: '',
-  configVersion: 3,
+  configVersion: 4,
 };
 
 const LEGACY_STORAGE_KEY = 'marklight-settings';
 const FOCUS_MODE_KEY = 'marklight-focus-mode';
-const CURRENT_CONFIG_VERSION = 3;
+const CURRENT_CONFIG_VERSION = 4;
 
 function migrateConfig(config: Partial<Settings>): Partial<Settings> {
   const next = { ...config };
@@ -90,6 +90,11 @@ function migrateConfig(config: Partial<Settings>): Partial<Settings> {
   }
   if (!next.customThemes) {
     next.customThemes = [];
+  }
+
+  // v4: 命令系统重构，旧快捷键配置整体重置
+  if ((next.configVersion ?? 0) < 4) {
+    next.customShortcuts = {};
   }
 
   next.configVersion = CURRENT_CONFIG_VERSION;

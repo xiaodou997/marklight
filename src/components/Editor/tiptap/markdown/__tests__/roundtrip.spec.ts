@@ -274,5 +274,21 @@ describe('Round-trip: parse → serialize', () => {
       const md = 'first\n\nsecond\n';
       expect(roundTrip(md)).toBe(normalize(md));
     });
+
+    it('escapes literal markdown punctuation', () => {
+      const schema = createTestSchema();
+      const paragraph = schema.nodes.paragraph.create(null, [
+        schema.text('literal [text] (paren) *star* ~tilde~ ^sup^ ==mark== !bang|pipe`tick`'),
+      ]);
+      const doc = schema.nodes.doc.create(null, [paragraph]);
+
+      expect(serializeMarkdown(doc))
+        .toBe(normalize('literal \\[text\\] \\(paren\\) \\*star\\* \\~tilde\\~ \\^sup\\^ \\=\\=mark\\=\\= \\!bang\\|pipe\\`tick\\`\n'));
+    });
+
+    it('escapes quoted link titles', () => {
+      const md = '[text](https://example.com "say \\"hi\\"")\n';
+      expect(roundTrip(md)).toBe(normalize(md));
+    });
   });
 });

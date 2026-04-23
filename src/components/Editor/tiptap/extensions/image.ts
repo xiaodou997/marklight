@@ -121,6 +121,10 @@ export const CustomImage = Image.extend({
         }
 
         const pos = getPos();
+        if (typeof pos !== 'number') {
+          syncView();
+          return;
+        }
         const tr = editor.state.tr.setNodeMarkup(pos, undefined, {
           ...node.attrs,
           ...parsed,

@@ -75,7 +75,7 @@ function onKeyDown(e: KeyboardEvent) {
                 >
                   <span class="shortcut-desc">{{ item.description }}</span>
                   <div class="shortcut-key">
-                    {{ formatShortcutDisplay(item.key) }}
+                    {{ formatShortcutDisplay(item.shortcut) }}
                   </div>
                 </div>
               </div>

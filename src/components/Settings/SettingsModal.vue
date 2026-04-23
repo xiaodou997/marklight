@@ -4,7 +4,14 @@ import { confirm } from '@tauri-apps/plugin-dialog';
 import { useSettingsStore } from '../../stores/settings';
 import { WECHAT_THEMES } from '../../utils/wechat-themes';
 import { isMac } from '../../utils/platform';
-import { getShortcutGroups, eventToKeyString, formatShortcutDisplay, checkKeyConflicts, type ShortcutDef, DEFAULT_SHORTCUTS } from '../../utils/shortcuts';
+import {
+  getCommand,
+  getShortcutGroups,
+  eventToKeyString,
+  formatShortcutDisplay,
+  checkKeyConflicts,
+  type ShortcutDef,
+} from '../../utils/shortcuts';
 import ThemeSelector from './ThemeSelector.vue';
 import ThemeEditor from './ThemeEditor.vue';
 
@@ -78,7 +85,7 @@ function onKeyDown(e: KeyboardEvent) {
 // 开始编辑快捷键
 function startEdit(item: ShortcutDef) {
   editingId.value = item.id;
-  editingKey.value = item.key;
+  editingKey.value = settings.customShortcuts[item.id] ?? item.defaultShortcut ?? '';
   conflictWarning.value = null;
   
   nextTick(() => {
@@ -139,12 +146,9 @@ function captureKeydown(event: KeyboardEvent, item: ShortcutDef) {
 
 // 重置单个快捷键
 function resetShortcut(item: ShortcutDef) {
-  const defaultDef = DEFAULT_SHORTCUTS.find(d => d.id === item.id);
-  if (defaultDef) {
-    // 如果是默认值，删除自定义配置
-    if (settings.customShortcuts[item.id]) {
-      delete settings.customShortcuts[item.id];
-    }
+  const defaultDef = getCommand(item.id);
+  if (defaultDef?.defaultShortcut && settings.customShortcuts[item.id]) {
+    delete settings.customShortcuts[item.id];
   }
   conflictWarning.value = null;
 }
@@ -163,8 +167,9 @@ async function resetAllShortcuts() {
 
 // 判断是否使用默认快捷键
 function isDefaultShortcut(item: ShortcutDef): boolean {
-  const defaultDef = DEFAULT_SHORTCUTS.find(d => d.id === item.id);
-  return !settings.customShortcuts[item.id] || settings.customShortcuts[item.id] === defaultDef?.key;
+  const defaultDef = getCommand(item.id);
+  return !settings.customShortcuts[item.id]
+    || settings.customShortcuts[item.id] === defaultDef?.defaultShortcut;
 }
 </script>
 
@@ -433,6 +438,7 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
                           ref="captureInputRef"
                           type="text"
                           readonly
+                          data-shortcut-capture="true"
                           :value="formatShortcutDisplay(editingKey)"
                           class="shortcut-input editing"
                           placeholder="按下..."
@@ -446,7 +452,7 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
                           class="shortcut-input"
                           :class="{ 'custom': !isDefaultShortcut(item) }"
                         >
-                          {{ formatShortcutDisplay(item.key) }}
+                          {{ formatShortcutDisplay(item.shortcut) }}
                         </div>
                       </div>
                     </div>

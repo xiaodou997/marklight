@@ -8,7 +8,6 @@
  */
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
 import type { Node as PMNode } from '@tiptap/pm/model';
-import type { Editor as TiptapEditor } from '@tiptap/vue-3';
 import { common, createLowlight } from 'lowlight';
 
 const lowlight = createLowlight(common);
@@ -23,14 +22,15 @@ export function getCodeBlockLanguageLabel(language: string | null | undefined): 
 }
 
 function updateCodeBlockLanguage(
-  editor: TiptapEditor,
+  editor: any,
   node: PMNode,
-  getPos: (() => number) | boolean,
+  getPos: (() => number | undefined) | boolean,
   language: string | null,
 ) {
   if (typeof getPos !== 'function') return;
 
   const pos = getPos();
+  if (typeof pos !== 'number') return;
   const tr = editor.view.state.tr.setNodeMarkup(pos, undefined, {
     ...node.attrs,
     language,

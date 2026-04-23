@@ -396,56 +396,64 @@ const tokenVisibilityKey = new PluginKey('tokenVisibility');
 
 function buildTokenVisibilityDecos(state: EditorState): DecorationSet {
   const { selection } = state;
-  const { $from } = selection;
+  const { $from, $to } = selection;
   const parent = $from.parent;
-  if (!parent.isTextblock) return DecorationSet.empty;
+  if (!parent.isTextblock || !$from.sameParent($to)) return DecorationSet.empty;
 
   const parentStart = $from.start($from.depth);
-  const cursorOffset = $from.parentOffset;
+  const selectionFrom = $from.parentOffset;
+  const selectionTo = $to.parentOffset;
   const decos: Decoration[] = [];
 
-  // ── 1. Mark tokens：光标在 mark 范围内时显示定界符 ──
-  if (!selection.empty) {
-    return decos.length > 0 ? DecorationSet.create(state.doc, decos) : DecorationSet.empty;
+  const relevantMarks = new Set<string>();
+  if (selection.empty) {
+    $from.marks().forEach((mark) => relevantMarks.add(mark.type.name));
+  } else {
+    state.doc.nodesBetween(selection.from, selection.to, (node) => {
+      if (!node.isText) return;
+      node.marks.forEach((mark) => relevantMarks.add(mark.type.name));
+    });
   }
 
-  const cursorMarks = $from.marks();
-  if (cursorMarks.length === 0) {
-    return decos.length > 0 ? DecorationSet.create(state.doc, decos) : DecorationSet.empty;
+  if (relevantMarks.size === 0) {
+    return DecorationSet.empty;
   }
 
-  // 收集光标所在的各个 mark run 范围（parentOffset 空间）
   const activeRanges: { markName: string; from: number; to: number }[] = [];
-  for (const mark of cursorMarks) {
+  for (const markName of relevantMarks) {
     let runFrom = -1;
     let runTo = -1;
-    let cursorInRun = false;
+    let overlapsSelection = false;
 
     parent.forEach((child, offset) => {
-      const hasMark = child.isText && child.marks.some((m) => m.type.name === mark.type.name);
+      const hasMark = child.isText && child.marks.some((m) => m.type.name === markName);
       if (hasMark) {
         if (runFrom === -1) runFrom = offset;
         runTo = offset + child.nodeSize;
-        if (cursorOffset >= runFrom && cursorOffset <= runTo) {
-          cursorInRun = true;
+        if (selection.empty) {
+          if (selectionFrom >= runFrom && selectionFrom <= runTo) {
+            overlapsSelection = true;
+          }
+        } else if (selectionTo > offset && selectionFrom < offset + child.nodeSize) {
+          overlapsSelection = true;
         }
       } else {
-        if (runFrom !== -1 && cursorInRun) {
-          activeRanges.push({ markName: mark.type.name, from: runFrom, to: runTo });
+        if (runFrom !== -1 && overlapsSelection) {
+          activeRanges.push({ markName, from: runFrom, to: runTo });
         }
         runFrom = -1;
         runTo = -1;
-        cursorInRun = false;
+        overlapsSelection = false;
       }
     });
 
-    if (runFrom !== -1 && cursorInRun) {
-      activeRanges.push({ markName: mark.type.name, from: runFrom, to: runTo });
+    if (runFrom !== -1 && overlapsSelection) {
+      activeRanges.push({ markName, from: runFrom, to: runTo });
     }
   }
 
   if (activeRanges.length === 0) {
-    return decos.length > 0 ? DecorationSet.create(state.doc, decos) : DecorationSet.empty;
+    return DecorationSet.empty;
   }
 
   // 对每个 active range，找到其 open/close token 并标记可见
@@ -474,11 +482,15 @@ function buildTokenVisibilityDecos(state: EditorState): DecorationSet {
     // 链接 token
     const linkRange = activeRanges.find((r) => r.markName === 'link');
     if (linkRange) {
-      if (child.type.name === 'linkBracketOpen' && offset + 1 === linkRange.from) {
-        decos.push(Decoration.node(absPos, absPos + 1, { class: 'mk-tok--visible' }));
+      if (child.type.name === 'linkBracketOpen' && offset + child.nodeSize === linkRange.from) {
+        decos.push(Decoration.node(absPos, absPos + child.nodeSize, { class: 'mk-tok--visible' }));
       } else if (child.type.name === 'linkBracketClose' && offset === linkRange.to) {
-        decos.push(Decoration.node(absPos, absPos + 1, { class: 'mk-tok--visible' }));
-      } else if (child.type.name === 'linkUrl' && offset === linkRange.to + 1) {
+        decos.push(Decoration.node(absPos, absPos + child.nodeSize, { class: 'mk-tok--visible' }));
+      } else if (
+        child.type.name === 'linkUrl'
+        && offset >= linkRange.to
+        && parent.childAfter(linkRange.to)?.node?.type.name === 'linkBracketClose'
+      ) {
         decos.push(Decoration.node(absPos, absPos + child.nodeSize, { class: 'mk-tok--visible' }));
       }
     }

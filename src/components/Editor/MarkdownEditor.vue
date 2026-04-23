@@ -59,7 +59,6 @@ import {
 } from './tiptap/extensions/mark-tokens';
 import { CustomTable, CustomTableRow, CustomTableHeader, CustomTableCell } from './tiptap/extensions/table';
 import { CustomImage } from './tiptap/extensions/image';
-import { CustomShortcuts } from './tiptap/extensions/shortcuts';
 import { MathBlock } from './tiptap/extensions/math-block';
 import { MathInline } from './tiptap/extensions/math-inline';
 import { MermaidBlock } from './tiptap/extensions/mermaid-block';
@@ -165,7 +164,6 @@ function createEditor(content: string) {
       Placeholder.configure({
         placeholder: '开始写作...',
       }),
-      CustomShortcuts,
       MathBlock,
       MathInline,
       MermaidBlock,
@@ -361,6 +359,57 @@ function onBubbleMenuAction(type: string, data?: any) {
     case 'unlink': chain.unsetLink().run(); break;
     case 'h1': chain.toggleHeading({ level: 1 }).run(); break;
     case 'h2': chain.toggleHeading({ level: 2 }).run(); break;
+  }
+}
+
+function executeEditorCommand(commandId: string): boolean {
+  if (!editor.value) {
+    return false;
+  }
+
+  const chain = editor.value.chain().focus();
+
+  switch (commandId) {
+    case 'editor.undo':
+      return editor.value.commands.undo();
+    case 'editor.redo':
+      return editor.value.commands.redo();
+    case 'editor.bold':
+      return chain.toggleBold().run();
+    case 'editor.italic':
+      return chain.toggleItalic().run();
+    case 'editor.strike':
+      return chain.toggleStrike().run();
+    case 'editor.highlight':
+      return chain.toggleHighlight().run();
+    case 'editor.code':
+      return chain.toggleCode().run();
+    case 'editor.heading1':
+      return chain.toggleHeading({ level: 1 }).run();
+    case 'editor.heading2':
+      return chain.toggleHeading({ level: 2 }).run();
+    case 'editor.heading3':
+      return chain.toggleHeading({ level: 3 }).run();
+    case 'editor.heading4':
+      return chain.toggleHeading({ level: 4 }).run();
+    case 'editor.heading5':
+      return chain.toggleHeading({ level: 5 }).run();
+    case 'editor.heading6':
+      return chain.toggleHeading({ level: 6 }).run();
+    case 'editor.paragraph':
+      return chain.setParagraph().run();
+    case 'editor.bulletList':
+      return chain.toggleBulletList().run();
+    case 'editor.orderedList':
+      return chain.toggleOrderedList().run();
+    case 'editor.taskList':
+      return chain.toggleTaskList().run();
+    case 'editor.blockquote':
+      return chain.toggleBlockquote().run();
+    case 'editor.codeBlock':
+      return chain.toggleCodeBlock().run();
+    default:
+      return false;
   }
 }
 
@@ -573,6 +622,8 @@ defineExpose({
     return editor.value.state.doc.textBetween(from, to, '\n');
   },
   getEditorView: () => editor.value?.view ?? null,
+  hasFocus: () => editor.value?.isFocused ?? false,
+  executeCommand: executeEditorCommand,
   undo: () => editor.value?.commands.undo(),
   redo: () => editor.value?.commands.redo(),
   openSearch: (_showReplace = false) => {

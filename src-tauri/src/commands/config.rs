@@ -1,4 +1,6 @@
 use std::fs;
+use std::io::Write;
+use std::time::SystemTime;
 use serde_json::Value;
 use tauri::Manager;
 
@@ -42,7 +44,38 @@ pub fn write_config(app: tauri::AppHandle, config: Value) -> Result<(), String> 
     let content =
         serde_json::to_string_pretty(&config).map_err(|e| format!("序列化配置失败: {}", e))?;
 
-    fs::write(&config_path, content).map_err(|e| format!("写入配置文件失败: {}", e))?;
+    atomic_write(&config_path, content.as_bytes())
+        .map_err(|e| format!("写入配置文件失败: {}", e))?;
 
     Ok(())
+}
+
+fn atomic_write(path: &std::path::Path, content: &[u8]) -> Result<(), String> {
+    let parent = path.parent().ok_or("无法获取配置目录")?;
+    if !parent.exists() {
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+
+    let millis = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .map(|duration| duration.as_millis())
+        .unwrap_or(0);
+    let file_name = path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or("settings.json");
+    let temp_path = path.with_file_name(format!(".{}.{}.tmp", file_name, millis));
+
+    {
+        let mut file = fs::File::create(&temp_path).map_err(|e| e.to_string())?;
+        file.write_all(content).map_err(|e| e.to_string())?;
+        file.sync_all().map_err(|e| e.to_string())?;
+    }
+
+    #[cfg(target_os = "windows")]
+    if path.exists() {
+        fs::remove_file(path).map_err(|e| e.to_string())?;
+    }
+
+    fs::rename(temp_path, path).map_err(|e| e.to_string())
 }

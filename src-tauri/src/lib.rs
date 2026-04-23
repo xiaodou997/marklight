@@ -2,7 +2,8 @@ mod commands;
 mod menu;
 
 use commands::*;
-use notify::{Config, RecommendedWatcher, Watcher, EventKind};
+use notify::{Config, EventKind, RecommendedWatcher, Watcher};
+use std::collections::HashMap;
 use tauri::{Emitter, Manager};
 use std::sync::Mutex;
 
@@ -26,6 +27,11 @@ fn notify_frontend_ready(app: tauri::AppHandle, state: tauri::State<'_, StartupO
             let _ = app.emit("open-startup-file", path);
         }
     }
+}
+
+#[tauri::command]
+fn refresh_menu_shortcuts(app: tauri::AppHandle, shortcuts: HashMap<String, String>) -> Result<(), String> {
+    menu::setup_menu(&app, &shortcuts).map_err(|e| e.to_string())
 }
 
 pub fn run() {
@@ -121,7 +127,8 @@ pub fn run() {
 
             app.manage(std::sync::Mutex::new(watcher));
 
-            menu::setup_menu(&app.handle()).map_err(|e| e.to_string())?;
+            menu::setup_menu(&app.handle(), &HashMap::new()).map_err(|e| e.to_string())?;
+            menu::attach_menu_events(&app.handle());
 
             if let Some(main_window) = app.get_webview_window("main") {
                 #[cfg(any(target_os = "windows", target_os = "linux"))]
@@ -157,6 +164,7 @@ pub fn run() {
             unwatch_directory,
             read_config,
             write_config,
+            refresh_menu_shortcuts,
             consume_startup_open_file,
             notify_frontend_ready
         ])

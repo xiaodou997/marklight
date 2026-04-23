@@ -61,21 +61,26 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue';
+import { computed, ref, onMounted, onUnmounted } from 'vue';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { emit } from '@tauri-apps/api/event';
+import {
+  WINDOW_TITLEBAR_MENUS,
+  getCommand,
+  getShortcut,
+  type CommandDefinition,
+} from '../../commands/registry';
+import { formatShortcutDisplay } from '../../utils/shortcuts';
+import { useSettingsStore } from '../../stores/settings';
 
-const isMacOS = ref(false);
 const activeMenu = ref<string | null>(null);
 const isMenuOpen = ref(false);
+const settingsStore = useSettingsStore();
 
 const appWindow = getCurrentWindow();
 
 // 检测是否为 macOS
 onMounted(async () => {
-  const { platform } = await import('@tauri-apps/plugin-os');
-  isMacOS.value = (await platform()) === 'macos';
-  
   // 点击外部关闭菜单
   window.addEventListener('mousedown', closeAllMenus);
 });
@@ -133,67 +138,32 @@ interface Menu {
   items: MenuItemOrSeparator[];
 }
 
-// 菜单数据定义 (对齐 macOS)
-const menus: Menu[] = [
-  {
-    id: 'file',
-    label: '文件',
-    items: [
-      { id: 'new', label: '新建', shortcut: 'Ctrl+N' },
-      { id: 'new_window', label: '新建窗口', shortcut: 'Ctrl+Alt+N' },
-      { id: 'open', label: '打开...', shortcut: 'Ctrl+O' },
-      { type: 'separator' },
-      { id: 'save', label: '保存', shortcut: 'Ctrl+S' },
-      { id: 'save_as', label: '另存为...', shortcut: 'Ctrl+Shift+S' },
-      { type: 'separator' },
-      { id: 'export_html', label: '导出为 HTML', shortcut: '' },
-      { id: 'export_pdf', label: '导出为 PDF...', shortcut: 'Ctrl+Shift+P' },
-      { id: 'export_wechat', label: '微信导出', shortcut: 'Ctrl+E' },
-    ]
-  },
-  {
-    id: 'edit',
-    label: '编辑',
-    items: [
-      { id: 'undo', label: '撤销', shortcut: 'Ctrl+Z' },
-      { id: 'redo', label: '重做', shortcut: 'Ctrl+Y' },
-      { type: 'separator' },
-      { id: 'cut', label: '剪切', shortcut: 'Ctrl+X' },
-      { id: 'copy', label: '复制', shortcut: 'Ctrl+C' },
-      { id: 'paste', label: '粘贴', shortcut: 'Ctrl+V' },
-      { type: 'separator' },
-      { id: 'find', label: '查找', shortcut: 'Ctrl+F' },
-      { id: 'replace', label: '替换', shortcut: 'Ctrl+H' },
-    ]
-  },
-  {
-    id: 'view',
-    label: '视图',
-    items: [
-      { id: 'toggle_sidebar', label: '侧边栏', shortcut: 'Ctrl+\\' },
-      { id: 'sidebar_outline', label: '  └ 大纲', shortcut: 'Ctrl+1' },
-      { id: 'sidebar_files', label: '  └ 文件树', shortcut: 'Ctrl+2' },
-      { type: 'separator' },
-      { id: 'toggle_source', label: '源码模式', shortcut: 'Ctrl+/' },
-      { id: 'focus_mode', label: '焦点模式', shortcut: 'Ctrl+Shift+F' },
-      { type: 'separator' },
-      { id: 'fullscreen', label: '全屏', shortcut: 'F11' },
-    ]
-  },
-  {
-    id: 'help',
-    label: '帮助',
-    items: [
-      { id: 'shortcuts', label: '快捷键', shortcut: 'Ctrl+K Ctrl+S' },
-      { type: 'separator' },
-      { id: 'github', label: '项目主页 (GitHub)', shortcut: '' },
-      { id: 'gitee', label: '项目主页 (Gitee)', shortcut: '' },
-      { id: 'issues', label: '报告问题', shortcut: '' },
-      { type: 'separator' },
-      { id: 'about', label: '关于 MarkLight', shortcut: '' },
-    ]
-  }
-];
+function toMenuItem(command: CommandDefinition): MenuItem {
+  return {
+    id: command.id,
+    label: command.title,
+    shortcut: command.defaultShortcut
+      ? formatShortcutDisplay(getShortcut(command, settingsStore.settings.customShortcuts) ?? '')
+      : '',
+  };
+}
+
+const menus = computed<Menu[]>(() =>
+  WINDOW_TITLEBAR_MENUS.map((menu) => ({
+    id: menu.id,
+    label: menu.label,
+    items: menu.items.map((item) => {
+      if (item === 'separator') {
+        return { type: 'separator' as const };
+      }
+      const command = getCommand(item);
+      if (!command) {
+        return { type: 'separator' as const };
+      }
+      return toMenuItem(command);
+    }),
+  })),
+);
 </script>
 
 <style scoped>

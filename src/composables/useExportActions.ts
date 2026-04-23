@@ -3,7 +3,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { save, message } from '@tauri-apps/plugin-dialog';
 import { writeTextFile } from '@tauri-apps/plugin-fs';
 import { writeHtml } from '@tauri-apps/plugin-clipboard-manager';
-import { renderMarkdownToWechatHtml } from '../utils/wechat-renderer';
+import { renderMarkdownToExportHtml } from '../utils/export-renderer';
 
 type EditorRefValue = {
   getContent?: () => string;
@@ -43,7 +43,7 @@ export function useExportActions(options: {
   async function exportHtml() {
     if (!editorRef.value || activeViewMode.value !== 'editor') return;
     const markdown = getMarkdown();
-    const html = await renderMarkdownToWechatHtml(markdown, settingsStore.settings.wechatTheme);
+    const html = await renderMarkdownToExportHtml(markdown, settingsStore.settings.wechatTheme);
     const baseName = fileStore.currentFile.path?.split(/[/\\]/).pop()?.replace(/\.md$/, '') || 'document';
     const selected = await save({
       title: '导出为 HTML',
@@ -70,7 +70,7 @@ export function useExportActions(options: {
   async function copyToWechat() {
     if (!editorRef.value || activeViewMode.value !== 'editor') return;
     const markdown = getMarkdown();
-    const html = await renderMarkdownToWechatHtml(markdown, settingsStore.settings.wechatTheme);
+    const html = await renderMarkdownToExportHtml(markdown, settingsStore.settings.wechatTheme);
     try {
       await writeHtml(html, markdown);
       await message('已转换并复制到剪贴板', { title: '完成', kind: 'info' });

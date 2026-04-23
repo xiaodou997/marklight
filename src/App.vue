@@ -5,6 +5,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { useFileStore } from './stores/file';
 import { useSettingsStore } from './stores/settings';
 import { useFileOperations, type AutoSaveStatus } from './composables/useFileOperations';
+import { useCommandDispatcher } from './composables/useCommandDispatcher';
 import { useExportActions } from './composables/useExportActions';
 import { useMenuEvents } from './composables/useMenuEvents';
 import { useFileTree, type FileChangePayload } from './composables/useFileTree';
@@ -18,7 +19,8 @@ import ShortcutsModal from './components/Editor/ShortcutsModal.vue';
 import CommandPalette from './components/Editor/CommandPalette.vue';
 import TitleBar from './components/Layout/TitleBar.vue';
 import { getCurrentWebview } from '@tauri-apps/api/webview';
-import { isModKey, isMac } from './utils/platform';
+import { isMac } from './utils/platform';
+import { findCommandByShortcut, getMenuShortcuts } from './utils/shortcuts';
 import pkg from '../package.json';
 
 const MarkdownEditor = defineAsyncComponent(() => import('./components/Editor/MarkdownEditor.vue'));
@@ -35,6 +37,8 @@ type EditorExpose = {
   getContent?: () => string;
   getSelectionMarkdown?: () => string;
   getEditorView: () => any;
+  hasFocus?: () => boolean;
+  executeCommand?: (commandId: string) => boolean;
 };
 const editorRef = ref<EditorExpose | null>(null);
 const appVersion = pkg.version;
@@ -182,16 +186,6 @@ function toggleSourceMode() {
   isSourceMode.value = !isSourceMode.value;
 }
 
-function editorAction(action: string) {
-  if (!editorRef.value || activeViewMode.value !== 'editor') return;
-  const editor = editorRef.value as any;
-  const view = editor.getEditorView?.();
-  if (!view) return;
-  view.focus();
-  if (action === 'undo') editor.undo?.();
-  else if (action === 'redo') editor.redo?.();
-}
-
 function onCopy(event: ClipboardEvent) {
   if (!editorRef.value || isSourceMode.value || activeViewMode.value !== 'editor') return;
   const view = editorRef.value.getEditorView?.();
@@ -247,23 +241,35 @@ async function handleQuit() {
   await appWindow.destroy();
 }
 
-function handleCommandExecute(command: { id: string }) {
-  switch (command.id) {
-    case 'file.new': handleNew(); break;
-    case 'file.open': handleOpen(); break;
-    case 'file.save': handleSave(); break;
-    case 'file.saveAs': handleSaveAs(); break;
-    case 'file.newWindow': handleOpenNewWindow(); break;
-    case 'edit.find': editorRef.value?.openSearch(false); break;
-    case 'edit.replace': editorRef.value?.openSearch(true); break;
-    case 'view.focusMode': settingsStore.toggleFocusMode(); break;
-    case 'view.toggleSidebar': toggleSidebar(); break;
-    case 'view.toggleOutline': sidebarMode.value = 'outline'; isSidebarOpen.value = true; break;
-    case 'export.pdf': exportPdf(); break;
-    case 'export.wechat': copyToWechat(); break;
-    case 'settings.open': settingsStore.openModal(); break;
-  }
-}
+const { executeCommand } = useCommandDispatcher({
+  editorRef,
+  activeViewMode,
+  isSourceMode,
+  isSidebarOpen,
+  sidebarMode,
+  handleNew,
+  handleOpen,
+  handleOpenFolder,
+  handleSave,
+  handleSaveAs,
+  handleOpenNewWindow,
+  exportHtml,
+  exportPdf,
+  copyToWechat,
+  toggleSidebar,
+  toggleSourceMode,
+  openSettings: () => settingsStore.openModal(),
+  openCommandPalette: () => {
+    isCommandPaletteOpen.value = true;
+  },
+  openShortcuts: () => {
+    isShortcutsModalOpen.value = true;
+  },
+  toggleFocusMode: () => settingsStore.toggleFocusMode(),
+  showAbout,
+  toggleFullscreen,
+  handleQuit,
+});
 
 // --- Image paste warning ---
 const handleImagePasteWarning = (event: Event) => {
@@ -282,29 +288,8 @@ watch(() => [fileStore.currentFile, activeViewMode.value, imagePreviewUrl.value]
 }, { deep: true });
 
 // --- Menu events ---
-useMenuEvents({
-  handleNew,
-  handleOpen,
-  handleOpenFolder,
-  handleSave,
-  handleSaveAs,
-  exportHtml,
-  exportPdf,
-  copyToWechat,
-  editorAction,
-  toggleSidebar,
-  setSidebarMode: (mode) => { sidebarMode.value = mode; },
-  setSidebarOpen: (open) => { isSidebarOpen.value = open; },
-  toggleSourceMode,
-  openSettings: () => settingsStore.openModal(),
-  openSearch: (showReplace) => editorRef.value?.openSearch(showReplace),
-  handleOpenNewWindow,
-  toggleFocusMode: () => settingsStore.toggleFocusMode(),
-  openCommandPalette: () => { isCommandPaletteOpen.value = true; },
-  openShortcuts: () => { isShortcutsModalOpen.value = true; },
-  showAbout,
-  toggleFullscreen,
-  handleQuit,
+useMenuEvents(async (commandId) => {
+  await executeCommand(commandId, 'menu');
 });
 
 // --- Lifecycle ---
@@ -354,21 +339,30 @@ onMounted(async () => {
   // 窗口事件
   await setupWindowEvents();
   await setupFileChangeListener(handleRelevantFileChange);
+  await syncMenuShortcuts();
 });
 
-function handleKeyDown(e: KeyboardEvent) {
-  if (isModKey(e) && e.key === '/') {
-    e.preventDefault();
-    toggleSourceMode();
+async function syncMenuShortcuts() {
+  await invoke('refresh_menu_shortcuts', {
+    shortcuts: getMenuShortcuts(settingsStore.settings.customShortcuts),
+  });
+}
+
+async function handleKeyDown(e: KeyboardEvent) {
+  const target = e.target as HTMLElement | null;
+  if (target?.closest('[data-shortcut-capture="true"]')) {
+    return;
   }
-  if (isModKey(e) && e.shiftKey && e.key === 'P') {
-    e.preventDefault();
-    isCommandPaletteOpen.value = true;
+
+  const command = findCommandByShortcut(e, settingsStore.settings.customShortcuts);
+  if (command) {
+    const handled = await executeCommand(command.id, 'shortcut');
+    if (handled) {
+      e.preventDefault();
+      return;
+    }
   }
-  if (isModKey(e) && e.shiftKey && e.key === 'F') {
-    e.preventDefault();
-    settingsStore.toggleFocusMode();
-  }
+
   if (e.key === 'Escape') {
     if (isFullscreenPreview.value) {
       isFullscreenPreview.value = false;
@@ -390,6 +384,17 @@ onUnmounted(() => {
   cleanupFileTree();
   cleanupWindowEvents();
 });
+
+watch(
+  () => settingsStore.settings.customShortcuts,
+  () => {
+    if (!settingsStore.isLoaded) {
+      return;
+    }
+    void syncMenuShortcuts();
+  },
+  { deep: true },
+);
 </script>
 
 <template>
@@ -519,7 +524,7 @@ onUnmounted(() => {
       :files="flatFiles"
       :current-folder="rootFolder"
       @close="isCommandPaletteOpen = false"
-      @execute="handleCommandExecute"
+      @execute="command => executeCommand(command.id, 'palette')"
       @open-file="handleOpenFile"
     />
 

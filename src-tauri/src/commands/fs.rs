@@ -1,5 +1,6 @@
 use std::fs;
-use std::path::Path;
+use std::io::Write;
+use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 use trash;
 
@@ -20,7 +21,7 @@ pub fn read_file(path: String) -> Result<String, String> {
 
 #[tauri::command]
 pub fn save_file(path: String, content: String) -> Result<(), String> {
-    fs::write(&path, content).map_err(|e| e.to_string())
+    atomic_write(Path::new(&path), content.as_bytes())
 }
 
 #[tauri::command]
@@ -90,11 +91,12 @@ pub fn get_file_modified_time(path: String) -> Result<u64, String> {
     let duration = modified
         .duration_since(SystemTime::UNIX_EPOCH)
         .map_err(|e| e.to_string())?;
-    Ok(duration.as_secs())
+    Ok(duration.as_millis() as u64)
 }
 
 #[tauri::command]
 pub fn rename_file(old_path: String, new_name: String) -> Result<String, String> {
+    validate_name(&new_name)?;
     let old_path = Path::new(&old_path);
     let parent = old_path.parent().ok_or("无法获取父目录")?;
     let new_path = parent.join(&new_name);
@@ -112,20 +114,65 @@ pub fn delete_file(path: String) -> Result<(), String> {
 
 #[tauri::command]
 pub fn create_file(dir: String, name: String) -> Result<String, String> {
+    validate_name(&name)?;
     let path = Path::new(&dir).join(&name);
     if path.exists() {
         return Err("文件已存在".to_string());
     }
-    fs::write(&path, "").map_err(|e| e.to_string())?;
+    atomic_write(&path, b"")?;
     Ok(path.to_string_lossy().to_string())
 }
 
 #[tauri::command]
 pub fn create_folder(dir: String, name: String) -> Result<String, String> {
+    validate_name(&name)?;
     let path = Path::new(&dir).join(&name);
     if path.exists() {
         return Err("文件夹已存在".to_string());
     }
     fs::create_dir(&path).map_err(|e| e.to_string())?;
     Ok(path.to_string_lossy().to_string())
+}
+
+fn validate_name(name: &str) -> Result<(), String> {
+    if name.trim().is_empty() {
+        return Err("名称不能为空".to_string());
+    }
+    if name == "." || name == ".." || name.contains('/') || name.contains('\\') {
+        return Err("名称包含非法路径字符".to_string());
+    }
+    Ok(())
+}
+
+fn atomic_write(path: &Path, content: &[u8]) -> Result<(), String> {
+    let parent = path.parent().ok_or("无法获取父目录")?;
+    if !parent.exists() {
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+
+    let tmp_path = temp_path(path);
+    {
+        let mut file = fs::File::create(&tmp_path).map_err(|e| e.to_string())?;
+        file.write_all(content).map_err(|e| e.to_string())?;
+        file.sync_all().map_err(|e| e.to_string())?;
+    }
+
+    #[cfg(target_os = "windows")]
+    if path.exists() {
+        fs::remove_file(path).map_err(|e| e.to_string())?;
+    }
+
+    fs::rename(&tmp_path, path).map_err(|e| e.to_string())
+}
+
+fn temp_path(path: &Path) -> PathBuf {
+    let millis = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .map(|duration| duration.as_millis())
+        .unwrap_or(0);
+    let file_name = path
+        .file_name()
+        .and_then(|name| name.to_str())
+        .unwrap_or("marklight");
+    path.with_file_name(format!(".{}.{}.tmp", file_name, millis))
 }
