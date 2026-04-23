@@ -615,6 +615,7 @@ defineExpose({
     if (!editor.value) return '';
     return serializeMarkdown(editor.value.state.doc);
   },
+  getDoc: () => editor.value?.state.doc ?? null,
   getSelectionMarkdown: () => {
     if (!editor.value) return '';
     const { from, to, empty } = editor.value.state.selection;

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, reactive, onMounted, onUnmounted, watch, defineAsyncComponent } from 'vue';
+import type { Node as PMNode } from '@tiptap/pm/model';
 import { storeToRefs } from 'pinia';
 import { confirm, message } from '@tauri-apps/plugin-dialog';
 import { invoke } from '@tauri-apps/api/core';
@@ -38,6 +39,7 @@ type EditorExpose = {
   scrollToPos: (pos: number) => void;
   openSearch: (showReplace?: boolean) => void;
   getContent?: () => string;
+  getDoc?: () => PMNode | null;
   getSelectionMarkdown?: () => string;
   getEditorView: () => any;
   hasFocus?: () => boolean;

@@ -1,12 +1,12 @@
-import { renderMarkdownToExportHtml } from './export-renderer';
+import { renderMarkdownToWechatFragment } from './export';
 
 /**
- * 兼容旧导出入口。
- * 实际实现已统一到 export-renderer contract，避免再维护一套旁路逻辑。
+ * 兼容旧微信导出入口。
+ * 新实现已统一到基于 PM 文档语义树的 export renderer。
  */
 export async function renderMarkdownToWechatHtml(
   markdown: string,
   themeId: string = 'blue',
 ): Promise<string> {
-  return renderMarkdownToExportHtml(markdown, themeId);
+  return renderMarkdownToWechatFragment(markdown, themeId).html;
 }
