@@ -6,10 +6,10 @@ import { WECHAT_THEMES } from '../../utils/wechat-themes';
 import { isMac } from '../../utils/platform';
 import {
   getCommand,
-  getShortcutGroups,
   eventToKeyString,
   formatShortcutDisplay,
-  checkKeyConflicts,
+  getShortcutCommands,
+  getShortcutGroups,
   type ShortcutDef,
 } from '../../utils/shortcuts';
 import ThemeSelector from './ThemeSelector.vue';
@@ -149,25 +149,20 @@ function captureKeydown(event: KeyboardEvent, item: ShortcutDef) {
     return;
   }
   
-  // 检测冲突
-  const newCustom = { ...settings.customShortcuts, [item.id]: keyStr };
-  const conflicts = checkKeyConflicts(newCustom);
-  
-  if (conflicts.length > 0) {
-    const conflictItems = conflicts
-      .filter(c => c.id !== item.id)
-      .map(c => c.description);
-    
-    if (conflictItems.length > 0) {
-      conflictWarning.value = `快捷键冲突: ${conflictItems.join(', ')}`;
-    }
-  } else {
-    conflictWarning.value = null;
-  }
-  
-  // 更新快捷键
-  settings.customShortcuts[item.id] = keyStr;
+  const nextCustom = { ...settings.customShortcuts, [item.id]: keyStr };
+  const conflictingItems = getShortcutCommands(nextCustom).filter(
+    (command) => command.shortcut === keyStr && command.id !== item.id,
+  );
+
   editingKey.value = keyStr;
+
+  if (conflictingItems.length > 0) {
+    conflictWarning.value = `快捷键冲突: ${conflictingItems.map((command) => command.description).join('、')}`;
+    return;
+  }
+
+  conflictWarning.value = null;
+  settings.customShortcuts[item.id] = keyStr;
 }
 
 // 重置单个快捷键
@@ -218,10 +213,7 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
           <div class="flex items-center justify-between px-7 py-5 border-b" style="border-color: var(--border-color);">
             <h2 class="text-lg font-semibold" style="color: var(--text-color);">设置</h2>
             <button
-              class="p-1 rounded-lg transition-colors"
-              style="color: var(--muted-color);"
-              @mouseenter="($event.target as HTMLElement).style.backgroundColor = 'var(--hover-bg)'"
-              @mouseleave="($event.target as HTMLElement).style.backgroundColor = ''"
+              class="settings-close-btn"
               @click="close"
             >
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -242,8 +234,6 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
                 :style="activeTab === tab.key
                   ? 'background-color: rgba(99,102,241,0.1); color: var(--primary-color);'
                   : `color: var(--text-color);`"
-                @mouseenter="activeTab !== tab.key && (($event.target as HTMLElement).style.backgroundColor = 'var(--hover-bg)')"
-                @mouseleave="activeTab !== tab.key && (($event.target as HTMLElement).style.backgroundColor = '')"
                 @click="activeTab = tab.key as any"
               >
                 <span>{{ tab.icon }}</span>
@@ -360,89 +350,106 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
 
               <!-- 编辑器设置 -->
               <div v-show="activeTab === 'editor'" class="space-y-6">
-                <div class="flex items-center justify-between">
+                <section class="settings-section-card settings-section-card--hero">
                   <div>
-                    <label class="block text-sm font-medium" style="color: var(--text-color);">显示行号</label>
-                    <p class="text-xs mt-1" style="color: var(--muted-color);">在编辑器左侧显示行号</p>
+                    <div class="settings-section-title">编辑器行为</div>
+                    <p class="settings-section-desc">控制行号、拼写检查和侧边栏大纲等核心编辑体验。</p>
                   </div>
-                  <button
-                    @click="settings.showLineNumbers = !settings.showLineNumbers"
-                    type="button"
-                    class="settings-switch"
-                    :class="{ 'settings-switch--on': settings.showLineNumbers }"
-                    :aria-checked="settings.showLineNumbers"
-                    aria-label="切换显示行号"
-                  >
-                    <span
-                      class="settings-switch__thumb"
-                      :class="{ 'settings-switch__thumb--on': settings.showLineNumbers }"
-                    />
-                  </button>
-                </div>
+                  <div class="settings-hero-metrics">
+                    <div class="settings-hero-chip">Tab：{{ settings.tabWidth }} 空格</div>
+                    <div class="settings-hero-chip">拼写检查：{{ settings.spellCheck ? '开启' : '关闭' }}</div>
+                  </div>
+                </section>
 
-                <div class="space-y-2">
-                  <label class="block text-sm font-medium" style="color: var(--text-color);">
-                    Tab 宽度: {{ settings.tabWidth }} 空格
-                  </label>
-                  <div class="flex gap-2">
+                <section class="settings-section-card">
+                  <div class="settings-row">
+                    <div>
+                      <label class="settings-row-title">显示行号</label>
+                      <p class="settings-row-desc">在编辑器左侧显示行号</p>
+                    </div>
                     <button
-                      v-for="width in [2, 4]"
-                      :key="width"
-                      class="flex-1 py-2 rounded-lg border transition-colors"
-                      :style="settings.tabWidth === width
-                        ? 'border-color: var(--primary-color); background-color: rgba(99,102,241,0.08); color: var(--primary-color);'
-                        : 'border-color: var(--border-color); color: var(--text-color);'"
-                      @click="settings.tabWidth = width"
+                      @click="settings.showLineNumbers = !settings.showLineNumbers"
+                      type="button"
+                      role="switch"
+                      class="settings-switch"
+                      :class="{ 'settings-switch--on': settings.showLineNumbers }"
+                      :aria-checked="settings.showLineNumbers"
+                      aria-label="切换显示行号"
                     >
-                      {{ width }} 空格
+                      <span
+                        class="settings-switch__thumb"
+                        :class="{ 'settings-switch__thumb--on': settings.showLineNumbers }"
+                      />
                     </button>
                   </div>
-                </div>
 
-                <div class="flex items-center justify-between">
-                  <div>
-                    <label class="block text-sm font-medium" style="color: var(--text-color);">拼写检查</label>
-                    <p class="text-xs mt-1" style="color: var(--muted-color);">启用系统拼写检查</p>
+                  <div class="settings-row">
+                    <div>
+                      <label class="settings-row-title">拼写检查</label>
+                      <p class="settings-row-desc">启用系统拼写检查</p>
+                    </div>
+                    <button
+                      @click="settings.spellCheck = !settings.spellCheck"
+                      type="button"
+                      role="switch"
+                      class="settings-switch"
+                      :class="{ 'settings-switch--on': settings.spellCheck }"
+                      :aria-checked="settings.spellCheck"
+                      aria-label="切换拼写检查"
+                    >
+                      <span
+                        class="settings-switch__thumb"
+                        :class="{ 'settings-switch__thumb--on': settings.spellCheck }"
+                      />
+                    </button>
                   </div>
-                  <button
-                    @click="settings.spellCheck = !settings.spellCheck"
-                    type="button"
-                    class="settings-switch"
-                    :class="{ 'settings-switch--on': settings.spellCheck }"
-                    :aria-checked="settings.spellCheck"
-                    aria-label="切换拼写检查"
-                  >
-                    <span
-                      class="settings-switch__thumb"
-                      :class="{ 'settings-switch__thumb--on': settings.spellCheck }"
-                    />
-                  </button>
-                </div>
 
-                <div class="flex items-center justify-between">
-                  <div>
-                    <label class="block text-sm font-medium" style="color: var(--text-color);">大纲默认展开</label>
-                    <p class="text-xs mt-1" style="color: var(--muted-color);">启动时自动展开侧边栏大纲</p>
+                  <div class="settings-row">
+                    <div>
+                      <label class="settings-row-title">大纲默认展开</label>
+                      <p class="settings-row-desc">启动时自动展开侧边栏大纲</p>
+                    </div>
+                    <button
+                      @click="settings.outlineExpanded = !settings.outlineExpanded"
+                      type="button"
+                      role="switch"
+                      class="settings-switch"
+                      :class="{ 'settings-switch--on': settings.outlineExpanded }"
+                      :aria-checked="settings.outlineExpanded"
+                      aria-label="切换大纲默认展开"
+                    >
+                      <span
+                        class="settings-switch__thumb"
+                        :class="{ 'settings-switch__thumb--on': settings.outlineExpanded }"
+                      />
+                    </button>
                   </div>
-                  <button
-                    @click="settings.outlineExpanded = !settings.outlineExpanded"
-                    type="button"
-                    class="settings-switch"
-                    :class="{ 'settings-switch--on': settings.outlineExpanded }"
-                    :aria-checked="settings.outlineExpanded"
-                    aria-label="切换大纲默认展开"
-                  >
-                    <span
-                      class="settings-switch__thumb"
-                      :class="{ 'settings-switch__thumb--on': settings.outlineExpanded }"
-                    />
-                  </button>
-                </div>
+
+                  <div class="settings-row settings-row--column">
+                    <div>
+                      <label class="settings-row-title">Tab 宽度</label>
+                      <p class="settings-row-desc">控制缩进与代码块、列表的默认对齐宽度。</p>
+                    </div>
+                    <div class="settings-option-grid">
+                      <button
+                        v-for="width in [2, 4]"
+                        :key="width"
+                        class="settings-option-btn"
+                        :style="settings.tabWidth === width
+                          ? 'border-color: var(--primary-color); background-color: rgba(99,102,241,0.08); color: var(--primary-color);'
+                          : 'border-color: var(--border-color); color: var(--text-color);'"
+                        @click="settings.tabWidth = width"
+                      >
+                        {{ width }} 空格
+                      </button>
+                    </div>
+                  </div>
+                </section>
               </div>
 
               <!-- 快捷键设置 -->
-              <div v-show="activeTab === 'shortcuts'" class="space-y-4">
-                <div class="flex items-center justify-between">
+              <div v-show="activeTab === 'shortcuts'" class="space-y-6">
+                <section class="settings-section-card settings-section-card--hero">
                   <div class="text-sm" style="color: var(--muted-color);">
                     {{ isMac ? 'Mac 使用 ⌘ 键' : 'Windows/Linux 使用 Ctrl 键' }} · 点击行可修改快捷键
                   </div>
@@ -453,17 +460,20 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
                   >
                     重置全部
                   </button>
-                </div>
-                
-                <!-- 冲突警告 -->
-                <div v-if="conflictWarning" class="p-2 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-700">
-                  ⚠️ {{ conflictWarning }}
-                </div>
-                
-                <div v-for="group in shortcutGroups" :key="group.name" class="space-y-2">
-                  <h3 class="text-sm font-semibold pb-1 border-b" style="color: var(--text-color); border-color: var(--border-color);">
-                    {{ group.name }}
-                  </h3>
+                </section>
+
+                <section v-if="conflictWarning" class="settings-section-card settings-warning-card">
+                  <div class="settings-warning-text">⚠️ {{ conflictWarning }}</div>
+                </section>
+
+                <section
+                  v-for="group in shortcutGroups"
+                  :key="group.name"
+                  class="settings-section-card"
+                >
+                  <div class="settings-section-heading settings-section-heading--compact">
+                    <div class="settings-section-title">{{ group.name }}</div>
+                  </div>
                   <div class="grid gap-1.5">
                     <div
                       v-for="item in group.items"
@@ -475,10 +485,8 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
                       @click="startEdit(item)"
                     >
                       <span class="text-sm" style="color: var(--text-color);">{{ item.description }}</span>
-                      
-                      <!-- 快捷键显示/编辑 -->
+
                       <div class="flex items-center gap-1.5">
-                        <!-- 重置按钮 -->
                         <button
                           v-if="!isDefaultShortcut(item)"
                           class="w-6 h-6 flex items-center justify-center text-xs text-gray-400 hover:text-gray-600 hover:bg-gray-200 rounded transition-colors"
@@ -487,8 +495,7 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
                         >
                           ↺
                         </button>
-                        
-                        <!-- 快捷键输入框（编辑状态） -->
+
                         <input
                           v-if="editingId === item.id"
                           ref="captureInputRef"
@@ -501,8 +508,7 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
                           @keydown="captureKeydown($event, item)"
                           @blur="cancelEdit"
                         />
-                        
-                        <!-- 快捷键显示（非编辑状态） -->
+
                         <div
                           v-else
                           class="shortcut-input"
@@ -513,57 +519,84 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
                       </div>
                     </div>
                   </div>
-                </div>
+                </section>
               </div>
 
               <!-- 保存设置 -->
               <div v-show="activeTab === 'save'" class="space-y-6">
-                <div class="flex items-center justify-between">
+                <section class="settings-section-card settings-section-card--hero">
                   <div>
-                    <label class="block text-sm font-medium" style="color: var(--text-color);">自动保存</label>
-                    <p class="text-xs mt-1" style="color: var(--muted-color);">编辑时自动保存文件</p>
+                    <div class="settings-section-title">文档保存</div>
+                    <p class="settings-section-desc">自动保存适合持续写作，关闭后会完全改回手动保存模式。</p>
                   </div>
-                  <button
-                    @click="settings.autoSave = !settings.autoSave"
-                    type="button"
-                    class="settings-switch"
-                    :class="{ 'settings-switch--on': settings.autoSave }"
-                    :aria-checked="settings.autoSave"
-                    aria-label="切换自动保存"
-                  >
-                    <span
-                      class="settings-switch__thumb"
-                      :class="{ 'settings-switch__thumb--on': settings.autoSave }"
-                    />
-                  </button>
-                </div>
+                  <div class="settings-hero-metrics">
+                    <div class="settings-hero-chip">自动保存：{{ settings.autoSave ? '开启' : '关闭' }}</div>
+                    <div v-if="settings.autoSave" class="settings-hero-chip">间隔：{{ settings.autoSaveInterval }} 秒</div>
+                  </div>
+                </section>
 
-                <div v-if="settings.autoSave" class="space-y-2">
-                  <label class="block text-sm font-medium" style="color: var(--text-color);">
-                    保存间隔: {{ settings.autoSaveInterval }} 秒
-                  </label>
-                  <input
-                    v-model.number="settings.autoSaveInterval"
-                    type="range"
-                    min="10"
-                    max="120"
-                    step="10"
-                    class="w-full h-2 rounded-lg appearance-none cursor-pointer accent-blue-500"
-                    style="background-color: var(--border-color);"
-                  />
-                  <div class="flex justify-between text-xs" style="color: var(--muted-color);">
-                    <span>10秒</span>
-                    <span>120秒</span>
+                <section class="settings-section-card">
+                  <div class="settings-row">
+                    <div>
+                      <label class="settings-row-title">自动保存</label>
+                      <p class="settings-row-desc">编辑时自动保存文件</p>
+                    </div>
+                    <button
+                      @click="settings.autoSave = !settings.autoSave"
+                      type="button"
+                      role="switch"
+                      class="settings-switch"
+                      :class="{ 'settings-switch--on': settings.autoSave }"
+                      :aria-checked="settings.autoSave"
+                      aria-label="切换自动保存"
+                    >
+                      <span
+                        class="settings-switch__thumb"
+                        :class="{ 'settings-switch__thumb--on': settings.autoSave }"
+                      />
+                    </button>
                   </div>
-                </div>
+
+                  <div v-if="settings.autoSave" class="settings-row settings-row--column">
+                    <div>
+                      <label class="settings-row-title">保存间隔: {{ settings.autoSaveInterval }} 秒</label>
+                      <p class="settings-row-desc">在不打断写作的前提下平衡安全性与性能。</p>
+                    </div>
+                    <div class="space-y-2 w-full">
+                      <input
+                        v-model.number="settings.autoSaveInterval"
+                        type="range"
+                        min="10"
+                        max="120"
+                        step="10"
+                        class="w-full h-2 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                        style="background-color: var(--border-color);"
+                      />
+                      <div class="flex justify-between text-xs" style="color: var(--muted-color);">
+                        <span>10秒</span>
+                        <span>120秒</span>
+                      </div>
+                    </div>
+                  </div>
+                </section>
               </div>
 
               <!-- 导出设置 -->
               <div v-show="activeTab === 'export'" class="space-y-6">
-                <div class="space-y-2">
-                  <label class="block text-sm font-medium" style="color: var(--text-color);">导出主题</label>
-                  <p class="text-xs mt-1" style="color: var(--muted-color);">选择复制到微信时的排版风格</p>
+                <section class="settings-section-card settings-section-card--hero">
+                  <div>
+                    <div class="settings-section-title">导出主题</div>
+                    <p class="settings-section-desc">控制复制到微信等场景时的排版风格和主色表现。</p>
+                  </div>
+                </section>
 
+                <section class="settings-section-card">
+                  <div class="settings-section-heading">
+                    <div>
+                      <div class="settings-section-title">主题选择</div>
+                      <p class="settings-section-desc">当前为复制到微信的富文本导出提供单独的排版主题。</p>
+                    </div>
+                  </div>
                   <div class="grid grid-cols-2 gap-3 mt-3">
                     <button
                       v-for="theme in WECHAT_THEMES"
@@ -597,7 +630,7 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
                       </div>
                     </button>
                   </div>
-                </div>
+                </section>
               </div>
               </div>
             </div>
@@ -665,8 +698,24 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
   text-transform: uppercase;
 }
 
+.settings-close-btn {
+  padding: 4px;
+  border-radius: 12px;
+  color: var(--muted-color);
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.settings-close-btn:hover {
+  background: var(--hover-bg);
+  color: var(--text-color);
+}
+
 .settings-nav-btn {
   font-weight: 600;
+}
+
+.settings-nav-btn:hover {
+  background: var(--hover-bg);
 }
 
 .settings-content-area {
@@ -739,6 +788,10 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
   margin-bottom: 14px;
 }
 
+.settings-section-heading--compact {
+  margin-bottom: 12px;
+}
+
 .settings-section-title {
   color: var(--text-color);
   font-size: 15px;
@@ -776,6 +829,54 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
 
 .settings-form-item {
   min-width: 0;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+}
+
+.settings-row + .settings-row {
+  border-top: 1px solid var(--border-light);
+}
+
+.settings-row--column {
+  align-items: flex-start;
+  flex-direction: column;
+}
+
+.settings-row-title {
+  display: block;
+  color: var(--text-color);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.settings-row-desc {
+  margin: 4px 0 0;
+  color: var(--muted-color);
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.settings-option-grid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.settings-option-btn {
+  padding: 12px 14px;
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  background: var(--bg-color);
+  font-size: 14px;
+  font-weight: 600;
+  transition: border-color 0.15s, background-color 0.15s, color 0.15s;
 }
 
 .settings-footer {
@@ -816,6 +917,18 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
 
 .settings-switch__thumb--on {
   transform: translateX(20px);
+}
+
+.settings-warning-card {
+  padding: 14px 16px;
+  border-color: #facc15;
+  background: #fefce8;
+}
+
+.settings-warning-text {
+  color: #a16207;
+  font-size: 13px;
+  font-weight: 600;
 }
 
 /* 快捷键输入框样式 */
@@ -880,6 +993,15 @@ input[type="range"]::-moz-range-thumb {
   }
 
   .settings-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .settings-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .settings-option-grid {
     grid-template-columns: 1fr;
   }
 }
