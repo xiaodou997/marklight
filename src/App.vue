@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted, onUnmounted, watch, defineAsyncComponent } from 'vue';
+import { computed, ref, reactive, onMounted, onUnmounted, watch, defineAsyncComponent } from 'vue';
+import { storeToRefs } from 'pinia';
 import { confirm, message } from '@tauri-apps/plugin-dialog';
 import { invoke } from '@tauri-apps/api/core';
 import { useFileStore } from './stores/file';
@@ -7,6 +8,7 @@ import { useSettingsStore } from './stores/settings';
 import { useFileOperations, type AutoSaveStatus } from './composables/useFileOperations';
 import { useCommandDispatcher } from './composables/useCommandDispatcher';
 import { useExportActions } from './composables/useExportActions';
+import { useMenuShortcutsSync } from './composables/useMenuShortcutsSync';
 import { useMenuEvents } from './composables/useMenuEvents';
 import { useFileTree, type FileChangePayload } from './composables/useFileTree';
 import { useImagePreview } from './composables/useImagePreview';
@@ -20,7 +22,7 @@ import CommandPalette from './components/Editor/CommandPalette.vue';
 import TitleBar from './components/Layout/TitleBar.vue';
 import { getCurrentWebview } from '@tauri-apps/api/webview';
 import { isMac } from './utils/platform';
-import { findCommandByShortcut, getMenuShortcuts } from './utils/shortcuts';
+import { findCommandByShortcut } from './utils/shortcuts';
 import pkg from '../package.json';
 
 const MarkdownEditor = defineAsyncComponent(() => import('./components/Editor/MarkdownEditor.vue'));
@@ -28,6 +30,7 @@ const MarkdownEditor = defineAsyncComponent(() => import('./components/Editor/Ma
 // --- Stores ---
 const fileStore = useFileStore();
 const settingsStore = useSettingsStore();
+const { settings, isLoaded } = storeToRefs(settingsStore);
 
 // --- Composables ---
 const { loadFileFromPath, handleNew, handleOpen, handleSave, handleSaveAs, setupAutoSave } = useFileOperations();
@@ -63,6 +66,11 @@ const {
   syncFolderFromFilePath, setupFileChangeListener,
   cleanup: cleanupFileTree
 } = useFileTree();
+
+const { syncMenuShortcuts, stopWatching: stopWatchingMenuShortcuts } = useMenuShortcutsSync({
+  customShortcuts: computed(() => settings.value.customShortcuts),
+  isLoaded,
+});
 
 // --- UI state ---
 const isSidebarOpen = ref(true);
@@ -342,12 +350,6 @@ onMounted(async () => {
   await syncMenuShortcuts();
 });
 
-async function syncMenuShortcuts() {
-  await invoke('refresh_menu_shortcuts', {
-    shortcuts: getMenuShortcuts(settingsStore.settings.customShortcuts),
-  });
-}
-
 async function handleKeyDown(e: KeyboardEvent) {
   const target = e.target as HTMLElement | null;
   if (target?.closest('[data-shortcut-capture="true"]')) {
@@ -383,18 +385,8 @@ onUnmounted(() => {
   cleanupAutoSave?.();
   cleanupFileTree();
   cleanupWindowEvents();
+  stopWatchingMenuShortcuts();
 });
-
-watch(
-  () => settingsStore.settings.customShortcuts,
-  () => {
-    if (!settingsStore.isLoaded) {
-      return;
-    }
-    void syncMenuShortcuts();
-  },
-  { deep: true },
-);
 </script>
 
 <template>

@@ -85,14 +85,18 @@ mod tests {
     use super::atomic_write;
     use std::fs;
     use std::path::PathBuf;
+    use std::sync::atomic::{AtomicU64, Ordering};
     use std::time::{SystemTime, UNIX_EPOCH};
+
+    static TEST_COUNTER: AtomicU64 = AtomicU64::new(1);
 
     fn test_dir() -> PathBuf {
         let millis = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .map(|duration| duration.as_millis())
             .unwrap_or(0);
-        let dir = std::env::temp_dir().join(format!("marklight-config-test-{}", millis));
+        let seq = TEST_COUNTER.fetch_add(1, Ordering::Relaxed);
+        let dir = std::env::temp_dir().join(format!("marklight-config-test-{}-{}", millis, seq));
         fs::create_dir_all(&dir).unwrap();
         dir
     }

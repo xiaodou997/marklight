@@ -8,6 +8,20 @@ static WINDOW_COUNTER: AtomicU64 = AtomicU64::new(1);
 #[derive(Default)]
 pub struct PendingWindowOpenFiles(pub Mutex<HashMap<String, String>>);
 
+impl PendingWindowOpenFiles {
+    fn insert(&self, window_label: String, file_path: String) -> Result<(), String> {
+        self.0
+            .lock()
+            .map_err(|e| e.to_string())?
+            .insert(window_label, file_path);
+        Ok(())
+    }
+
+    fn take(&self, window_label: &str) -> Option<String> {
+        self.0.lock().ok()?.remove(window_label)
+    }
+}
+
 fn next_window_label() -> String {
     format!("main-{}", WINDOW_COUNTER.fetch_add(1, Ordering::Relaxed))
 }
@@ -45,11 +59,7 @@ pub async fn open_new_window(
     attach_close_interceptor(&window);
 
     if let Some(file_path) = path {
-        pending_files
-            .0
-            .lock()
-            .map_err(|e| e.to_string())?
-            .insert(window_label, file_path);
+        pending_files.insert(window_label, file_path)?;
     }
     Ok(())
 }
@@ -59,7 +69,7 @@ pub fn consume_pending_window_open_file(
     pending_files: State<'_, PendingWindowOpenFiles>,
     window: WebviewWindow,
 ) -> Option<String> {
-    pending_files.0.lock().ok()?.remove(window.label())
+    pending_files.take(window.label())
 }
 
 /// 打印当前文档
@@ -93,7 +103,7 @@ pub async fn reveal_in_finder(app: tauri::AppHandle, path: String) -> Result<(),
 
 #[cfg(test)]
 mod tests {
-    use super::next_window_label;
+    use super::{next_window_label, PendingWindowOpenFiles};
 
     #[test]
     fn next_window_label_is_unique() {
@@ -102,5 +112,14 @@ mod tests {
         assert_ne!(first, second);
         assert!(first.starts_with("main-"));
         assert!(second.starts_with("main-"));
+    }
+
+    #[test]
+    fn pending_window_open_files_are_consumed_once() {
+        let pending = PendingWindowOpenFiles::default();
+        pending.insert("main-9".to_string(), "/tmp/demo.md".to_string()).unwrap();
+
+        assert_eq!(pending.take("main-9"), Some("/tmp/demo.md".to_string()));
+        assert_eq!(pending.take("main-9"), None);
     }
 }
