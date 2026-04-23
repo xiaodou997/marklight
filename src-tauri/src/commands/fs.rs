@@ -176,3 +176,44 @@ fn temp_path(path: &Path) -> PathBuf {
         .unwrap_or("marklight");
     path.with_file_name(format!(".{}.{}.tmp", file_name, millis))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{atomic_write, validate_name};
+    use std::fs;
+    use std::path::PathBuf;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn test_dir() -> PathBuf {
+        let millis = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|duration| duration.as_millis())
+            .unwrap_or(0);
+        let dir = std::env::temp_dir().join(format!("marklight-fs-test-{}", millis));
+        fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    #[test]
+    fn validate_name_rejects_path_like_input() {
+        assert!(validate_name("demo.md").is_ok());
+        assert!(validate_name("nested/demo.md").is_err());
+        assert!(validate_name("../demo.md").is_err());
+        assert!(validate_name(".").is_err());
+        assert!(validate_name("..").is_err());
+    }
+
+    #[test]
+    fn atomic_write_replaces_existing_content() {
+        let dir = test_dir();
+        let file = dir.join("demo.md");
+
+        atomic_write(&file, b"first").unwrap();
+        atomic_write(&file, b"second").unwrap();
+
+        let saved = fs::read_to_string(&file).unwrap();
+        assert_eq!(saved, "second");
+
+        let _ = fs::remove_dir_all(dir);
+    }
+}

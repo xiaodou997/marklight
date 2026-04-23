@@ -113,4 +113,49 @@ describe('useFileOperations', () => {
     expect(openMock).toHaveBeenCalled();
     expect(fileStoreState.setFile).toHaveBeenCalledWith('opened content', '/tmp/opened.md', 456);
   });
+
+  it('handleSave rejects overwrite when external mtime is newer', async () => {
+    fileStoreState.currentFile = {
+      path: '/tmp/demo.md',
+      content: 'draft',
+      isDirty: true,
+      lastModifiedTime: 1000,
+    };
+    invokeMock.mockResolvedValueOnce(1001);
+    confirmMock.mockResolvedValue(false);
+
+    const { useFileOperations } = await import('../useFileOperations');
+    const { handleSave } = useFileOperations();
+
+    await expect(handleSave()).resolves.toBe(false);
+    expect(invokeMock).toHaveBeenCalledTimes(1);
+    expect(invokeMock).toHaveBeenCalledWith('get_file_modified_time', { path: '/tmp/demo.md' });
+    expect(confirmMock).toHaveBeenCalled();
+    expect(fileStoreState.markSaved).not.toHaveBeenCalled();
+  });
+
+  it('handleSave persists file and refreshes mtime after save', async () => {
+    fileStoreState.currentFile = {
+      path: '/tmp/demo.md',
+      content: 'draft',
+      isDirty: true,
+      lastModifiedTime: 1000,
+    };
+    invokeMock
+      .mockResolvedValueOnce(1000)
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(1500);
+
+    const { useFileOperations } = await import('../useFileOperations');
+    const { handleSave } = useFileOperations();
+
+    await expect(handleSave()).resolves.toBe(true);
+    expect(invokeMock).toHaveBeenNthCalledWith(1, 'get_file_modified_time', { path: '/tmp/demo.md' });
+    expect(invokeMock).toHaveBeenNthCalledWith(2, 'save_file', {
+      path: '/tmp/demo.md',
+      content: 'draft',
+    });
+    expect(invokeMock).toHaveBeenNthCalledWith(3, 'get_file_modified_time', { path: '/tmp/demo.md' });
+    expect(fileStoreState.markSaved).toHaveBeenCalledWith(1500);
+  });
 });
