@@ -184,7 +184,7 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
         tabindex="-1"
       >
         <div
-          class="rounded-xl shadow-2xl w-[560px] max-h-[80vh] overflow-hidden flex flex-col"
+          class="rounded-xl shadow-2xl w-[1040px] max-w-[94vw] max-h-[84vh] overflow-hidden flex flex-col"
           style="background-color: var(--bg-color); color: var(--text-color);"
           @click.stop
         >
@@ -207,7 +207,7 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
           <!-- 主体 -->
           <div class="flex flex-1 overflow-hidden">
             <!-- 侧边导航 -->
-            <nav class="w-36 p-4 border-r shrink-0" style="border-color: var(--border-color);">
+            <nav class="w-40 p-4 border-r shrink-0" style="border-color: var(--border-color);">
               <button
                 v-for="tab in tabs"
                 :key="tab.key"

@@ -18,18 +18,19 @@ const isEditing = ref(false);
 const editTheme = ref<Theme | null>(null);
 const themeName = ref('');
 const editingThemeId = ref<ThemeId | null>(null);
+const isAdvancedPanelOpen = ref(false);
 
 const currentTheme = computed(() => settingsStore.currentTheme);
-const currentCustomTheme = computed(() => {
-  const theme = currentTheme.value;
-  return theme?.type === 'custom' ? theme : null;
+const saveButtonLabel = computed(() => (editingThemeId.value ? '保存修改' : '另存为新主题'));
+const editorIntro = computed(() => {
+  if (!editTheme.value) {
+    return '';
+  }
+
+  return editingThemeId.value
+    ? '正在编辑当前自定义主题。保存后会直接覆盖原主题。'
+    : '当前编辑基于现有主题创建副本，保存后会生成一个新的自定义主题。';
 });
-const lightPresetThemes = computed(() =>
-  settingsStore.presetThemes.filter((theme) => theme.appearance === 'light'),
-);
-const darkPresetThemes = computed(() =>
-  settingsStore.presetThemes.filter((theme) => theme.appearance === 'dark'),
-);
 
 const colorGroups = [
   {
@@ -83,12 +84,13 @@ function beginEditing(theme: Theme, options: { preserveId?: boolean; nextName?: 
   themeName.value = options.nextName ?? theme.name;
   editingThemeId.value = preserveId ? theme.id : null;
   isEditing.value = true;
+  isAdvancedPanelOpen.value = true;
 }
 
 function startEdit(themeId?: ThemeId) {
   const theme = themeId
     ? getPresetTheme(themeId) || settingsStore.settings.customThemes.find((item) => item.id === themeId)
-    : currentCustomTheme.value;
+    : null;
 
   if (!theme) {
     return;
@@ -110,25 +112,14 @@ function startCopyCurrentTheme() {
   });
 }
 
-function startCreate(appearance: ThemeAppearance) {
-  const baseTheme = getPresetTheme(`default-${appearance}`);
-  if (!baseTheme) {
+function startAdvancedEdit() {
+  if (!currentTheme.value) {
     return;
   }
 
-  beginEditing(baseTheme, {
-    nextName: appearance === 'dark' ? '新深色主题' : '新浅色主题',
-  });
-}
-
-function startFromPreset(themeId: ThemeId) {
-  const baseTheme = getPresetTheme(themeId);
-  if (!baseTheme) {
-    return;
-  }
-
-  beginEditing(baseTheme, {
-    nextName: `${baseTheme.name} 副本`,
+  beginEditing(currentTheme.value, {
+    preserveId: currentTheme.value.type === 'custom',
+    nextName: currentTheme.value.name,
   });
 }
 
@@ -137,6 +128,7 @@ function cancelEdit() {
   editTheme.value = null;
   themeName.value = '';
   editingThemeId.value = null;
+  isAdvancedPanelOpen.value = false;
 }
 
 function saveTheme() {
@@ -231,14 +223,19 @@ watch(
 
 defineExpose({
   startEdit,
-  startCreate,
   startCopyCurrentTheme,
+  startAdvancedEdit,
 });
 </script>
 
 <template>
   <div class="theme-editor">
-    <div v-if="isEditing && editTheme" class="theme-editor-content">
+    <div class="theme-editor-toolbar">
+      <button class="theme-create-btn" @click="startCopyCurrentTheme">复制当前主题</button>
+      <button class="theme-base-btn" @click="startAdvancedEdit">高级编辑</button>
+    </div>
+
+    <div v-if="isAdvancedPanelOpen && isEditing && editTheme" class="theme-editor-content">
       <div class="theme-editor-header">
         <div class="theme-editor-heading">
           <input
@@ -248,6 +245,7 @@ defineExpose({
             placeholder="主题名称"
           />
           <span class="theme-appearance-badge">{{ getAppearanceLabel(editTheme.appearance) }}</span>
+          <p class="theme-editor-intro">{{ editorIntro }}</p>
         </div>
         <div class="theme-editor-actions">
           <button class="theme-action-btn" title="导出" @click="exportCurrentTheme">
@@ -315,55 +313,14 @@ defineExpose({
 
       <div class="theme-editor-footer">
         <button class="theme-cancel-btn" @click="cancelEdit">取消</button>
-        <button class="theme-save-btn" @click="saveTheme">保存</button>
+        <button class="theme-save-btn" @click="saveTheme">{{ saveButtonLabel }}</button>
       </div>
     </div>
 
     <div v-else class="theme-editor-start">
-      <div class="theme-editor-panel">
-        <p class="theme-editor-hint">你可以复制当前主题，或从预设主题开始创建一个新的浅色/深色主题。</p>
-
-        <div class="theme-editor-buttons">
-          <button class="theme-create-btn" @click="startCopyCurrentTheme">复制当前主题</button>
-          <button
-            v-if="currentCustomTheme"
-            class="theme-base-btn"
-            @click="startEdit(currentCustomTheme.id)"
-          >
-            编辑当前主题
-          </button>
-          <button class="theme-base-btn" @click="startCreate('light')">创建浅色主题</button>
-          <button class="theme-base-btn" @click="startCreate('dark')">创建深色主题</button>
-        </div>
-      </div>
-
-      <div class="theme-editor-panel">
-        <div class="theme-editor-section-title">从浅色预设开始</div>
-        <div class="theme-editor-buttons">
-          <button
-            v-for="theme in lightPresetThemes"
-            :key="theme.id"
-            class="theme-base-btn"
-            @click="startFromPreset(theme.id)"
-          >
-            基于 {{ theme.name }}
-          </button>
-        </div>
-      </div>
-
-      <div class="theme-editor-panel">
-        <div class="theme-editor-section-title">从深色预设开始</div>
-        <div class="theme-editor-buttons">
-          <button
-            v-for="theme in darkPresetThemes"
-            :key="theme.id"
-            class="theme-base-btn"
-            @click="startFromPreset(theme.id)"
-          >
-            基于 {{ theme.name }}
-          </button>
-        </div>
-      </div>
+      <p class="theme-editor-hint">
+        默认只需要在上方选择主题。想做自己的主题时，复制当前主题，或直接对当前主题进入高级编辑，再另存为新的自定义主题。
+      </p>
     </div>
   </div>
 </template>
@@ -371,8 +328,13 @@ defineExpose({
 <style scoped>
 .theme-editor {
   padding: 12px;
-  max-height: 60vh;
-  overflow-y: auto;
+}
+
+.theme-editor-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
 }
 
 .theme-editor-content {
@@ -419,6 +381,13 @@ defineExpose({
   color: var(--primary-color);
   font-size: 12px;
   font-weight: 600;
+}
+
+.theme-editor-intro {
+  margin: 0;
+  color: var(--muted-color);
+  font-size: 12px;
+  line-height: 1.6;
 }
 
 .theme-editor-actions {
@@ -589,35 +558,14 @@ defineExpose({
 }
 
 .theme-editor-start {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.theme-editor-panel {
-  padding: 14px;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-lg);
-  background: var(--bg-color);
+  color: var(--muted-color);
 }
 
 .theme-editor-hint {
   margin: 0 0 12px;
   color: var(--muted-color);
   font-size: 13px;
-}
-
-.theme-editor-section-title {
-  margin-bottom: 10px;
-  color: var(--text-color);
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.theme-editor-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  line-height: 1.6;
 }
 
 .theme-create-btn,
