@@ -1,7 +1,7 @@
 <template>
   <div
     class="editor-shell h-full w-full cursor-text transition-colors"
-    style="background-color: var(--bg-color);"
+    style="background-color: var(--bg-color)"
     @click="handleContainerClick"
   >
     <div ref="editorWrapRef" class="mk-editor h-full px-6 py-8 overflow-y-auto outline-none">
@@ -9,11 +9,7 @@
     </div>
 
     <BubbleMenuComponent ref="bubbleMenuRef" :on-action="onBubbleMenuAction" />
-    <SlashMenu
-      ref="slashMenuRef"
-      :items="slashMenuItems"
-      :command="slashMenuCommand"
-    />
+    <SlashMenu ref="slashMenuRef" :items="slashMenuItems" :command="slashMenuCommand" />
     <SearchBar
       ref="searchBarRef"
       :visible="isSearchVisible"
@@ -44,20 +40,35 @@ import { getCurrentWebview } from '@tauri-apps/api/webview';
 import { readFile } from '@tauri-apps/plugin-fs';
 
 import { useFileStore } from '../../stores/file';
+import { saveImageAsset } from '../../services/tauri/file-system';
 import { useSettingsStore } from '../../stores/settings';
 import { parseMarkdown } from './tiptap/markdown/parser';
 import { serializeMarkdown } from './tiptap/markdown/serializer';
 import { CustomCodeBlock } from './tiptap/extensions/code-block';
 import { HeadingMarker, HeadingWithMarker } from './tiptap/extensions/heading-marker';
 import {
-  BoldOpen, BoldClose, ItalicOpen, ItalicClose,
-  StrikeOpen, StrikeClose,
-  HighlightOpen, HighlightClose,
-  SupOpen, SupClose, SubOpen, SubClose,
-  CodeOpen, CodeClose,
+  BoldOpen,
+  BoldClose,
+  ItalicOpen,
+  ItalicClose,
+  StrikeOpen,
+  StrikeClose,
+  HighlightOpen,
+  HighlightClose,
+  SupOpen,
+  SupClose,
+  SubOpen,
+  SubClose,
+  CodeOpen,
+  CodeClose,
   MarkTokenSync,
 } from './tiptap/extensions/mark-tokens';
-import { CustomTable, CustomTableRow, CustomTableHeader, CustomTableCell } from './tiptap/extensions/table';
+import {
+  CustomTable,
+  CustomTableRow,
+  CustomTableHeader,
+  CustomTableCell,
+} from './tiptap/extensions/table';
 import { CustomImage } from './tiptap/extensions/image';
 import { MathBlock } from './tiptap/extensions/math-block';
 import { MathInline } from './tiptap/extensions/math-inline';
@@ -66,11 +77,18 @@ import { Callout } from './tiptap/extensions/callout';
 import { Frontmatter } from './tiptap/extensions/frontmatter';
 import { MarkdownInputRules } from './tiptap/extensions/input-rules';
 import {
-  LinkBracketOpen, LinkBracketClose, LinkUrl, LinkTokenSync,
+  LinkBracketOpen,
+  LinkBracketClose,
+  LinkUrl,
+  LinkTokenSync,
 } from './tiptap/extensions/link-token';
 import { Superscript, Subscript } from './tiptap/extensions/sub-sup';
 import { Wikilink } from './tiptap/extensions/wikilink';
-import { SlashCommands, slashCommandItems, type SlashCommandItem } from './tiptap/extensions/slash-commands';
+import {
+  SlashCommands,
+  slashCommandItems,
+  type SlashCommandItem,
+} from './tiptap/extensions/slash-commands';
 import { DragHandle } from './tiptap/extensions/drag-handle';
 import BubbleMenuComponent from './views/BubbleMenu.vue';
 import SlashMenu from './views/SlashMenu.vue';
@@ -170,7 +188,10 @@ function createEditor(content: string) {
       Callout,
       Frontmatter,
       MarkdownInputRules,
-      LinkBracketOpen, LinkBracketClose, LinkUrl, LinkTokenSync,
+      LinkBracketOpen,
+      LinkBracketClose,
+      LinkUrl,
+      LinkTokenSync,
       Superscript,
       Subscript,
       Wikilink,
@@ -182,21 +203,20 @@ function createEditor(content: string) {
             const q = query.toLowerCase();
             return slashCommandItems.filter(
               (item) =>
-                item.title.toLowerCase().includes(q) ||
-                item.description.toLowerCase().includes(q),
+                item.title.toLowerCase().includes(q) || item.description.toLowerCase().includes(q),
             );
           },
           render: () => ({
             onStart: (props: Record<string, unknown>) => {
               slashMenuItems.value = props.items as SlashCommandItem[];
               slashMenuCommand.value = props.command as (item: SlashCommandItem) => void;
-              const rect = (props.clientRect as (() => DOMRect | null))?.();
+              const rect = (props.clientRect as () => DOMRect | null)?.();
               if (rect) slashMenuRef.value?.show({ top: rect.bottom + 4, left: rect.left });
             },
             onUpdate: (props: Record<string, unknown>) => {
               slashMenuItems.value = props.items as SlashCommandItem[];
               slashMenuCommand.value = props.command as (item: SlashCommandItem) => void;
-              const rect = (props.clientRect as (() => DOMRect | null))?.();
+              const rect = (props.clientRect as () => DOMRect | null)?.();
               if (rect) slashMenuRef.value?.show({ top: rect.bottom + 4, left: rect.left });
             },
             onKeyDown: (props: Record<string, unknown>) => {
@@ -215,13 +235,20 @@ function createEditor(content: string) {
       }),
       DragHandle,
       // Phase A/B: mark token 实体化
-      BoldOpen, BoldClose,
-      ItalicOpen, ItalicClose,
-      StrikeOpen, StrikeClose,
-      HighlightOpen, HighlightClose,
-      SupOpen, SupClose,
-      SubOpen, SubClose,
-      CodeOpen, CodeClose,
+      BoldOpen,
+      BoldClose,
+      ItalicOpen,
+      ItalicClose,
+      StrikeOpen,
+      StrikeClose,
+      HighlightOpen,
+      HighlightClose,
+      SupOpen,
+      SupClose,
+      SubOpen,
+      SubClose,
+      CodeOpen,
+      CodeClose,
       MarkTokenSync,
     ],
     editorProps: {
@@ -302,9 +329,10 @@ function extractOutline(ed: TiptapEditor): Array<{ level: number; text: string; 
   ed.state.doc.descendants((node, pos) => {
     if (node.type.name === 'heading') {
       // 跳过开头的 headingMarker（占 1 个位置），仅保留正文文本
-      const text = node.firstChild?.type.name === 'headingMarker'
-        ? node.textBetween(1, node.content.size)
-        : node.textContent;
+      const text =
+        node.firstChild?.type.name === 'headingMarker'
+          ? node.textBetween(1, node.content.size)
+          : node.textContent;
       outline.push({
         level: node.attrs.level,
         text,
@@ -348,17 +376,29 @@ function onBubbleMenuAction(type: string, data?: any) {
   const chain = editor.value.chain().focus();
 
   switch (type) {
-    case 'bold': chain.toggleBold().run(); break;
-    case 'italic': chain.toggleItalic().run(); break;
-    case 'code': chain.toggleCode().run(); break;
+    case 'bold':
+      chain.toggleBold().run();
+      break;
+    case 'italic':
+      chain.toggleItalic().run();
+      break;
+    case 'code':
+      chain.toggleCode().run();
+      break;
     case 'link':
       if (data?.href) {
         chain.setLink({ href: data.href }).run();
       }
       break;
-    case 'unlink': chain.unsetLink().run(); break;
-    case 'h1': chain.toggleHeading({ level: 1 }).run(); break;
-    case 'h2': chain.toggleHeading({ level: 2 }).run(); break;
+    case 'unlink':
+      chain.unsetLink().run();
+      break;
+    case 'h1':
+      chain.toggleHeading({ level: 1 }).run();
+      break;
+    case 'h2':
+      chain.toggleHeading({ level: 2 }).run();
+      break;
   }
 }
 
@@ -462,13 +502,15 @@ function onSearchCaseSensitive(sensitive: boolean) {
 
 function onSearchNext() {
   if (searchMatchCount.value === 0) return;
-  searchCurrentIndex.value = searchCurrentIndex.value >= searchMatchCount.value ? 1 : searchCurrentIndex.value + 1;
+  searchCurrentIndex.value =
+    searchCurrentIndex.value >= searchMatchCount.value ? 1 : searchCurrentIndex.value + 1;
   scrollToMatch(searchCurrentIndex.value - 1);
 }
 
 function onSearchPrev() {
   if (searchMatchCount.value === 0) return;
-  searchCurrentIndex.value = searchCurrentIndex.value <= 1 ? searchMatchCount.value : searchCurrentIndex.value - 1;
+  searchCurrentIndex.value =
+    searchCurrentIndex.value <= 1 ? searchMatchCount.value : searchCurrentIndex.value - 1;
   scrollToMatch(searchCurrentIndex.value - 1);
 }
 
@@ -478,7 +520,8 @@ function onSearchReplace(replacement: string) {
   if (idx < 0 || idx >= currentMatches.length) return;
   const match = currentMatches[idx];
 
-  editor.value.chain()
+  editor.value
+    .chain()
     .focus()
     .setTextSelection(match)
     .deleteSelection()
@@ -547,13 +590,12 @@ async function setupDragDrop() {
 
         try {
           const data = await readFile(imagePath);
-
-          // 使用 Tauri 保存图片到 assets 目录
-          const { invoke } = await import('@tauri-apps/api/core');
-          const savedPath = await invoke<string>('save_image', {
-            imageData: Array.from(data),
-            fileName: imagePath.split(/[/\\]/).pop(),
+          const fileName = imagePath.split(/[/\\]/).pop();
+          if (!fileName) continue;
+          const savedPath = await saveImageAsset({
             docPath: filePath,
+            fileName,
+            data,
           });
 
           editor.value?.chain().focus().setImage({ src: savedPath, alt: '' }).run();
@@ -566,7 +608,6 @@ async function setupDragDrop() {
     console.error('Failed to setup drag-drop:', err);
   }
 }
-
 
 // ── 主题同步 ──────────────────────────────────────────────────
 

@@ -6,6 +6,7 @@ use notify::{Config, EventKind, RecommendedWatcher, Watcher};
 use std::collections::HashMap;
 use std::sync::Mutex;
 use tauri::{Emitter, Manager};
+use tauri_plugin_window_state::StateFlags;
 
 #[derive(Default)]
 struct StartupOpenFile(Mutex<Option<String>>);
@@ -50,6 +51,24 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_cli::init())
+        .plugin(tauri_plugin_store::Builder::default().build())
+        .plugin(
+            tauri_plugin_window_state::Builder::default()
+                .with_state_flags(
+                    StateFlags::SIZE
+                        | StateFlags::POSITION
+                        | StateFlags::MAXIMIZED
+                        | StateFlags::FULLSCREEN,
+                )
+                .map_label(|label| {
+                    if label.starts_with("main-") {
+                        "secondary"
+                    } else {
+                        label
+                    }
+                })
+                .build(),
+        )
         // ── 方案一（最可靠）：webview 页面加载完成时主动推送等待中的文件 ──
         // on_page_load 在 webview JS 执行完毕后触发，此时前端监听器已注册。
         // 无论 RunEvent::Opened 和 webview 加载孰先孰后，这里都能兜底。
@@ -149,7 +168,9 @@ pub fn run() {
 
             if let Some(main_window) = app.get_webview_window("main") {
                 #[cfg(any(target_os = "windows", target_os = "linux"))]
-                main_window.set_decorations(false).map_err(|e| e.to_string())?;
+                main_window
+                    .set_decorations(false)
+                    .map_err(|e| e.to_string())?;
 
                 #[cfg(target_os = "macos")]
                 apply_macos_window_background(&main_window, "#ffffff")?;
@@ -177,8 +198,6 @@ pub fn run() {
             get_file_modified_time,
             watch_directory,
             unwatch_directory,
-            read_config,
-            write_config,
             refresh_menu_shortcuts,
             consume_startup_open_file,
             notify_frontend_ready,

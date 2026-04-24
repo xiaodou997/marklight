@@ -2,14 +2,21 @@ use std::collections::HashMap;
 use tauri::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::Emitter;
 
-fn accelerator(shortcuts: &HashMap<String, String>, command_id: &str, default: Option<&str>) -> Option<String> {
+fn accelerator(
+    shortcuts: &HashMap<String, String>,
+    command_id: &str,
+    default: Option<&str>,
+) -> Option<String> {
     shortcuts
         .get(command_id)
         .cloned()
         .or_else(|| default.map(str::to_string))
 }
 
-fn build_menu(app: &tauri::AppHandle, shortcuts: &HashMap<String, String>) -> Result<Menu<tauri::Wry>, tauri::Error> {
+fn build_menu(
+    app: &tauri::AppHandle,
+    shortcuts: &HashMap<String, String>,
+) -> Result<Menu<tauri::Wry>, tauri::Error> {
     let about_accel = accelerator(shortcuts, "help.about", None);
     let settings_accel = accelerator(shortcuts, "settings.open", Some("CmdOrCtrl+,"));
     let quit_accel = accelerator(shortcuts, "app.quit", Some("CmdOrCtrl+Q"));
@@ -43,17 +50,41 @@ fn build_menu(app: &tauri::AppHandle, shortcuts: &HashMap<String, String>) -> Re
         "MarkLight",
         true,
         &[
-            &MenuItem::with_id(app, "help.about", "关于 MarkLight", true, about_accel.as_deref())?,
+            &MenuItem::with_id(
+                app,
+                "help.about",
+                "关于 MarkLight",
+                true,
+                about_accel.as_deref(),
+            )?,
             &PredefinedMenuItem::separator(app)?,
-            &MenuItem::with_id(app, "settings.open", "设置...", true, settings_accel.as_deref())?,
+            &MenuItem::with_id(
+                app,
+                "settings.open",
+                "设置...",
+                true,
+                settings_accel.as_deref(),
+            )?,
             &PredefinedMenuItem::separator(app)?,
             &PredefinedMenuItem::services(app, Some("服务"))?,
             &PredefinedMenuItem::separator(app)?,
             &MenuItem::with_id(app, "app.hide", "隐藏 MarkLight", true, Some("CmdOrCtrl+H"))?,
-            &MenuItem::with_id(app, "app.hideOthers", "隐藏其他", true, Some("CmdOrCtrl+Alt+H"))?,
+            &MenuItem::with_id(
+                app,
+                "app.hideOthers",
+                "隐藏其他",
+                true,
+                Some("CmdOrCtrl+Alt+H"),
+            )?,
             &MenuItem::with_id(app, "app.showAll", "显示全部", true, None::<&str>)?,
             &PredefinedMenuItem::separator(app)?,
-            &MenuItem::with_id(app, "app.quit", "退出 MarkLight", true, quit_accel.as_deref())?,
+            &MenuItem::with_id(
+                app,
+                "app.quit",
+                "退出 MarkLight",
+                true,
+                quit_accel.as_deref(),
+            )?,
         ],
     )?;
 
@@ -63,16 +94,46 @@ fn build_menu(app: &tauri::AppHandle, shortcuts: &HashMap<String, String>) -> Re
         true,
         &[
             &MenuItem::with_id(app, "file.new", "新建", true, new_accel.as_deref())?,
-            &MenuItem::with_id(app, "file.newWindow", "新建窗口", true, new_window_accel.as_deref())?,
+            &MenuItem::with_id(
+                app,
+                "file.newWindow",
+                "新建窗口",
+                true,
+                new_window_accel.as_deref(),
+            )?,
             &MenuItem::with_id(app, "file.open", "打开...", true, open_accel.as_deref())?,
             &MenuItem::with_id(app, "file.openFolder", "打开文件夹...", true, None::<&str>)?,
             &PredefinedMenuItem::separator(app)?,
             &MenuItem::with_id(app, "file.save", "保存", true, save_accel.as_deref())?,
-            &MenuItem::with_id(app, "file.saveAs", "另存为...", true, save_as_accel.as_deref())?,
+            &MenuItem::with_id(
+                app,
+                "file.saveAs",
+                "另存为...",
+                true,
+                save_as_accel.as_deref(),
+            )?,
             &PredefinedMenuItem::separator(app)?,
-            &MenuItem::with_id(app, "export.html", "导出为 HTML", true, export_html_accel.as_deref())?,
-            &MenuItem::with_id(app, "export.pdf", "导出为 PDF...", true, export_pdf_accel.as_deref())?,
-            &MenuItem::with_id(app, "export.wechat", "微信导出", true, export_wechat_accel.as_deref())?,
+            &MenuItem::with_id(
+                app,
+                "export.html",
+                "导出为 HTML",
+                true,
+                export_html_accel.as_deref(),
+            )?,
+            &MenuItem::with_id(
+                app,
+                "export.pdf",
+                "导出为 PDF...",
+                true,
+                export_pdf_accel.as_deref(),
+            )?,
+            &MenuItem::with_id(
+                app,
+                "export.wechat",
+                "微信导出",
+                true,
+                export_wechat_accel.as_deref(),
+            )?,
         ],
     )?;
 
@@ -92,7 +153,13 @@ fn build_menu(app: &tauri::AppHandle, shortcuts: &HashMap<String, String>) -> Re
             &MenuItem::with_id(app, "edit.find", "查找", true, find_accel.as_deref())?,
             &MenuItem::with_id(app, "edit.replace", "替换", true, replace_accel.as_deref())?,
             &PredefinedMenuItem::separator(app)?,
-            &MenuItem::with_id(app, "edit.commandPalette", "命令面板", true, palette_accel.as_deref())?,
+            &MenuItem::with_id(
+                app,
+                "edit.commandPalette",
+                "命令面板",
+                true,
+                palette_accel.as_deref(),
+            )?,
         ],
     )?;
 
@@ -109,8 +176,20 @@ fn build_menu(app: &tauri::AppHandle, shortcuts: &HashMap<String, String>) -> Re
                 true,
                 toggle_sidebar_accel.as_deref(),
             )?,
-            &MenuItem::with_id(app, "view.showOutline", "  └ 大纲", true, show_outline_accel.as_deref())?,
-            &MenuItem::with_id(app, "view.showFiles", "  └ 文件树", true, show_files_accel.as_deref())?,
+            &MenuItem::with_id(
+                app,
+                "view.showOutline",
+                "  └ 大纲",
+                true,
+                show_outline_accel.as_deref(),
+            )?,
+            &MenuItem::with_id(
+                app,
+                "view.showFiles",
+                "  └ 文件树",
+                true,
+                show_files_accel.as_deref(),
+            )?,
             &PredefinedMenuItem::separator(app)?,
             &CheckMenuItem::with_id(
                 app,
@@ -120,9 +199,21 @@ fn build_menu(app: &tauri::AppHandle, shortcuts: &HashMap<String, String>) -> Re
                 false,
                 toggle_source_accel.as_deref(),
             )?,
-            &MenuItem::with_id(app, "view.focusMode", "焦点模式", true, focus_mode_accel.as_deref())?,
+            &MenuItem::with_id(
+                app,
+                "view.focusMode",
+                "焦点模式",
+                true,
+                focus_mode_accel.as_deref(),
+            )?,
             &PredefinedMenuItem::separator(app)?,
-            &MenuItem::with_id(app, "view.fullscreen", "全屏", true, fullscreen_accel.as_deref())?,
+            &MenuItem::with_id(
+                app,
+                "view.fullscreen",
+                "全屏",
+                true,
+                fullscreen_accel.as_deref(),
+            )?,
         ],
     )?;
 
@@ -131,7 +222,13 @@ fn build_menu(app: &tauri::AppHandle, shortcuts: &HashMap<String, String>) -> Re
         "帮助",
         true,
         &[
-            &MenuItem::with_id(app, "help.shortcuts", "快捷键", true, shortcuts_accel.as_deref())?,
+            &MenuItem::with_id(
+                app,
+                "help.shortcuts",
+                "快捷键",
+                true,
+                shortcuts_accel.as_deref(),
+            )?,
             &PredefinedMenuItem::separator(app)?,
             &MenuItem::with_id(app, "help.github", "项目主页 (GitHub)", true, None::<&str>)?,
             &MenuItem::with_id(app, "help.gitee", "项目主页 (Gitee)", true, None::<&str>)?,
@@ -139,10 +236,16 @@ fn build_menu(app: &tauri::AppHandle, shortcuts: &HashMap<String, String>) -> Re
         ],
     )?;
 
-    Menu::with_items(app, &[&app_menu, &file_menu, &edit_menu, &view_menu, &help_menu])
+    Menu::with_items(
+        app,
+        &[&app_menu, &file_menu, &edit_menu, &view_menu, &help_menu],
+    )
 }
 
-pub fn setup_menu(app: &tauri::AppHandle, shortcuts: &HashMap<String, String>) -> Result<(), tauri::Error> {
+pub fn setup_menu(
+    app: &tauri::AppHandle,
+    shortcuts: &HashMap<String, String>,
+) -> Result<(), tauri::Error> {
     let menu = build_menu(app, shortcuts)?;
     app.set_menu(menu)?;
     Ok(())

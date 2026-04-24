@@ -1,6 +1,10 @@
 import { open, save, confirm } from '@tauri-apps/plugin-dialog';
-import { invoke } from '@tauri-apps/api/core';
 import { watch, type Ref } from 'vue';
+import {
+  getDocumentModifiedTime,
+  readDocumentFile,
+  saveDocumentFile,
+} from '../services/tauri/file-system';
 import { useFileStore } from '../stores/file';
 import { useSettingsStore } from '../stores/settings';
 
@@ -17,8 +21,8 @@ export function useFileOperations() {
     try {
       fileStore.setLoading(true);
       const [content, mtime] = await Promise.all([
-        invoke<string>('read_file', { path }),
-        invoke<number>('get_file_modified_time', { path })
+        readDocumentFile(path),
+        getDocumentModifiedTime(path),
       ]);
       fileStore.setFile(content, path, mtime);
       return true;
@@ -34,7 +38,7 @@ export function useFileOperations() {
     if (fileStore.currentFile.isDirty) {
       const confirmed = await confirm('当前更改尚未保存，确定要新建吗？', {
         title: '未保存的更改',
-        kind: 'warning'
+        kind: 'warning',
       });
       if (!confirmed) return;
     }
@@ -42,9 +46,9 @@ export function useFileOperations() {
   }
 
   async function handleOpen() {
-    const selected = await open({ 
-      multiple: false, 
-      filters: [{ name: 'Markdown', extensions: ['md', 'markdown', 'txt'] }] 
+    const selected = await open({
+      multiple: false,
+      filters: [{ name: 'Markdown', extensions: ['md', 'markdown', 'txt'] }],
     });
     if (selected && typeof selected === 'string') {
       await loadFileFromPath(selected);
@@ -57,18 +61,18 @@ export function useFileOperations() {
       try {
         // 检测冲突
         if (file.lastModifiedTime) {
-          const currentMtime = await invoke<number>('get_file_modified_time', { path: file.path });
+          const currentMtime = await getDocumentModifiedTime(file.path);
           if (currentMtime > file.lastModifiedTime) {
             const confirmed = await confirm('文件已被外部程序修改，是否覆盖？', {
               title: '检测到冲突',
-              kind: 'warning'
+              kind: 'warning',
             });
             if (!confirmed) return false;
           }
         }
 
-        await invoke('save_file', { path: file.path, content: file.content });
-        const newMtime = await invoke<number>('get_file_modified_time', { path: file.path });
+        await saveDocumentFile(file.path, file.content);
+        const newMtime = await getDocumentModifiedTime(file.path);
         fileStore.markSaved(newMtime);
         return true;
       } catch (error) {
@@ -82,12 +86,12 @@ export function useFileOperations() {
 
   async function handleSaveAs(): Promise<boolean> {
     const selected = await save({
-      filters: [{ name: 'Markdown', extensions: ['md'] }]
+      filters: [{ name: 'Markdown', extensions: ['md'] }],
     });
     if (selected) {
       try {
-        await invoke('save_file', { path: selected, content: fileStore.currentFile.content });
-        const newMtime = await invoke<number>('get_file_modified_time', { path: selected });
+        await saveDocumentFile(selected, fileStore.currentFile.content);
+        const newMtime = await getDocumentModifiedTime(selected);
         fileStore.setFile(fileStore.currentFile.content, selected, newMtime);
         fileStore.markSaved(newMtime);
         return true;
@@ -150,7 +154,7 @@ export function useFileOperations() {
           stopInterval();
         }
       },
-      { immediate: true }
+      { immediate: true },
     );
 
     return () => {
@@ -165,6 +169,6 @@ export function useFileOperations() {
     handleOpen,
     handleSave,
     handleSaveAs,
-    setupAutoSave
+    setupAutoSave,
   };
 }

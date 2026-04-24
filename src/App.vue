@@ -3,7 +3,6 @@ import { computed, ref, reactive, onMounted, onUnmounted, watch, defineAsyncComp
 import type { Node as PMNode } from '@tiptap/pm/model';
 import { storeToRefs } from 'pinia';
 import { confirm, message } from '@tauri-apps/plugin-dialog';
-import { invoke } from '@tauri-apps/api/core';
 import { useFileStore } from './stores/file';
 import { useSettingsStore } from './stores/settings';
 import { useFileOperations, type AutoSaveStatus } from './composables/useFileOperations';
@@ -11,7 +10,7 @@ import { useCommandDispatcher } from './composables/useCommandDispatcher';
 import { useExportActions } from './composables/useExportActions';
 import { useMenuShortcutsSync } from './composables/useMenuShortcutsSync';
 import { useMenuEvents } from './composables/useMenuEvents';
-import { useFileTree, type FileChangePayload } from './composables/useFileTree';
+import { useFileTree } from './composables/useFileTree';
 import { useImagePreview } from './composables/useImagePreview';
 import { useWindowEvents, confirmUnsavedChanges } from './composables/useWindowEvents';
 import EditorToolbar from './components/Toolbar/EditorToolbar.vue';
@@ -24,6 +23,15 @@ import TitleBar from './components/Layout/TitleBar.vue';
 import { getCurrentWebview } from '@tauri-apps/api/webview';
 import { isMac } from './utils/platform';
 import { findCommandByShortcut } from './utils/shortcuts';
+import {
+  destroyCurrentWindow,
+  isCurrentWindowFullscreen,
+  openNewAppWindow,
+  setCurrentWindowFullscreen,
+  setCurrentWindowTitle,
+} from './services/tauri/window';
+import { saveAllWindowState } from './services/tauri/window-state';
+import type { FileChangePayload } from './services/tauri/file-system';
 import pkg from '../package.json';
 
 const MarkdownEditor = defineAsyncComponent(() => import('./components/Editor/MarkdownEditor.vue'));
@@ -188,11 +196,7 @@ function handleFileCreatedWrapper(name: string, isFolder: boolean) {
 }
 
 // --- Window events ---
-const {
-  setup: setupWindowEvents,
-  cleanup: cleanupWindowEvents,
-  appWindow,
-} = useWindowEvents({
+const { setup: setupWindowEvents, cleanup: cleanupWindowEvents } = useWindowEvents({
   handleOpenFile,
   handleSave,
   isDirty: () => fileStore.currentFile.isDirty,
@@ -242,7 +246,7 @@ const windowTitle = computed(() => {
 });
 
 function updateWindowTitle() {
-  appWindow.setTitle(windowTitle.value).catch((err) => {
+  setCurrentWindowTitle(windowTitle.value).catch((err) => {
     if (!err.includes('window.set_title not allowed')) {
       console.error('Failed to set window title:', err);
     }
@@ -251,7 +255,7 @@ function updateWindowTitle() {
 
 // --- App-level actions ---
 async function handleOpenNewWindow(path?: string) {
-  await invoke('open_new_window', { path });
+  await openNewAppWindow(path);
 }
 
 function showAbout() {
@@ -265,7 +269,7 @@ function showAbout() {
 }
 
 async function toggleFullscreen() {
-  await appWindow.setFullscreen(!(await appWindow.isFullscreen()));
+  await setCurrentWindowFullscreen(!(await isCurrentWindowFullscreen()));
 }
 
 async function handleQuit() {
@@ -277,7 +281,10 @@ async function handleQuit() {
       if (!saved) return;
     }
   }
-  await appWindow.destroy();
+  await saveAllWindowState().catch(() => {
+    // Ignore window-state persistence failures and continue quitting.
+  });
+  await destroyCurrentWindow();
 }
 
 const { executeCommand } = useCommandDispatcher({

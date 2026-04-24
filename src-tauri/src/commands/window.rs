@@ -98,11 +98,12 @@ pub async fn open_new_window(
     path: Option<String>,
 ) -> Result<(), String> {
     let window_label = next_window_label();
-    let builder = WebviewWindowBuilder::new(&app, &window_label, WebviewUrl::App("index.html".into()))
-        .title("未命名")
-        .inner_size(1200.0, 800.0)
-        .min_inner_size(800.0, 600.0)
-        .center();
+    let builder =
+        WebviewWindowBuilder::new(&app, &window_label, WebviewUrl::App("index.html".into()))
+            .title("未命名")
+            .inner_size(1200.0, 800.0)
+            .min_inner_size(800.0, 600.0)
+            .center();
 
     #[cfg(any(target_os = "windows", target_os = "linux"))]
     let builder = builder.decorations(false);
@@ -189,8 +190,14 @@ mod tests {
     #[test]
     fn parses_hex_rgb_colors() {
         assert_eq!(parse_hex_color("#ffffff"), Some((1.0, 1.0, 1.0, 1.0)));
-        assert_eq!(parse_hex_color("1e1e2e"), Some((30.0 / 255.0, 30.0 / 255.0, 46.0 / 255.0, 1.0)));
-        assert_eq!(parse_hex_color("#11223344"), Some((17.0 / 255.0, 34.0 / 255.0, 51.0 / 255.0, 68.0 / 255.0)));
+        assert_eq!(
+            parse_hex_color("1e1e2e"),
+            Some((30.0 / 255.0, 30.0 / 255.0, 46.0 / 255.0, 1.0))
+        );
+        assert_eq!(
+            parse_hex_color("#11223344"),
+            Some((17.0 / 255.0, 34.0 / 255.0, 51.0 / 255.0, 68.0 / 255.0))
+        );
         assert_eq!(parse_hex_color("oops"), None);
     }
 }

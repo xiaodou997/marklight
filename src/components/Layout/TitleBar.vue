@@ -89,8 +89,6 @@
 
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted } from 'vue';
-import { getCurrentWindow } from '@tauri-apps/api/window';
-import { emit } from '@tauri-apps/api/event';
 import {
   WINDOW_TITLEBAR_MENUS,
   getCommand,
@@ -99,12 +97,12 @@ import {
 } from '../../commands/registry';
 import { formatShortcutDisplay } from '../../utils/shortcuts';
 import { useSettingsStore } from '../../stores/settings';
+import { emitMenuEvent, emitWindowCloseRequested } from '../../services/tauri/events';
+import { minimizeCurrentWindow, toggleCurrentWindowMaximize } from '../../services/tauri/window';
 
 const activeMenu = ref<string | null>(null);
 const isMenuOpen = ref(false);
 const settingsStore = useSettingsStore();
-
-const appWindow = getCurrentWindow();
 
 onMounted(() => {
   window.addEventListener('mousedown', closeAllMenus);
@@ -135,13 +133,13 @@ const onMenuHover = (id: string) => {
 };
 
 const handleMenuClick = (id: string) => {
-  emit('menu-event', id);
+  void emitMenuEvent(id);
   closeAllMenus();
 };
 
-const minimize = () => appWindow.minimize();
-const toggleMaximize = () => appWindow.toggleMaximize();
-const close = () => emit('window-close-requested');
+const minimize = () => void minimizeCurrentWindow();
+const toggleMaximize = () => void toggleCurrentWindowMaximize();
+const close = () => void emitWindowCloseRequested();
 
 interface MenuItem {
   id: string;

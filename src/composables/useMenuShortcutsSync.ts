@@ -1,5 +1,5 @@
-import { invoke } from '@tauri-apps/api/core';
 import { watch, type Ref } from 'vue';
+import { refreshNativeMenuShortcuts } from '../services/tauri/window';
 import { getMenuShortcuts } from '../utils/shortcuts';
 
 export interface MenuShortcutSyncOptions {
@@ -9,9 +9,7 @@ export interface MenuShortcutSyncOptions {
 
 export function useMenuShortcutsSync(options: MenuShortcutSyncOptions) {
   async function syncMenuShortcuts() {
-    await invoke('refresh_menu_shortcuts', {
-      shortcuts: getMenuShortcuts(options.customShortcuts.value),
-    });
+    await refreshNativeMenuShortcuts(getMenuShortcuts(options.customShortcuts.value));
   }
 
   const stopWatching = watch(

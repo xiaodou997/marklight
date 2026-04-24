@@ -1,6 +1,6 @@
-import { describe, expect, it, vi, afterEach } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import type { ThemeColors } from '../../themes/types';
-import { migrateConfig } from '../settings';
+import { normalizeSettings } from '../settings';
 
 function createColors(overrides: Partial<ThemeColors> = {}): ThemeColors {
   return {
@@ -76,65 +76,18 @@ function createColors(overrides: Partial<ThemeColors> = {}): ThemeColors {
   };
 }
 
-afterEach(() => {
-  vi.unstubAllGlobals();
-});
+describe('normalizeSettings', () => {
+  it('fills missing fields with defaults', () => {
+    const normalized = normalizeSettings();
 
-describe('migrateConfig', () => {
-  it('migrates legacy preset selection to independent theme ids', () => {
-    const migrated = migrateConfig({
-      configVersion: 4,
-      activeThemeId: 'ocean',
-      theme: 'dark',
-      customThemes: [],
-    });
-
-    expect(migrated.activeThemeId).toBe('ocean-dark');
-    expect(migrated.customThemes).toEqual([]);
-    expect(migrated.configVersion).toBe(5);
+    expect(normalized.activeThemeId).toBe('default-light');
+    expect(normalized.autoSave).toBe(false);
+    expect(normalized.showLineNumbers).toBe(false);
+    expect(normalized.configVersion).toBe(5);
   });
 
-  it('splits legacy custom themes into light and dark themes', () => {
-    const migrated = migrateConfig({
-      configVersion: 4,
-      activeThemeId: 'journal',
-      theme: 'light',
-      customThemes: [
-        {
-          id: 'journal',
-          name: 'Journal',
-          type: 'custom',
-          author: 'tester',
-          light: createColors({ bgColor: '#fffef7' }),
-          dark: createColors({ bgColor: '#101010' }),
-        } as any,
-      ],
-    });
-
-    expect(migrated.activeThemeId).toBe('journal-light');
-    expect(migrated.customThemes).toHaveLength(2);
-    expect(migrated.customThemes?.map((theme) => theme.id)).toEqual(['journal-light', 'journal-dark']);
-    expect(migrated.customThemes?.map((theme) => theme.name)).toEqual(['Journal Light', 'Journal Dark']);
-  });
-
-  it('resolves legacy system mode once during migration', () => {
-    vi.stubGlobal('window', {
-      matchMedia: vi.fn(() => ({ matches: true })),
-    });
-
-    const migrated = migrateConfig({
-      configVersion: 4,
-      activeThemeId: 'default',
-      theme: 'system',
-      customThemes: [],
-    });
-
-    expect(migrated.activeThemeId).toBe('default-dark');
-  });
-
-  it('keeps new-format custom theme ids unchanged', () => {
-    const migrated = migrateConfig({
-      configVersion: 5,
+  it('preserves current-format stored themes and updates config version', () => {
+    const normalized = normalizeSettings({
       activeThemeId: 'custom-42',
       customThemes: [
         {
@@ -145,12 +98,14 @@ describe('migrateConfig', () => {
           colors: createColors({ bgColor: '#111827' }),
         },
       ],
+      configVersion: 1,
     });
 
-    expect(migrated.activeThemeId).toBe('custom-42');
-    expect(migrated.customThemes?.[0]).toMatchObject({
+    expect(normalized.activeThemeId).toBe('custom-42');
+    expect(normalized.customThemes[0]).toMatchObject({
       id: 'custom-42',
       appearance: 'dark',
     });
+    expect(normalized.configVersion).toBe(5);
   });
 });

@@ -1,22 +1,19 @@
 import { ref, computed } from 'vue';
 import { open, message } from '@tauri-apps/plugin-dialog';
-import { invoke } from '@tauri-apps/api/core';
-import { listen } from '@tauri-apps/api/event';
+import {
+  createFileEntry,
+  createFolderEntry,
+  deleteFileEntry,
+  listSupportedDirectory,
+  renameFileEntry,
+  revealPathInFinder,
+  unwatchDirectoryPath,
+  watchDirectoryPath,
+  type FileChangePayload,
+  type NativeFileInfo,
+} from '../services/tauri/file-system';
+import { listenFileChanged } from '../services/tauri/events';
 import { useFileStore } from '../stores/file';
-
-interface FileInfo {
-  name: string;
-  path: string;
-  is_dir: boolean;
-  is_md: boolean;
-  is_txt: boolean;
-  is_image: boolean;
-}
-
-export interface FileChangePayload {
-  kind: string;
-  paths: string[];
-}
 
 export interface TreeNode {
   name: string;
@@ -29,7 +26,7 @@ export interface TreeNode {
   children: TreeNode[] | null; // null = not yet loaded
 }
 
-function fileInfoToNode(info: FileInfo): TreeNode {
+function fileInfoToNode(info: NativeFileInfo): TreeNode {
   return { ...info, expanded: false, children: info.is_dir ? null : [] };
 }
 
@@ -40,7 +37,9 @@ export function normalizeWatchPath(path: string): string {
 export function isPathInTreeRoot(path: string, rootPath: string): boolean {
   const normalizedPath = normalizeWatchPath(path);
   const normalizedRootPath = normalizeWatchPath(rootPath);
-  return normalizedPath === normalizedRootPath || normalizedPath.startsWith(`${normalizedRootPath}/`);
+  return (
+    normalizedPath === normalizedRootPath || normalizedPath.startsWith(`${normalizedRootPath}/`)
+  );
 }
 
 function findNode(nodes: TreeNode[], path: string): TreeNode | null {
@@ -55,9 +54,9 @@ function findNode(nodes: TreeNode[], path: string): TreeNode | null {
 }
 
 /** 合并新旧列表，保留已展开目录的子树 */
-function mergeChildren(newInfos: FileInfo[], oldNodes: TreeNode[]): TreeNode[] {
-  const oldMap = new Map(oldNodes.map(n => [n.path, n]));
-  return newInfos.map(info => {
+function mergeChildren(newInfos: NativeFileInfo[], oldNodes: TreeNode[]): TreeNode[] {
+  const oldMap = new Map(oldNodes.map((n) => [n.path, n]));
+  return newInfos.map((info) => {
     const old = oldMap.get(info.path);
     if (old && old.is_dir) {
       return { ...fileInfoToNode(info), expanded: old.expanded, children: old.children };
@@ -70,7 +69,7 @@ function mergeChildren(newInfos: FileInfo[], oldNodes: TreeNode[]): TreeNode[] {
 async function refreshExpandedNodes(nodes: TreeNode[]): Promise<void> {
   for (const node of nodes) {
     if (node.is_dir && node.expanded) {
-      const result = await invoke<FileInfo[]>('list_directory', { path: node.path }).catch(() => null);
+      const result = await listSupportedDirectory(node.path).catch(() => null);
       if (result) {
         node.children = mergeChildren(result, node.children ?? []);
         await refreshExpandedNodes(node.children);
@@ -103,22 +102,20 @@ export function useFileTree() {
   });
 
   /** 仅文件（非目录），用于 CommandPalette */
-  const flatFiles = computed(() =>
-    flatAllNodes.value.filter(n => !n.is_dir)
-  );
+  const flatFiles = computed(() => flatAllNodes.value.filter((n) => !n.is_dir));
 
   async function loadRootFolder(path: string) {
     try {
-      const result = await invoke<FileInfo[]>('list_directory', { path });
+      const result = await listSupportedDirectory(path);
       rootFolder.value = path;
       treeNodes.value = result.map(fileInfoToNode);
 
       // 切换监听目录
       if (watchedFolder.value && watchedFolder.value !== path) {
-        await invoke('unwatch_directory', { path: watchedFolder.value });
+        await unwatchDirectoryPath(watchedFolder.value);
       }
       if (watchedFolder.value !== path) {
-        await invoke('watch_directory', { path });
+        await watchDirectoryPath(path);
         watchedFolder.value = path;
       }
     } catch (error) {
@@ -144,7 +141,7 @@ export function useFileTree() {
     } else {
       // 首次展开时加载子节点
       if (node.children === null) {
-        const result = await invoke<FileInfo[]>('list_directory', { path: node.path }).catch(() => []);
+        const result = await listSupportedDirectory(node.path).catch(() => []);
         node.children = result.map(fileInfoToNode);
       }
       node.expanded = true;
@@ -154,7 +151,7 @@ export function useFileTree() {
   /** 刷新整棵树（保留展开状态） */
   async function refreshTree() {
     if (!rootFolder.value) return;
-    const result = await invoke<FileInfo[]>('list_directory', { path: rootFolder.value }).catch(() => null);
+    const result = await listSupportedDirectory(rootFolder.value).catch(() => null);
     if (result) {
       treeNodes.value = mergeChildren(result, treeNodes.value);
       await refreshExpandedNodes(treeNodes.value);
@@ -163,7 +160,7 @@ export function useFileTree() {
 
   async function handleFileRenamed(oldPath: string, newName: string) {
     try {
-      const newPath = await invoke<string>('rename_file', { oldPath, newName });
+      const newPath = await renameFileEntry(oldPath, newName);
       await refreshTree();
       if (fileStore.currentFile.path === oldPath) {
         fileStore.currentFile.path = newPath;
@@ -175,7 +172,7 @@ export function useFileTree() {
 
   async function handleFileDeleted(path: string, onCurrentFileDeleted: () => void) {
     try {
-      await invoke('delete_file', { path });
+      await deleteFileEntry(path);
       await refreshTree();
       if (fileStore.currentFile.path === path) {
         fileStore.reset();
@@ -190,17 +187,16 @@ export function useFileTree() {
     name: string,
     isFolder: boolean,
     targetDir: string,
-    openFile: (path: string) => void
+    openFile: (path: string) => void,
   ) {
     if (name === '__AUTO_RENAME__' && !isFolder) {
       await handleNewFileWithRename(targetDir, openFile);
       return;
     }
     try {
-      const path = await invoke<string>(
-        isFolder ? 'create_folder' : 'create_file',
-        { dir: targetDir, name }
-      );
+      const path = isFolder
+        ? await createFolderEntry(targetDir, name)
+        : await createFileEntry(targetDir, name);
       await refreshTree();
       if (!isFolder) openFile(path);
     } catch (error) {
@@ -211,7 +207,7 @@ export function useFileTree() {
   async function handleNewFileWithRename(targetDir: string, openFile: (path: string) => void) {
     const defaultName = '未命名.md';
     try {
-      const path = await invoke<string>('create_file', { dir: targetDir, name: defaultName });
+      const path = await createFileEntry(targetDir, defaultName);
       await refreshTree();
       openFile(path);
       pendingRenamePath.value = path;
@@ -226,7 +222,7 @@ export function useFileTree() {
 
   async function handleRevealInFinder(path: string) {
     try {
-      await invoke('reveal_in_finder', { path });
+      await revealPathInFinder(path);
     } catch (error) {
       await message(`无法在文件管理器中显示: ${error}`, { title: '错误', kind: 'error' });
     }
@@ -243,9 +239,8 @@ export function useFileTree() {
   }
 
   async function setupFileChangeListener(onRelevantChange?: (payload: FileChangePayload) => void) {
-    unlistenFileChanged = await listen<FileChangePayload>('file-changed', (event) => {
+    unlistenFileChanged = await listenFileChanged<FileChangePayload>((payload) => {
       if (!rootFolder.value) return;
-      const payload = event.payload;
       if (!payload?.paths?.length) return;
       const relevant = payload.paths.some((path) => isPathInTreeRoot(path, rootFolder.value!));
       if (!relevant) return;
@@ -260,7 +255,7 @@ export function useFileTree() {
       unlistenFileChanged = null;
     }
     if (watchedFolder.value) {
-      void invoke('unwatch_directory', { path: watchedFolder.value });
+      void unwatchDirectoryPath(watchedFolder.value);
       watchedFolder.value = null;
     }
   }

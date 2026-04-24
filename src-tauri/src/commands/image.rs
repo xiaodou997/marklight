@@ -5,7 +5,12 @@ use std::path::Path;
 /// 保存图片到指定目录的 assets 子目录中
 #[tauri::command]
 pub fn save_image(dir: String, filename: String, data: Vec<u8>) -> Result<String, String> {
-    println!("[save_image] dir={} filename={} bytes={}", dir, filename, data.len());
+    println!(
+        "[save_image] dir={} filename={} bytes={}",
+        dir,
+        filename,
+        data.len()
+    );
     let assets_dir = Path::new(&dir).join("assets");
     if !assets_dir.exists() {
         fs::create_dir_all(&assets_dir).map_err(|e| format!("创建 assets 目录失败: {}", e))?;

@@ -1,19 +1,30 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { applyTheme, getIsDarkMode, getPresetTheme, importTheme } from '../manager';
 
-const toggleMock = vi.fn();
-const setPropertyMock = vi.fn();
+const mocks = vi.hoisted(() => ({
+  toggleMock: vi.fn(),
+  setPropertyMock: vi.fn(),
+  setCurrentWindowThemeMock: vi.fn(),
+  setCurrentWindowBackgroundColorMock: vi.fn(),
+}));
+
+vi.mock('../../services/tauri/window', () => ({
+  setCurrentWindowTheme: mocks.setCurrentWindowThemeMock,
+  setCurrentWindowBackgroundColor: mocks.setCurrentWindowBackgroundColorMock,
+}));
 
 beforeEach(() => {
-  toggleMock.mockReset();
-  setPropertyMock.mockReset();
+  mocks.toggleMock.mockReset();
+  mocks.setPropertyMock.mockReset();
+  mocks.setCurrentWindowThemeMock.mockReset();
+  mocks.setCurrentWindowBackgroundColorMock.mockReset();
   vi.stubGlobal('document', {
     documentElement: {
       classList: {
-        toggle: toggleMock,
+        toggle: mocks.toggleMock,
       },
       style: {
-        setProperty: setPropertyMock,
+        setProperty: mocks.setPropertyMock,
       },
     },
   });
@@ -30,8 +41,8 @@ describe('theme manager', () => {
 
     applyTheme(theme!);
 
-    expect(toggleMock).toHaveBeenCalledWith('dark', true);
-    expect(setPropertyMock).toHaveBeenCalledWith('--bg-color', theme!.colors.bgColor);
+    expect(mocks.toggleMock).toHaveBeenCalledWith('dark', true);
+    expect(mocks.setPropertyMock).toHaveBeenCalledWith('--bg-color', theme!.colors.bgColor);
     expect(getIsDarkMode()).toBe(true);
   });
 
@@ -41,7 +52,7 @@ describe('theme manager', () => {
 
     applyTheme(theme!);
 
-    expect(toggleMock).toHaveBeenCalledWith('dark', false);
+    expect(mocks.toggleMock).toHaveBeenCalledWith('dark', false);
     expect(getIsDarkMode()).toBe(false);
   });
 

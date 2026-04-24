@@ -1,4 +1,4 @@
-use notify::{RecursiveMode, RecommendedWatcher, Watcher};
+use notify::{RecommendedWatcher, RecursiveMode, Watcher};
 use std::path::Path;
 
 /// 监听指定目录

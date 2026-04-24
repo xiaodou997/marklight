@@ -1,15 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const invokeMock = vi.fn();
 const openMock = vi.fn();
 const saveMock = vi.fn();
 const confirmMock = vi.fn();
+const readDocumentFileMock = vi.fn();
+const getDocumentModifiedTimeMock = vi.fn();
+const saveDocumentFileMock = vi.fn();
 const watchMock = vi.fn((_source, callback, options) => {
   if (options?.immediate) {
     callback([false, 30]);
   }
   return () => {};
 });
+
 const fileStoreState = {
   currentFile: {
     path: null as string | null,
@@ -32,16 +35,13 @@ const fileStoreState = {
   markSaved: vi.fn(),
   reset: vi.fn(),
 };
+
 const settingsStoreState = {
   settings: {
     autoSave: false,
     autoSaveInterval: 30,
   },
 };
-
-vi.mock('@tauri-apps/api/core', () => ({
-  invoke: invokeMock,
-}));
 
 vi.mock('@tauri-apps/plugin-dialog', () => ({
   open: openMock,
@@ -51,6 +51,12 @@ vi.mock('@tauri-apps/plugin-dialog', () => ({
 
 vi.mock('vue', () => ({
   watch: watchMock,
+}));
+
+vi.mock('../../services/tauri/file-system', () => ({
+  readDocumentFile: readDocumentFileMock,
+  getDocumentModifiedTime: getDocumentModifiedTimeMock,
+  saveDocumentFile: saveDocumentFileMock,
 }));
 
 vi.mock('../../stores/file', () => ({
@@ -63,10 +69,12 @@ vi.mock('../../stores/settings', () => ({
 
 describe('useFileOperations', () => {
   beforeEach(() => {
-    invokeMock.mockReset();
     openMock.mockReset();
     saveMock.mockReset();
     confirmMock.mockReset();
+    readDocumentFileMock.mockReset();
+    getDocumentModifiedTimeMock.mockReset();
+    saveDocumentFileMock.mockReset();
     watchMock.mockClear();
     fileStoreState.currentFile = {
       path: null,
@@ -84,9 +92,8 @@ describe('useFileOperations', () => {
   });
 
   it('loadFileFromPath loads file content and mtime together', async () => {
-    invokeMock
-      .mockResolvedValueOnce('# title')
-      .mockResolvedValueOnce(123);
+    readDocumentFileMock.mockResolvedValueOnce('# title');
+    getDocumentModifiedTimeMock.mockResolvedValueOnce(123);
 
     const { useFileOperations } = await import('../useFileOperations');
     const { loadFileFromPath } = useFileOperations();
@@ -94,16 +101,15 @@ describe('useFileOperations', () => {
     await expect(loadFileFromPath('/tmp/demo.md')).resolves.toBe(true);
     expect(fileStoreState.setLoading).toHaveBeenNthCalledWith(1, true);
     expect(fileStoreState.setLoading).toHaveBeenLastCalledWith(false);
-    expect(invokeMock).toHaveBeenNthCalledWith(1, 'read_file', { path: '/tmp/demo.md' });
-    expect(invokeMock).toHaveBeenNthCalledWith(2, 'get_file_modified_time', { path: '/tmp/demo.md' });
+    expect(readDocumentFileMock).toHaveBeenCalledWith('/tmp/demo.md');
+    expect(getDocumentModifiedTimeMock).toHaveBeenCalledWith('/tmp/demo.md');
     expect(fileStoreState.setFile).toHaveBeenCalledWith('# title', '/tmp/demo.md', 123);
   });
 
   it('handleOpen uses the shared file loader', async () => {
     openMock.mockResolvedValue('/tmp/opened.md');
-    invokeMock
-      .mockResolvedValueOnce('opened content')
-      .mockResolvedValueOnce(456);
+    readDocumentFileMock.mockResolvedValueOnce('opened content');
+    getDocumentModifiedTimeMock.mockResolvedValueOnce(456);
 
     const { useFileOperations } = await import('../useFileOperations');
     const { handleOpen } = useFileOperations();
@@ -121,15 +127,15 @@ describe('useFileOperations', () => {
       isDirty: true,
       lastModifiedTime: 1000,
     };
-    invokeMock.mockResolvedValueOnce(1001);
+    getDocumentModifiedTimeMock.mockResolvedValueOnce(1001);
     confirmMock.mockResolvedValue(false);
 
     const { useFileOperations } = await import('../useFileOperations');
     const { handleSave } = useFileOperations();
 
     await expect(handleSave()).resolves.toBe(false);
-    expect(invokeMock).toHaveBeenCalledTimes(1);
-    expect(invokeMock).toHaveBeenCalledWith('get_file_modified_time', { path: '/tmp/demo.md' });
+    expect(getDocumentModifiedTimeMock).toHaveBeenCalledTimes(1);
+    expect(getDocumentModifiedTimeMock).toHaveBeenCalledWith('/tmp/demo.md');
     expect(confirmMock).toHaveBeenCalled();
     expect(fileStoreState.markSaved).not.toHaveBeenCalled();
   });
@@ -141,21 +147,16 @@ describe('useFileOperations', () => {
       isDirty: true,
       lastModifiedTime: 1000,
     };
-    invokeMock
-      .mockResolvedValueOnce(1000)
-      .mockResolvedValueOnce(undefined)
-      .mockResolvedValueOnce(1500);
+    getDocumentModifiedTimeMock.mockResolvedValueOnce(1000).mockResolvedValueOnce(1500);
+    saveDocumentFileMock.mockResolvedValueOnce(undefined);
 
     const { useFileOperations } = await import('../useFileOperations');
     const { handleSave } = useFileOperations();
 
     await expect(handleSave()).resolves.toBe(true);
-    expect(invokeMock).toHaveBeenNthCalledWith(1, 'get_file_modified_time', { path: '/tmp/demo.md' });
-    expect(invokeMock).toHaveBeenNthCalledWith(2, 'save_file', {
-      path: '/tmp/demo.md',
-      content: 'draft',
-    });
-    expect(invokeMock).toHaveBeenNthCalledWith(3, 'get_file_modified_time', { path: '/tmp/demo.md' });
+    expect(getDocumentModifiedTimeMock).toHaveBeenNthCalledWith(1, '/tmp/demo.md');
+    expect(saveDocumentFileMock).toHaveBeenCalledWith('/tmp/demo.md', 'draft');
+    expect(getDocumentModifiedTimeMock).toHaveBeenNthCalledWith(2, '/tmp/demo.md');
     expect(fileStoreState.markSaved).toHaveBeenCalledWith(1500);
   });
 });

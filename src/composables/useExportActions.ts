@@ -1,9 +1,9 @@
 import type { Ref } from 'vue';
 import type { Node as PMNode } from '@tiptap/pm/model';
-import { invoke } from '@tauri-apps/api/core';
 import { save, message } from '@tauri-apps/plugin-dialog';
 import { writeTextFile } from '@tauri-apps/plugin-fs';
 import { writeHtml } from '@tauri-apps/plugin-clipboard-manager';
+import { printCurrentDocument } from '../services/tauri/window';
 import {
   renderEditorDocToHtmlDocument,
   renderEditorDocToWechatFragment,
@@ -59,13 +59,15 @@ export function useExportActions(options: {
     if (!doc) return;
     const html = await renderEditorDocToHtmlDocument(doc, {
       themeId: settingsStore.settings.wechatTheme,
-      fileName: fileStore.currentFile.path?.split(/[/\\]/).pop()?.replace(/\.md$/i, '') ?? 'document',
+      fileName:
+        fileStore.currentFile.path?.split(/[/\\]/).pop()?.replace(/\.md$/i, '') ?? 'document',
     });
-    const baseName = fileStore.currentFile.path?.split(/[/\\]/).pop()?.replace(/\.md$/, '') || 'document';
+    const baseName =
+      fileStore.currentFile.path?.split(/[/\\]/).pop()?.replace(/\.md$/, '') || 'document';
     const selected = await save({
       title: '导出为 HTML',
       defaultPath: `${baseName}.html`,
-      filters: [{ name: 'HTML', extensions: ['html'] }]
+      filters: [{ name: 'HTML', extensions: ['html'] }],
     });
     if (!selected) return;
     try {
@@ -78,7 +80,7 @@ export function useExportActions(options: {
   async function exportPdf() {
     if (activeViewMode.value !== 'editor') return;
     try {
-      await invoke('print_document');
+      await printCurrentDocument();
     } catch (error) {
       await message(`PDF 导出失败: ${error}`, { title: '错误', kind: 'error' });
     }
@@ -102,6 +104,6 @@ export function useExportActions(options: {
   return {
     exportHtml,
     exportPdf,
-    copyToWechat
+    copyToWechat,
   };
 }

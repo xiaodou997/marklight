@@ -9,7 +9,7 @@ const mocks = vi.hoisted(() => ({
   messageMock: vi.fn(),
   writeTextFileMock: vi.fn(),
   writeHtmlMock: vi.fn(),
-  invokeMock: vi.fn(),
+  printCurrentDocumentMock: vi.fn(),
 }));
 
 vi.mock('@tauri-apps/plugin-dialog', () => ({
@@ -25,8 +25,8 @@ vi.mock('@tauri-apps/plugin-clipboard-manager', () => ({
   writeHtml: mocks.writeHtmlMock,
 }));
 
-vi.mock('@tauri-apps/api/core', () => ({
-  invoke: mocks.invokeMock,
+vi.mock('../../services/tauri/window', () => ({
+  printCurrentDocument: mocks.printCurrentDocumentMock,
 }));
 
 function createDoc(markdown: string) {
@@ -51,7 +51,7 @@ describe('useExportActions', () => {
     mocks.messageMock.mockReset();
     mocks.writeTextFileMock.mockReset();
     mocks.writeHtmlMock.mockReset();
-    mocks.invokeMock.mockReset();
+    mocks.printCurrentDocumentMock.mockReset();
   });
 
   it('exports full html documents through the doc-based renderer', async () => {
@@ -122,6 +122,9 @@ describe('useExportActions', () => {
     expect(mocks.writeHtmlMock.mock.calls[0][0]).not.toContain('<!doctype html>');
     expect(mocks.writeHtmlMock.mock.calls[0][0]).toContain('data-wikilink="Wiki"');
     expect(mocks.writeHtmlMock.mock.calls[0][1]).toContain('Copy me');
-    expect(mocks.messageMock).toHaveBeenCalledWith('已转换并复制到剪贴板', { title: '完成', kind: 'info' });
+    expect(mocks.messageMock).toHaveBeenCalledWith('已转换并复制到剪贴板', {
+      title: '完成',
+      kind: 'info',
+    });
   });
 });

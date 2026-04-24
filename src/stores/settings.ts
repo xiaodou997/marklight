@@ -1,13 +1,13 @@
 import { defineStore } from 'pinia';
 import { ref, watch } from 'vue';
-import { invoke } from '@tauri-apps/api/core';
-import type {
-  Theme as AppTheme,
-  ThemeAppearance,
-  ThemeColors,
-  ThemeId,
-} from '../themes/types';
+import type { Theme as AppTheme, ThemeId } from '../themes/types';
 import { applyTheme, generateThemeId, getAllPresetThemes, getTheme } from '../themes/manager';
+import {
+  readStoredFocusMode,
+  readStoredSettings,
+  writeStoredFocusMode,
+  writeStoredSettings,
+} from '../services/tauri/store';
 
 export interface Settings {
   /** Current app theme ID */
@@ -41,20 +41,6 @@ export interface Settings {
   /** Config version */
   configVersion: number;
 }
-
-type LegacyThemeMode = 'light' | 'dark' | 'system';
-
-type LegacyTheme = Omit<AppTheme, 'appearance' | 'colors'> & {
-  light: ThemeColors;
-  dark: ThemeColors;
-};
-
-type SettingsLike = Partial<Settings> & {
-  theme?: LegacyThemeMode;
-  customThemes?: Array<AppTheme | LegacyTheme>;
-  configVersion?: number;
-};
-
 const DEFAULT_SETTINGS: Settings = {
   activeThemeId: 'default-light',
   customThemes: [],
@@ -73,127 +59,20 @@ const DEFAULT_SETTINGS: Settings = {
   configVersion: 5,
 };
 
-const LEGACY_STORAGE_KEY = 'marklight-settings';
-const FOCUS_MODE_KEY = 'marklight-focus-mode';
 const CURRENT_CONFIG_VERSION = 5;
 
-function isModernTheme(theme: AppTheme | LegacyTheme): theme is AppTheme {
-  return 'appearance' in theme && 'colors' in theme;
-}
-
-function isLegacyTheme(theme: AppTheme | LegacyTheme): theme is LegacyTheme {
-  return 'light' in theme && 'dark' in theme;
-}
-
-function normalizeLegacyName(name: string, appearance: ThemeAppearance) {
-  return `${name} ${appearance === 'dark' ? 'Dark' : 'Light'}`;
-}
-
-function splitLegacyTheme(theme: LegacyTheme): AppTheme[] {
-  return [
-    {
-      id: `${theme.id}-light`,
-      name: normalizeLegacyName(theme.name, 'light'),
-      type: 'custom',
-      appearance: 'light',
-      author: theme.author,
-      description: theme.description,
-      version: theme.version,
-      colors: theme.light,
-    },
-    {
-      id: `${theme.id}-dark`,
-      name: normalizeLegacyName(theme.name, 'dark'),
-      type: 'custom',
-      appearance: 'dark',
-      author: theme.author,
-      description: theme.description,
-      version: theme.version,
-      colors: theme.dark,
-    },
-  ];
-}
-
-function getPreferredAppearance(themeMode?: LegacyThemeMode): ThemeAppearance {
-  if (themeMode === 'dark') {
-    return 'dark';
-  }
-
-  if (themeMode === 'system' && typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  }
-
-  return 'light';
-}
-
-function resolveMigratedThemeId(themeId: string | undefined, appearance: ThemeAppearance): ThemeId {
-  const baseId = themeId?.trim() || 'default';
-
-  if (baseId.endsWith('-light') || baseId.endsWith('-dark')) {
-    return baseId;
-  }
-
-  return `${baseId}-${appearance}`;
-}
-
-export function migrateConfig(config: SettingsLike): Partial<Settings> {
-  const next: Partial<Settings> = { ...config };
-  const preferredAppearance = getPreferredAppearance(config.theme);
-  const shouldMigrateThemeSelection =
-    (config.configVersion ?? 0) < CURRENT_CONFIG_VERSION || typeof config.theme === 'string';
-
-  const migratedThemes: AppTheme[] = (config.customThemes ?? []).flatMap((theme) => {
-    if (isModernTheme(theme)) {
-      return [
-        {
-          ...theme,
-          type: 'custom' as const,
-        },
-      ];
-    }
-
-    if (isLegacyTheme(theme)) {
-      return splitLegacyTheme(theme);
-    }
-
-    return [];
-  });
-
-  next.activeThemeId = shouldMigrateThemeSelection
-    ? resolveMigratedThemeId(config.activeThemeId, preferredAppearance)
-    : (config.activeThemeId ?? DEFAULT_SETTINGS.activeThemeId);
-  next.customThemes = migratedThemes;
-
-  if ((next.configVersion ?? 0) < 4) {
-    next.customShortcuts = {};
-  }
-
-  next.configVersion = CURRENT_CONFIG_VERSION;
-  delete (next as SettingsLike).theme;
-
-  return next;
-}
-
-function migrateFromLocalStorage(): Partial<Settings> | null {
-  try {
-    const saved = localStorage.getItem(LEGACY_STORAGE_KEY);
-    if (saved) {
-      const parsed = JSON.parse(saved) as SettingsLike;
-      console.log('[Settings] 发现 localStorage 配置，正在迁移...');
-      localStorage.removeItem(LEGACY_STORAGE_KEY);
-      return migrateConfig(parsed);
-    }
-  } catch (error) {
-    console.error('[Settings] 迁移 localStorage 配置失败:', error);
-  }
-
-  return null;
+export function normalizeSettings(storedSettings?: Partial<Settings> | null): Settings {
+  return {
+    ...DEFAULT_SETTINGS,
+    ...storedSettings,
+    configVersion: CURRENT_CONFIG_VERSION,
+  };
 }
 
 export const useSettingsStore = defineStore('settings', () => {
   const settings = ref<Settings>({ ...DEFAULT_SETTINGS });
   const isModalOpen = ref(false);
-  const isFocusMode = ref(localStorage.getItem(FOCUS_MODE_KEY) === 'true');
+  const isFocusMode = ref(false);
   const isLoaded = ref(false);
 
   const presetThemes = ref(getAllPresetThemes());
@@ -202,7 +81,7 @@ export const useSettingsStore = defineStore('settings', () => {
 
   let saveTimeout: ReturnType<typeof setTimeout> | null = null;
 
-  async function saveSettingsToFile(newSettings: Settings) {
+  async function saveSettingsToStore(newSettings: Settings) {
     if (!isLoaded.value) {
       return;
     }
@@ -213,11 +92,9 @@ export const useSettingsStore = defineStore('settings', () => {
 
     saveTimeout = setTimeout(async () => {
       try {
-        await invoke('write_config', {
-          config: {
-            ...newSettings,
-            configVersion: CURRENT_CONFIG_VERSION,
-          },
+        await writeStoredSettings({
+          ...newSettings,
+          configVersion: CURRENT_CONFIG_VERSION,
         });
       } catch (error) {
         console.error('[Settings] 保存配置失败:', error);
@@ -225,40 +102,48 @@ export const useSettingsStore = defineStore('settings', () => {
     }, 300);
   }
 
-  async function loadSettingsFromFile(): Promise<void> {
-    try {
-      const config = await invoke<Record<string, unknown>>('read_config');
+  async function loadSettingsFromStore(): Promise<void> {
+    let shouldPersistNormalizedState = false;
 
-      if (Object.keys(config).length > 0) {
-        Object.assign(settings.value, {
-          ...DEFAULT_SETTINGS,
-          ...migrateConfig(config as SettingsLike),
-        });
-        console.log('[Settings] 已从配置文件加载');
-      } else {
-        const legacySettings = migrateFromLocalStorage();
-        if (legacySettings) {
-          Object.assign(settings.value, {
-            ...DEFAULT_SETTINGS,
-            ...legacySettings,
-          });
-          console.log('[Settings] localStorage 配置已迁移到文件');
+    try {
+      const [storedSettings, storedFocusMode] = await Promise.all([
+        readStoredSettings<Partial<Settings>>(),
+        readStoredFocusMode(),
+      ]);
+
+      if (storedSettings) {
+        settings.value = normalizeSettings(storedSettings);
+        shouldPersistNormalizedState =
+          (storedSettings.configVersion ?? 0) !== CURRENT_CONFIG_VERSION;
+        if (storedFocusMode !== undefined) {
+          isFocusMode.value = storedFocusMode;
         } else {
-          console.log('[Settings] 首次启动，使用默认配置');
+          isFocusMode.value = false;
+          shouldPersistNormalizedState = true;
         }
-        await invoke('write_config', { config: settings.value });
+        console.log('[Settings] 已从 Store 加载');
+      } else {
+        settings.value = normalizeSettings();
+        isFocusMode.value = false;
+        console.log('[Settings] 首次启动，使用默认配置');
+        shouldPersistNormalizedState = true;
+      }
+
+      if (shouldPersistNormalizedState) {
+        await Promise.all([
+          writeStoredSettings(settings.value),
+          writeStoredFocusMode(isFocusMode.value),
+        ]);
       }
     } catch (error) {
       console.error('[Settings] 加载配置失败:', error);
-      const legacySettings = migrateFromLocalStorage();
-      if (legacySettings) {
-        Object.assign(settings.value, {
-          ...DEFAULT_SETTINGS,
-          ...legacySettings,
-        });
-      }
+      settings.value = normalizeSettings();
+      isFocusMode.value = false;
       try {
-        await invoke('write_config', { config: settings.value });
+        await Promise.all([
+          writeStoredSettings(settings.value),
+          writeStoredFocusMode(isFocusMode.value),
+        ]);
       } catch (saveError) {
         console.error('[Settings] 保存配置失败:', saveError);
       }
@@ -279,7 +164,9 @@ export const useSettingsStore = defineStore('settings', () => {
 
     const fallbackAppearance = currentTheme.value?.appearance ?? 'light';
     const fallbackId = fallbackAppearance === 'dark' ? 'default-dark' : 'default-light';
-    return getTheme(fallbackId, settings.value.customThemes) ? fallbackId : DEFAULT_SETTINGS.activeThemeId;
+    return getTheme(fallbackId, settings.value.customThemes)
+      ? fallbackId
+      : DEFAULT_SETTINGS.activeThemeId;
   }
 
   function applyCurrentTheme(themeId: ThemeId) {
@@ -347,7 +234,7 @@ export const useSettingsStore = defineStore('settings', () => {
   watch(
     settings,
     (newSettings) => {
-      saveSettingsToFile(newSettings);
+      saveSettingsToStore(newSettings);
       updateAllThemes();
       applyCurrentTheme(newSettings.activeThemeId);
     },
@@ -355,7 +242,11 @@ export const useSettingsStore = defineStore('settings', () => {
   );
 
   watch(isFocusMode, (value) => {
-    localStorage.setItem(FOCUS_MODE_KEY, String(value));
+    if (isLoaded.value) {
+      void writeStoredFocusMode(value).catch((error) => {
+        console.error('[Settings] 保存 focus mode 配置失败:', error);
+      });
+    }
     applyFocusMode(value);
   });
 
@@ -397,7 +288,7 @@ export const useSettingsStore = defineStore('settings', () => {
   }
 
   async function init() {
-    await loadSettingsFromFile();
+    await loadSettingsFromStore();
     initTheme();
     initFocusMode();
   }

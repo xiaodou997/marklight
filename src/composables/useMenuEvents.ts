@@ -1,12 +1,11 @@
 import { onMounted, onUnmounted } from 'vue';
-import { listen } from '@tauri-apps/api/event';
+import { listenMenuEvent } from '../services/tauri/events';
 
 export function useMenuEvents(onCommand: (commandId: string) => void | Promise<void>) {
   let unlistenMenu: (() => void) | null = null;
 
   onMounted(async () => {
-    unlistenMenu = await listen('menu-event', (event) => {
-      const commandId = event.payload as string;
+    unlistenMenu = await listenMenuEvent((commandId) => {
       void onCommand(commandId);
     });
   });

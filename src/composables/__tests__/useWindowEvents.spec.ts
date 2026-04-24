@@ -1,52 +1,74 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const listenMock = vi.fn();
-const invokeMock = vi.fn();
+const listenOpenFileArgsMock = vi.fn();
+const listenOpenFileInNewWindowMock = vi.fn();
+const listenStartupFileMock = vi.fn();
+const listenTauriOpenMock = vi.fn();
+const listenWindowCloseRequestedMock = vi.fn();
+const consumePendingWindowOpenFileMock = vi.fn();
+const consumeStartupOpenFileMock = vi.fn();
+const destroyCurrentWindowMock = vi.fn();
+const notifyFrontendReadyMock = vi.fn();
+const saveAllWindowStateMock = vi.fn();
 const confirmMock = vi.fn();
-const destroyMock = vi.fn();
 
-type EventHandler = (event: { payload: unknown }) => void | Promise<void>;
+const listeners = new Map<string, (payload: unknown) => void | Promise<void>>();
 
-const listeners = new Map<string, EventHandler>();
+function createListenerMock(eventName: string) {
+  return vi.fn(async (handler: (payload: unknown) => void | Promise<void>) => {
+    listeners.set(eventName, handler);
+    return () => {
+      listeners.delete(eventName);
+    };
+  });
+}
 
-vi.mock('@tauri-apps/api/event', () => ({
-  listen: listenMock,
+vi.mock('../../services/tauri/events', () => ({
+  listenOpenFileArgs: listenOpenFileArgsMock,
+  listenOpenFileInNewWindow: listenOpenFileInNewWindowMock,
+  listenStartupFile: listenStartupFileMock,
+  listenTauriOpen: listenTauriOpenMock,
+  listenWindowCloseRequested: listenWindowCloseRequestedMock,
 }));
 
-vi.mock('@tauri-apps/api/core', () => ({
-  invoke: invokeMock,
+vi.mock('../../services/tauri/window', () => ({
+  consumePendingWindowOpenFile: consumePendingWindowOpenFileMock,
+  consumeStartupOpenFile: consumeStartupOpenFileMock,
+  destroyCurrentWindow: destroyCurrentWindowMock,
+  notifyFrontendReady: notifyFrontendReadyMock,
+}));
+
+vi.mock('../../services/tauri/window-state', () => ({
+  saveAllWindowState: saveAllWindowStateMock,
 }));
 
 vi.mock('@tauri-apps/plugin-dialog', () => ({
   confirm: confirmMock,
 }));
 
-vi.mock('@tauri-apps/api/window', () => ({
-  getCurrentWindow: () => ({
-    destroy: destroyMock,
-  }),
-}));
-
 describe('useWindowEvents', () => {
   beforeEach(() => {
     listeners.clear();
-    listenMock.mockReset();
-    listenMock.mockImplementation(async (eventName: string, handler: EventHandler) => {
-      listeners.set(eventName, handler);
-      return () => {
-        listeners.delete(eventName);
-      };
-    });
-    invokeMock.mockReset();
+    listenOpenFileArgsMock.mockImplementation(createListenerMock('open-file-args'));
+    listenOpenFileInNewWindowMock.mockImplementation(createListenerMock('open-file-in-new-window'));
+    listenStartupFileMock.mockImplementation(createListenerMock('open-startup-file'));
+    listenTauriOpenMock.mockImplementation(createListenerMock('tauri://open'));
+    listenWindowCloseRequestedMock.mockImplementation(createListenerMock('window-close-requested'));
+    consumePendingWindowOpenFileMock.mockReset();
+    consumeStartupOpenFileMock.mockReset();
+    destroyCurrentWindowMock.mockReset();
+    notifyFrontendReadyMock.mockReset();
+    saveAllWindowStateMock.mockReset();
+    saveAllWindowStateMock.mockResolvedValue(undefined);
     confirmMock.mockReset();
-    destroyMock.mockReset();
   });
 
   it('consumes pending window file after frontend is ready', async () => {
     const handleOpenFile = vi.fn();
     const handleSave = vi.fn();
 
-    invokeMock.mockResolvedValueOnce(undefined).mockResolvedValueOnce('/tmp/from-new-window.md');
+    notifyFrontendReadyMock.mockResolvedValueOnce(undefined);
+    consumePendingWindowOpenFileMock.mockResolvedValueOnce('/tmp/from-new-window.md');
 
     const { useWindowEvents } = await import('../useWindowEvents');
     const events = useWindowEvents({
@@ -57,8 +79,8 @@ describe('useWindowEvents', () => {
 
     await events.setup();
 
-    expect(invokeMock).toHaveBeenNthCalledWith(1, 'notify_frontend_ready');
-    expect(invokeMock).toHaveBeenNthCalledWith(2, 'consume_pending_window_open_file');
+    expect(notifyFrontendReadyMock).toHaveBeenCalled();
+    expect(consumePendingWindowOpenFileMock).toHaveBeenCalled();
     expect(handleOpenFile).toHaveBeenCalledWith('/tmp/from-new-window.md');
   });
 
@@ -66,10 +88,9 @@ describe('useWindowEvents', () => {
     const handleOpenFile = vi.fn();
     const handleSave = vi.fn();
 
-    invokeMock
-      .mockRejectedValueOnce(new Error('notify unavailable'))
-      .mockResolvedValueOnce('/tmp/startup.md')
-      .mockResolvedValueOnce('/tmp/pending.md');
+    notifyFrontendReadyMock.mockRejectedValueOnce(new Error('notify unavailable'));
+    consumeStartupOpenFileMock.mockResolvedValueOnce('/tmp/startup.md');
+    consumePendingWindowOpenFileMock.mockResolvedValueOnce('/tmp/pending.md');
 
     const { useWindowEvents } = await import('../useWindowEvents');
     const events = useWindowEvents({
@@ -80,8 +101,8 @@ describe('useWindowEvents', () => {
 
     await events.setup();
 
-    expect(invokeMock).toHaveBeenNthCalledWith(2, 'consume_startup_open_file');
-    expect(invokeMock).toHaveBeenNthCalledWith(3, 'consume_pending_window_open_file');
+    expect(consumeStartupOpenFileMock).toHaveBeenCalled();
+    expect(consumePendingWindowOpenFileMock).toHaveBeenCalled();
     expect(handleOpenFile).toHaveBeenCalledWith('/tmp/startup.md');
     expect(handleOpenFile).toHaveBeenCalledWith('/tmp/pending.md');
   });
@@ -90,7 +111,8 @@ describe('useWindowEvents', () => {
     const handleOpenFile = vi.fn();
     const handleSave = vi.fn();
 
-    invokeMock.mockResolvedValue(undefined);
+    notifyFrontendReadyMock.mockResolvedValue(undefined);
+    consumePendingWindowOpenFileMock.mockResolvedValue(null);
 
     const { useWindowEvents } = await import('../useWindowEvents');
     const events = useWindowEvents({
@@ -101,9 +123,9 @@ describe('useWindowEvents', () => {
 
     await events.setup();
 
-    await listeners.get('open-startup-file')?.({ payload: '/tmp/pushed.md' });
-    await listeners.get('tauri://open')?.({ payload: ['/tmp/a.md', '/tmp/b.md'] });
-    await listeners.get('open-file-in-new-window')?.({ payload: '/tmp/direct.md' });
+    await listeners.get('open-startup-file')?.('/tmp/pushed.md');
+    await listeners.get('tauri://open')?.(['/tmp/a.md', '/tmp/b.md']);
+    await listeners.get('open-file-in-new-window')?.('/tmp/direct.md');
 
     expect(handleOpenFile).toHaveBeenCalledWith('/tmp/pushed.md');
     expect(handleOpenFile).toHaveBeenCalledWith('/tmp/a.md');
@@ -114,7 +136,8 @@ describe('useWindowEvents', () => {
     const handleOpenFile = vi.fn();
     const handleSave = vi.fn().mockResolvedValue(true);
 
-    invokeMock.mockResolvedValue(undefined);
+    notifyFrontendReadyMock.mockResolvedValue(undefined);
+    consumePendingWindowOpenFileMock.mockResolvedValue(null);
     confirmMock.mockResolvedValueOnce(true);
 
     const { useWindowEvents } = await import('../useWindowEvents');
@@ -125,9 +148,10 @@ describe('useWindowEvents', () => {
     });
 
     await events.setup();
-    await listeners.get('window-close-requested')?.({ payload: null });
+    await listeners.get('window-close-requested')?.(null);
 
     expect(handleSave).toHaveBeenCalled();
-    expect(destroyMock).toHaveBeenCalled();
+    expect(saveAllWindowStateMock).toHaveBeenCalled();
+    expect(destroyCurrentWindowMock).toHaveBeenCalled();
   });
 });

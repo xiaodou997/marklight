@@ -2,17 +2,17 @@ import { computed, nextTick, ref } from 'vue';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { useMenuShortcutsSync } from '../useMenuShortcutsSync';
 
-const { invokeMock } = vi.hoisted(() => ({
-  invokeMock: vi.fn(),
+const { refreshNativeMenuShortcutsMock } = vi.hoisted(() => ({
+  refreshNativeMenuShortcutsMock: vi.fn(),
 }));
 
-vi.mock('@tauri-apps/api/core', () => ({
-  invoke: invokeMock,
+vi.mock('../../services/tauri/window', () => ({
+  refreshNativeMenuShortcuts: refreshNativeMenuShortcutsMock,
 }));
 
 describe('useMenuShortcutsSync', () => {
   beforeEach(() => {
-    invokeMock.mockReset();
+    refreshNativeMenuShortcutsMock.mockReset();
   });
 
   it('syncs effective shortcuts to the native menu', async () => {
@@ -29,12 +29,12 @@ describe('useMenuShortcutsSync', () => {
     };
     await nextTick();
 
-    expect(invokeMock).toHaveBeenCalledWith('refresh_menu_shortcuts', {
-      shortcuts: expect.objectContaining({
+    expect(refreshNativeMenuShortcutsMock).toHaveBeenCalledWith(
+      expect.objectContaining({
         'file.save': 'CmdOrCtrl+Alt+S',
         'view.showFiles': 'CmdOrCtrl+Shift+2',
       }),
-    });
+    );
 
     stopWatching();
   });
@@ -50,10 +50,10 @@ describe('useMenuShortcutsSync', () => {
     customShortcuts.value = { 'file.save': 'Mod-Alt-s' };
     await nextTick();
 
-    expect(invokeMock).not.toHaveBeenCalled();
+    expect(refreshNativeMenuShortcutsMock).not.toHaveBeenCalled();
 
     await syncMenuShortcuts();
-    expect(invokeMock).toHaveBeenCalledTimes(1);
+    expect(refreshNativeMenuShortcutsMock).toHaveBeenCalledTimes(1);
 
     stopWatching();
   });
