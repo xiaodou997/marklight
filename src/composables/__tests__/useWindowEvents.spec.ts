@@ -24,13 +24,20 @@ function createListenerMock(eventName: string) {
   });
 }
 
-vi.mock('../../services/tauri/events', () => ({
-  listenOpenFileArgs: listenOpenFileArgsMock,
-  listenOpenFileInNewWindow: listenOpenFileInNewWindowMock,
-  listenStartupFile: listenStartupFileMock,
-  listenTauriOpen: listenTauriOpenMock,
-  listenWindowCloseRequested: listenWindowCloseRequestedMock,
-}));
+vi.mock('../../services/tauri/events', async () => {
+  const actual = await vi.importActual<typeof import('../../services/tauri/events')>(
+    '../../services/tauri/events',
+  );
+
+  return {
+    ...actual,
+    listenOpenFileArgs: listenOpenFileArgsMock,
+    listenOpenFileInNewWindow: listenOpenFileInNewWindowMock,
+    listenStartupFile: listenStartupFileMock,
+    listenTauriOpen: listenTauriOpenMock,
+    listenWindowCloseRequested: listenWindowCloseRequestedMock,
+  };
+});
 
 vi.mock('../../services/tauri/window', () => ({
   consumePendingWindowOpenFile: consumePendingWindowOpenFileMock,

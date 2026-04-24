@@ -3,6 +3,7 @@ import { APP_EVENT_NAMES } from './event-names';
 
 export type AppEventHandler<T> = (payload: T) => void | Promise<void>;
 export type FileChangeKind = 'create' | 'modify' | 'remove' | 'other';
+export type OpenFilePayload = string[];
 
 export interface FileChangePayload {
   kind: FileChangeKind;
@@ -11,6 +12,25 @@ export interface FileChangePayload {
 
 async function listenAppEvent<T>(eventName: string, handler: AppEventHandler<T>) {
   return listen(eventName, (event) => handler(event.payload as T));
+}
+
+function normalizeOpenFilePayload(payload: unknown): OpenFilePayload {
+  if (typeof payload === 'string') {
+    return [payload];
+  }
+
+  if (Array.isArray(payload)) {
+    return payload.filter((item): item is string => typeof item === 'string');
+  }
+
+  if (payload && typeof payload === 'object' && 'paths' in payload) {
+    const paths = (payload as { paths?: unknown }).paths;
+    if (Array.isArray(paths)) {
+      return paths.filter((item): item is string => typeof item === 'string');
+    }
+  }
+
+  return [];
 }
 
 export async function listenMenuEvent(handler: AppEventHandler<string>) {
@@ -29,8 +49,10 @@ export async function listenOpenFileArgs(handler: AppEventHandler<string>) {
   return listenAppEvent(APP_EVENT_NAMES.openFileArgs, handler);
 }
 
-export async function listenTauriOpen(handler: AppEventHandler<unknown>) {
-  return listenAppEvent(APP_EVENT_NAMES.tauriOpen, handler);
+export async function listenTauriOpen(handler: AppEventHandler<OpenFilePayload>) {
+  return listen(APP_EVENT_NAMES.tauriOpen, (event) =>
+    handler(normalizeOpenFilePayload(event.payload)),
+  );
 }
 
 export async function listenStartupFile(handler: AppEventHandler<string>) {

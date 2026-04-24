@@ -76,22 +76,10 @@ export function useWindowEvents(options: WindowEventsOptions) {
     });
 
     // macOS 热启动：App 已运行时通过"打开方式"打开文件（RunEvent::Opened 直接广播）
-    unlistenTauriOpen = await listenTauriOpen((payload) => {
-      if (typeof payload === 'string') {
-        options.handleOpenFile(payload);
-        return;
-      }
-      if (Array.isArray(payload)) {
-        const filePath = payload.find((item): item is string => typeof item === 'string');
-        if (filePath) options.handleOpenFile(filePath);
-        return;
-      }
-      if (payload && typeof payload === 'object' && 'paths' in payload) {
-        const paths = (payload as { paths?: unknown }).paths;
-        if (Array.isArray(paths)) {
-          const filePath = paths.find((item): item is string => typeof item === 'string');
-          if (filePath) options.handleOpenFile(filePath);
-        }
+    unlistenTauriOpen = await listenTauriOpen((paths) => {
+      const filePath = paths[0];
+      if (filePath) {
+        options.handleOpenFile(filePath);
       }
     });
 
