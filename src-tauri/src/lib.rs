@@ -1,11 +1,13 @@
 mod commands;
+mod events;
 mod menu;
 
 use commands::*;
+use events::{emit_file_changed, emit_startup_file, emit_tauri_open, FileChangePayload};
 use notify::{Config, EventKind, RecommendedWatcher, Watcher};
 use std::collections::HashMap;
 use std::sync::Mutex;
-use tauri::{Emitter, Manager};
+use tauri::Manager;
 use tauri_plugin_window_state::StateFlags;
 
 #[derive(Default)]
@@ -31,7 +33,7 @@ fn notify_frontend_ready(app: tauri::AppHandle, state: tauri::State<'_, StartupO
                 "[marklight] Pushing startup file via notify_frontend_ready: {}",
                 path
             );
-            let _ = app.emit("open-startup-file", path);
+            emit_startup_file(&app, path);
         }
     }
 }
@@ -48,7 +50,6 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_cli::init())
         .plugin(tauri_plugin_store::Builder::default().build())
@@ -142,14 +143,8 @@ pub fn run() {
                                 .map(|p| p.to_string_lossy().to_string())
                                 .collect();
 
-                            #[derive(Clone, serde::Serialize)]
-                            struct FileChangePayload {
-                                kind: String,
-                                paths: Vec<String>,
-                            }
-
-                            let _ = handle.emit(
-                                "file-changed",
+                            emit_file_changed(
+                                &handle,
                                 FileChangePayload {
                                     kind: kind.to_string(),
                                     paths,
@@ -185,6 +180,7 @@ pub fn run() {
             save_file,
             list_directory,
             save_image,
+            import_image,
             resolve_image_path,
             fetch_remote_image,
             open_new_window,
@@ -234,7 +230,7 @@ pub fn run() {
                     }
                     // 热启动时前端已就绪，直接广播
                     eprintln!("[marklight] Broadcasting tauri://open");
-                    let _ = app_handle.emit("tauri://open", paths);
+                    emit_tauri_open(app_handle, paths);
                 }
             }
         });

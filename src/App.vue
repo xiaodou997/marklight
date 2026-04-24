@@ -30,8 +30,8 @@ import {
   setCurrentWindowFullscreen,
   setCurrentWindowTitle,
 } from './services/tauri/window';
+import type { FileChangePayload } from './services/tauri/events';
 import { saveAllWindowState } from './services/tauri/window-state';
-import type { FileChangePayload } from './services/tauri/file-system';
 import pkg from '../package.json';
 
 const MarkdownEditor = defineAsyncComponent(() => import('./components/Editor/MarkdownEditor.vue'));

@@ -1,8 +1,8 @@
 import type { Ref } from 'vue';
 import type { Node as PMNode } from '@tiptap/pm/model';
 import { save, message } from '@tauri-apps/plugin-dialog';
-import { writeTextFile } from '@tauri-apps/plugin-fs';
 import { writeHtml } from '@tauri-apps/plugin-clipboard-manager';
+import { saveTextDocument } from '../services/tauri/file-system';
 import { printCurrentDocument } from '../services/tauri/window';
 import {
   renderEditorDocToHtmlDocument,
@@ -71,7 +71,7 @@ export function useExportActions(options: {
     });
     if (!selected) return;
     try {
-      await writeTextFile(selected, html);
+      await saveTextDocument(selected, html);
     } catch (error) {
       await message(`HTML 导出失败: ${error}`, { title: '错误', kind: 'error' });
     }

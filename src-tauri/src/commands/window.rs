@@ -1,9 +1,10 @@
+use crate::events::emit_window_close_requested;
 #[cfg(target_os = "macos")]
 use objc2_app_kit::{NSColor, NSWindow};
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
-use tauri::{Emitter, State, TitleBarStyle, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
+use tauri::{State, TitleBarStyle, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 
 static WINDOW_COUNTER: AtomicU64 = AtomicU64::new(1);
 
@@ -33,7 +34,7 @@ pub fn attach_close_interceptor(window: &WebviewWindow) {
     window.on_window_event(move |event| {
         if let tauri::WindowEvent::CloseRequested { api, .. } = event {
             api.prevent_close();
-            let _ = window_clone.emit("window-close-requested", ());
+            emit_window_close_requested(&window_clone);
         }
     });
 }

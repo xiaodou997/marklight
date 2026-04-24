@@ -20,6 +20,30 @@ pub fn save_image(dir: String, filename: String, data: Vec<u8>) -> Result<String
     Ok(format!("assets/{}", filename))
 }
 
+/// 从现有文件导入图片到文档目录的 assets 子目录中
+#[tauri::command]
+pub fn import_image(source_path: String, doc_path: String) -> Result<String, String> {
+    let source = Path::new(&source_path);
+    let filename = source
+        .file_name()
+        .and_then(|name| name.to_str())
+        .ok_or_else(|| "无法解析图片文件名".to_string())?;
+
+    let doc_dir = Path::new(&doc_path)
+        .parent()
+        .ok_or_else(|| "无法获取文档目录".to_string())?;
+    let assets_dir = doc_dir.join("assets");
+
+    if !assets_dir.exists() {
+        fs::create_dir_all(&assets_dir).map_err(|e| format!("创建 assets 目录失败: {}", e))?;
+    }
+
+    let target_path = assets_dir.join(filename);
+    fs::copy(source, &target_path).map_err(|e| format!("导入图片失败: {}", e))?;
+
+    Ok(format!("assets/{}", filename))
+}
+
 /// 获取文件的绝对路径
 #[tauri::command]
 pub fn resolve_image_path(file_dir: String, relative_path: String) -> Result<String, String> {

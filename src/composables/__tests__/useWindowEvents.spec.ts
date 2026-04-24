@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { APP_EVENT_NAMES } from '../../services/tauri/event-names';
 
 const listenOpenFileArgsMock = vi.fn();
 const listenOpenFileInNewWindowMock = vi.fn();
@@ -49,11 +50,15 @@ vi.mock('@tauri-apps/plugin-dialog', () => ({
 describe('useWindowEvents', () => {
   beforeEach(() => {
     listeners.clear();
-    listenOpenFileArgsMock.mockImplementation(createListenerMock('open-file-args'));
-    listenOpenFileInNewWindowMock.mockImplementation(createListenerMock('open-file-in-new-window'));
-    listenStartupFileMock.mockImplementation(createListenerMock('open-startup-file'));
-    listenTauriOpenMock.mockImplementation(createListenerMock('tauri://open'));
-    listenWindowCloseRequestedMock.mockImplementation(createListenerMock('window-close-requested'));
+    listenOpenFileArgsMock.mockImplementation(createListenerMock(APP_EVENT_NAMES.openFileArgs));
+    listenOpenFileInNewWindowMock.mockImplementation(
+      createListenerMock(APP_EVENT_NAMES.openFileInNewWindow),
+    );
+    listenStartupFileMock.mockImplementation(createListenerMock(APP_EVENT_NAMES.startupFile));
+    listenTauriOpenMock.mockImplementation(createListenerMock(APP_EVENT_NAMES.tauriOpen));
+    listenWindowCloseRequestedMock.mockImplementation(
+      createListenerMock(APP_EVENT_NAMES.windowCloseRequested),
+    );
     consumePendingWindowOpenFileMock.mockReset();
     consumeStartupOpenFileMock.mockReset();
     destroyCurrentWindowMock.mockReset();
@@ -123,9 +128,9 @@ describe('useWindowEvents', () => {
 
     await events.setup();
 
-    await listeners.get('open-startup-file')?.('/tmp/pushed.md');
-    await listeners.get('tauri://open')?.(['/tmp/a.md', '/tmp/b.md']);
-    await listeners.get('open-file-in-new-window')?.('/tmp/direct.md');
+    await listeners.get(APP_EVENT_NAMES.startupFile)?.('/tmp/pushed.md');
+    await listeners.get(APP_EVENT_NAMES.tauriOpen)?.(['/tmp/a.md', '/tmp/b.md']);
+    await listeners.get(APP_EVENT_NAMES.openFileInNewWindow)?.('/tmp/direct.md');
 
     expect(handleOpenFile).toHaveBeenCalledWith('/tmp/pushed.md');
     expect(handleOpenFile).toHaveBeenCalledWith('/tmp/a.md');
@@ -148,7 +153,7 @@ describe('useWindowEvents', () => {
     });
 
     await events.setup();
-    await listeners.get('window-close-requested')?.(null);
+    await listeners.get(APP_EVENT_NAMES.windowCloseRequested)?.(null);
 
     expect(handleSave).toHaveBeenCalled();
     expect(saveAllWindowStateMock).toHaveBeenCalled();

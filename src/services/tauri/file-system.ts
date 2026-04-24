@@ -9,16 +9,6 @@ export interface NativeFileInfo {
   is_image: boolean;
 }
 
-export interface FileChangePayload {
-  kind: string;
-  paths: string[];
-}
-
-function getParentDir(path: string) {
-  const lastSlash = Math.max(path.lastIndexOf('/'), path.lastIndexOf('\\'));
-  return lastSlash >= 0 ? path.slice(0, lastSlash) : path;
-}
-
 export async function readDocumentFile(path: string) {
   return invoke<string>('read_file', { path });
 }
@@ -63,16 +53,14 @@ export async function revealPathInFinder(path: string) {
   await invoke('reveal_in_finder', { path });
 }
 
-export async function saveImageAsset(options: {
-  docPath: string;
-  fileName: string;
-  data: Uint8Array | number[];
-}) {
-  const bytes = Array.from(options.data);
-  return invoke<string>('save_image', {
-    dir: getParentDir(options.docPath),
-    filename: options.fileName,
-    data: bytes,
+export async function saveTextDocument(path: string, content: string) {
+  await invoke('save_file', { path, content });
+}
+
+export async function importImageAsset(sourcePath: string, docPath: string) {
+  return invoke<string>('import_image', {
+    sourcePath,
+    docPath,
   });
 }
 

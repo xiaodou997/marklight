@@ -9,10 +9,9 @@ import {
   revealPathInFinder,
   unwatchDirectoryPath,
   watchDirectoryPath,
-  type FileChangePayload,
   type NativeFileInfo,
 } from '../services/tauri/file-system';
-import { listenFileChanged } from '../services/tauri/events';
+import { listenFileChanged, type FileChangePayload } from '../services/tauri/events';
 import { useFileStore } from '../stores/file';
 
 export interface TreeNode {
@@ -239,7 +238,7 @@ export function useFileTree() {
   }
 
   async function setupFileChangeListener(onRelevantChange?: (payload: FileChangePayload) => void) {
-    unlistenFileChanged = await listenFileChanged<FileChangePayload>((payload) => {
+    unlistenFileChanged = await listenFileChanged((payload) => {
       if (!rootFolder.value) return;
       if (!payload?.paths?.length) return;
       const relevant = payload.paths.some((path) => isPathInTreeRoot(path, rootFolder.value!));

@@ -1,6 +1,6 @@
+use crate::events::emit_menu_event;
 use std::collections::HashMap;
 use tauri::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem, Submenu};
-use tauri::Emitter;
 
 fn accelerator(
     shortcuts: &HashMap<String, String>,
@@ -257,7 +257,7 @@ pub fn attach_menu_events(app: &tauri::AppHandle) {
         match menu_id {
             ref id if id == "app.hide" || id == "app.hideOthers" || id == "app.showAll" => {}
             _ => {
-                let _ = app.emit("menu-event", menu_id);
+                emit_menu_event(app, menu_id);
             }
         }
     });

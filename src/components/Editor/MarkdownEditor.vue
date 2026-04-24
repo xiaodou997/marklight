@@ -37,10 +37,9 @@ import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
 import Placeholder from '@tiptap/extension-placeholder';
 import { getCurrentWebview } from '@tauri-apps/api/webview';
-import { readFile } from '@tauri-apps/plugin-fs';
 
 import { useFileStore } from '../../stores/file';
-import { saveImageAsset } from '../../services/tauri/file-system';
+import { importImageAsset } from '../../services/tauri/file-system';
 import { useSettingsStore } from '../../stores/settings';
 import { parseMarkdown } from './tiptap/markdown/parser';
 import { serializeMarkdown } from './tiptap/markdown/serializer';
@@ -589,14 +588,7 @@ async function setupDragDrop() {
         if (!['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'bmp'].includes(ext)) continue;
 
         try {
-          const data = await readFile(imagePath);
-          const fileName = imagePath.split(/[/\\]/).pop();
-          if (!fileName) continue;
-          const savedPath = await saveImageAsset({
-            docPath: filePath,
-            fileName,
-            data,
-          });
+          const savedPath = await importImageAsset(imagePath, filePath);
 
           editor.value?.chain().focus().setImage({ src: savedPath, alt: '' }).run();
         } catch (err) {
