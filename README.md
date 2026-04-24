@@ -5,7 +5,7 @@
 <h1 align="center">墨光 (MarkLight)</h1>
 
 <p align="center">
-  <strong>一款基于 Tauri 2.0 与 TipTap (ProseMirror) 的高性能、本地优先 Markdown 编辑器</strong>
+  <strong>一款基于 Tauri 2、Rust 领域内核与 TipTap 的本地优先 Markdown 编辑器</strong>
 </p>
 
 <p align="center">
@@ -20,74 +20,72 @@
   </a>
 </p>
 
----
+## 核心特性
 
-## ✨ 核心特性
+- 所见即所得编辑：基于 TipTap / ProseMirror，代码块、表格、数学公式、Mermaid、Callout 等都在渲染态编辑。
+- 本地优先：文档、图片和工作区全部在本地管理，图片自动落到文档目录下的 `assets/`。
+- 多窗口桌面体验：支持新窗口打开文档、窗口状态持久化、原生菜单和系统打印。
+- 结构化工作区：Rust 负责目录过滤、watcher 聚合、外部变更事件和保存冲突检测。
+- 微信与 HTML 导出：前端渲染导出内容，原生侧负责打印与文件写入。
 
-- **🚀 所见即所得**：基于 TipTap (ProseMirror) 实时渲染，代码块、表格等可直接在渲染态编辑。
-- **📦 本地优先**：图片自动本地化存储至 `assets/` 目录，支持拖拽与剪贴板粘贴。
-- **🎯 专注模式**：沉浸式焦点写作模式，隐藏所有干扰，只留思考空间。
-- **⌨️ 效率专家**：全功能命令面板 (`Cmd+K`)，支持快速跳转文件与执行编辑指令。
-- **📊 专业渲染**：内置 KaTeX 数学公式（实时预览气泡）与 Mermaid 工业级图表支持。
-- **📱 微信排版**：内置多套精美微信排版主题，一键导出带行内样式的 HTML。
-- **🖥️ 跨平台一致性**：为 Windows/macOS 提供深度优化的原生体验，支持多窗口独立编辑。
+## 技术架构
 
-## 🛠️ 技术选型
+MarkLight 现在采用明确的三层边界：
 
-| 模块 | 技术方案 |
-| :--- | :--- |
-| **桌面框架** | [Tauri 2.0](https://tauri.app/) (Rust + Webview2/WebKit) |
-| **编辑器内核** | [TipTap](https://tiptap.dev/) (ProseMirror) - 所见即所得 |
-| **前端框架** | Vue 3 (Composition API) + TypeScript |
-| **样式方案** | Tailwind CSS 4.0 |
-| **Markdown 解析** | markdown-it + 自定义解析器/序列化器 |
-| **代码高亮** | lowlight + highlight.js |
-| **数学公式** | KaTeX |
-| **图表渲染** | Mermaid |
-| **数据管理** | Pinia + 文件系统实时监听 (notify) |
+- Vue 3 + Pinia + TipTap：负责 UI、编辑器体验和命令分发
+- Tauri 2：负责插件、权限边界和命令/事件桥接
+- Rust 领域内核：负责文档、工作区、窗口运行时和 watcher 一致性
 
-## 🚀 快速开始
+约束如下：
 
-### 运行开发环境
+- 前端业务层不直接调用 `invoke` / `listen` / `emit`
+- Rust 对外命令全部返回结构化 DTO 和 `AppError`
+- 通用桌面能力优先使用官方插件
+
+更多说明见：
+
+- [ARCHITECTURE.md](./ARCHITECTURE.md)
+- [ENGINEERING_STANDARDS.md](./ENGINEERING_STANDARDS.md)
+- [ROADMAP.md](./ROADMAP.md)
+
+## 技术栈
+
+- 桌面框架：Tauri 2
+- 原生内核：Rust
+- 前端：Vue 3 + TypeScript + Pinia + Vite
+- 编辑器：TipTap / ProseMirror
+- Markdown：markdown-it + 自定义 parser / serializer
+- 样式：Tailwind CSS
+- 原生插件：store / window-state / dialog / opener / cli
+
+## 开发
+
 ```bash
-# 安装依赖
 pnpm install
-
-# 启动开发服务器
+pnpm dev
 pnpm dev:tauri
-```
-
-### 构建安装包
-```bash
-# 生成对应平台的安装程序 (.dmg / .exe)
+pnpm build
 pnpm build:tauri
+pnpm lint
+pnpm format
+pnpm exec vue-tsc --noEmit
+pnpm vitest run
+cargo check --manifest-path src-tauri/Cargo.toml
 ```
 
-## 📈 增长轨迹
+## 当前架构重点
 
-[![GitHub Star History Chart](https://api.star-history.com/svg?repos=xiaodou997/marklight&type=Date)](https://star-history.com/#xiaodou997/marklight&Date)
+- 文档保存冲突检测已经统一移到 Rust `save_document`
+- 工作区 watcher 事件统一为 `workspace-changed`
+- 启动打开、系统打开、多窗口待处理打开请求统一使用 `app-open-paths` payload 模型
+- `App.vue` 只做组合面，文档/工作区/窗口生命周期已经分别下沉到 session composable
 
-## 🤝 贡献与反馈
+## 贡献
 
-墨光 (MarkLight) 仍处于快速进化中，欢迎你的反馈和建议！
+- Issue 和 PR 欢迎提交到 GitHub
+- 架构或边界变更前，请先阅读 `ARCHITECTURE.md` 和 `ENGINEERING_STANDARDS.md`
+- 新能力进入项目时，请优先证明为什么不能由现有插件或现有领域模块承担
 
-- 💡 **功能建议**：欢迎提交 [Issue](https://github.com/xiaodou997/marklight/issues)
-- 🐛 **Bug 报告**：请提交 [Issue](https://github.com/xiaodou997/marklight/issues)
+## License
 
-## 📄 开源协议
-
-本项目基于 [Apache License 2.0](LICENSE) 协议开源。
-
-这意味着你可以：
-- ✅ 商业使用
-- ✅ 修改代码
-- ✅ 分发副本
-- ✅ 专利授权
-
-唯一要求是保留原始的版权声明和许可证副本。
-
----
-<p align="center">
-  <b>墨光 (MarkLight) - 记录思考，从轻开始。</b><br/>
-  <i>Developed by luoxiaodou</i>
-</p>
+MarkLight 基于 [Apache License 2.0](LICENSE) 开源。

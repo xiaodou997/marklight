@@ -6,9 +6,9 @@
     style="background-color: var(--bg-color); border-color: var(--border-color);"
   >
     <div class="flex items-center space-x-2">
-      <button @click="handleNew" class="px-3 py-1 text-sm hover:bg-gray-100 rounded text-gray-600 font-medium">新建</button>
-      <button @click="handleOpen" class="px-3 py-1 text-sm hover:bg-gray-100 rounded text-gray-600 font-medium">打开</button>
-      <button @click="handleSave" class="px-3 py-1 text-sm hover:bg-gray-100 rounded text-gray-600 font-medium">保存</button>
+      <button @click="$emit('new-file')" class="px-3 py-1 text-sm hover:bg-gray-100 rounded text-gray-600 font-medium">新建</button>
+      <button @click="$emit('open-file')" class="px-3 py-1 text-sm hover:bg-gray-100 rounded text-gray-600 font-medium">打开</button>
+      <button @click="$emit('save-file')" class="px-3 py-1 text-sm hover:bg-gray-100 rounded text-gray-600 font-medium">保存</button>
       <div class="mx-1 h-4 w-px bg-gray-200"></div>
 
       <button 
@@ -33,7 +33,6 @@
 
 <script setup lang="ts">
 import { useFileStore } from '../../stores/file';
-import { useFileOperations } from '../../composables/useFileOperations';
 import { isMac as isMacPlatform } from '../../utils/platform';
 
 const fileStore = useFileStore();
@@ -41,9 +40,12 @@ const fileStore = useFileStore();
 const isMac = isMacPlatform;
 
 defineProps<{ isSourceMode: boolean; }>();
-defineEmits<{ (e: 'toggle-sidebar'): void; (e: 'toggle-source'): void; (e: 'copy-wechat'): void; }>();
-
-const { handleNew, handleOpen, handleSave, handleSaveAs } = useFileOperations();
-
-defineExpose({ handleNew, handleOpen, handleSave, handleSaveAs });
+defineEmits<{
+  (e: 'new-file'): void;
+  (e: 'open-file'): void;
+  (e: 'save-file'): void;
+  (e: 'toggle-sidebar'): void;
+  (e: 'toggle-source'): void;
+  (e: 'copy-wechat'): void;
+}>();
 </script>

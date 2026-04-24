@@ -2,20 +2,17 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { APP_EVENT_NAMES } from '../event-names';
 
 const listenMock = vi.fn();
-const emitMock = vi.fn();
 
 vi.mock('@tauri-apps/api/event', () => ({
   listen: listenMock,
-  emit: emitMock,
 }));
 
 describe('tauri event service', () => {
   beforeEach(() => {
     listenMock.mockReset();
-    emitMock.mockReset();
   });
 
-  it('normalizes tauri open string payloads to path arrays', async () => {
+  it('listens to app-open-paths payloads without legacy normalization', async () => {
     const handlerRef: { current: ((event: { payload: unknown }) => void) | null } = {
       current: null,
     };
@@ -24,20 +21,25 @@ describe('tauri event service', () => {
       return () => {};
     });
 
-    const { listenTauriOpen } = await import('../events');
+    const { listenAppOpenPaths } = await import('../events');
     const handler = vi.fn();
 
-    await listenTauriOpen(handler);
-    const registeredHandler = handlerRef.current;
-    if (registeredHandler) {
-      registeredHandler({ payload: '/tmp/demo.md' });
-    }
+    await listenAppOpenPaths(handler);
+    handlerRef.current?.({
+      payload: {
+        paths: ['/tmp/demo.md'],
+        source: 'startup',
+      },
+    });
 
-    expect(listenMock).toHaveBeenCalledWith(APP_EVENT_NAMES.tauriOpen, expect.any(Function));
-    expect(handler).toHaveBeenCalledWith(['/tmp/demo.md']);
+    expect(listenMock).toHaveBeenCalledWith(APP_EVENT_NAMES.appOpenPaths, expect.any(Function));
+    expect(handler).toHaveBeenCalledWith({
+      paths: ['/tmp/demo.md'],
+      source: 'startup',
+    });
   });
 
-  it('normalizes tauri open object payloads to path arrays', async () => {
+  it('listens to workspace-changed payloads with a rootPath field', async () => {
     const handlerRef: { current: ((event: { payload: unknown }) => void) | null } = {
       current: null,
     };
@@ -46,23 +48,26 @@ describe('tauri event service', () => {
       return () => {};
     });
 
-    const { listenTauriOpen } = await import('../events');
+    const { listenWorkspaceChanged } = await import('../events');
     const handler = vi.fn();
 
-    await listenTauriOpen(handler);
-    const registeredHandler = handlerRef.current;
-    if (registeredHandler) {
-      registeredHandler({ payload: { paths: ['/tmp/a.md', '/tmp/b.md'] } });
-    }
+    await listenWorkspaceChanged(handler);
+    handlerRef.current?.({
+      payload: {
+        rootPath: '/tmp/project',
+        kind: 'modify',
+        paths: ['/tmp/project/demo.md'],
+      },
+    });
 
-    expect(handler).toHaveBeenCalledWith(['/tmp/a.md', '/tmp/b.md']);
-  });
-
-  it('uses centralized event names for menu emits', async () => {
-    const { emitMenuEvent } = await import('../events');
-
-    await emitMenuEvent('file.save');
-
-    expect(emitMock).toHaveBeenCalledWith(APP_EVENT_NAMES.menu, 'file.save');
+    expect(listenMock).toHaveBeenCalledWith(
+      APP_EVENT_NAMES.workspaceChanged,
+      expect.any(Function),
+    );
+    expect(handler).toHaveBeenCalledWith({
+      rootPath: '/tmp/project',
+      kind: 'modify',
+      paths: ['/tmp/project/demo.md'],
+    });
   });
 });

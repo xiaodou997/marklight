@@ -2,8 +2,8 @@ import type { Ref } from 'vue';
 import type { Node as PMNode } from '@tiptap/pm/model';
 import { save, message } from '@tauri-apps/plugin-dialog';
 import { writeHtml } from '@tauri-apps/plugin-clipboard-manager';
-import { saveTextDocument } from '../services/tauri/file-system';
-import { printCurrentDocument } from '../services/tauri/window';
+import { saveDocument } from '../services/tauri/document';
+import { printDocument } from '../services/tauri/window';
 import {
   renderEditorDocToHtmlDocument,
   renderEditorDocToWechatFragment,
@@ -71,7 +71,7 @@ export function useExportActions(options: {
     });
     if (!selected) return;
     try {
-      await saveTextDocument(selected, html);
+      await saveDocument(selected, html, null, true);
     } catch (error) {
       await message(`HTML 导出失败: ${error}`, { title: '错误', kind: 'error' });
     }
@@ -80,7 +80,7 @@ export function useExportActions(options: {
   async function exportPdf() {
     if (activeViewMode.value !== 'editor') return;
     try {
-      await printCurrentDocument();
+      await printDocument();
     } catch (error) {
       await message(`PDF 导出失败: ${error}`, { title: '错误', kind: 'error' });
     }

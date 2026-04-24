@@ -1,5 +1,6 @@
-import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+import { invokeCommand } from './client';
+import type { AppOpenPathsPayload } from './events';
 
 export type NativeWindowTheme = 'light' | 'dark';
 
@@ -36,29 +37,25 @@ export async function setCurrentWindowTheme(theme: NativeWindowTheme) {
 }
 
 export async function setCurrentWindowBackgroundColor(color: string) {
-  await invoke('set_window_background_color', { color });
+  await invokeCommand<void>('set_window_background_color', { color });
 }
 
-export async function openNewAppWindow(path?: string) {
-  await invoke('open_new_window', { path });
+export async function openEditorWindow(path?: string) {
+  await invokeCommand<void>('open_editor_window', { path });
 }
 
-export async function printCurrentDocument() {
-  await invoke('print_document');
+export async function printDocument() {
+  await invokeCommand<void>('print_document');
 }
 
 export async function refreshNativeMenuShortcuts(shortcuts: Record<string, string>) {
-  await invoke('refresh_menu_shortcuts', { shortcuts });
+  await invokeCommand<void>('refresh_native_menu_shortcuts', { shortcuts });
 }
 
-export async function notifyFrontendReady() {
-  await invoke('notify_frontend_ready');
+export async function consumeStartupOpenRequest() {
+  return invokeCommand<AppOpenPathsPayload | null>('consume_startup_open_request');
 }
 
-export async function consumeStartupOpenFile() {
-  return invoke<string | null>('consume_startup_open_file');
-}
-
-export async function consumePendingWindowOpenFile() {
-  return invoke<string | null>('consume_pending_window_open_file');
+export async function consumeWindowOpenRequest() {
+  return invokeCommand<AppOpenPathsPayload | null>('consume_window_open_request');
 }

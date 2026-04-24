@@ -1,49 +1,31 @@
 mod commands;
+mod error;
 mod events;
 mod menu;
+mod models;
+mod state;
 
 use commands::*;
-use events::{emit_file_changed, emit_startup_file, emit_tauri_open, FileChangePayload};
-use notify::{Config, EventKind, RecommendedWatcher, Watcher};
+use events::emit_app_open_paths;
+use models::{AppOpenPathsPayload, AppOpenSource};
+use state::{LoadedWindows, StartupOpenRequests, WindowOpenRequests, WorkspaceWatcherState};
 use std::collections::HashMap;
-use std::sync::Mutex;
 use tauri::Manager;
 use tauri_plugin_window_state::StateFlags;
 
-#[derive(Default)]
-struct StartupOpenFile(Mutex<Option<String>>);
-
 #[tauri::command]
-fn consume_startup_open_file(state: tauri::State<'_, StartupOpenFile>) -> Option<String> {
-    state.0.lock().ok()?.take()
-}
-
-/// 前端就绪后调用此命令。Rust 收到通知后，将等待中的启动文件推送给该窗口。
-/// 作为 on_page_load 的额外保险机制。
-#[tauri::command]
-fn notify_frontend_ready(app: tauri::AppHandle, state: tauri::State<'_, StartupOpenFile>) {
-    eprintln!("[marklight] notify_frontend_ready called");
-    if let Ok(mut guard) = state.0.lock() {
-        eprintln!(
-            "[marklight] StartupOpenFile at notify_frontend_ready = {:?}",
-            *guard
-        );
-        if let Some(path) = guard.take() {
-            eprintln!(
-                "[marklight] Pushing startup file via notify_frontend_ready: {}",
-                path
-            );
-            emit_startup_file(&app, path);
-        }
-    }
+fn consume_startup_open_request(
+    state: tauri::State<'_, StartupOpenRequests>,
+) -> Result<Option<AppOpenPathsPayload>, error::AppError> {
+    state.take()
 }
 
 #[tauri::command]
-fn refresh_menu_shortcuts(
+fn refresh_native_menu_shortcuts(
     app: tauri::AppHandle,
     shortcuts: HashMap<String, String>,
-) -> Result<(), String> {
-    menu::setup_menu(&app, &shortcuts).map_err(|e| e.to_string())
+) -> Result<(), error::AppError> {
+    menu::setup_menu(&app, &shortcuts).map_err(error::AppError::from)
 }
 
 pub fn run() {
@@ -70,102 +52,44 @@ pub fn run() {
                 })
                 .build(),
         )
-        // ── 方案一（最可靠）：webview 页面加载完成时主动推送等待中的文件 ──
-        // on_page_load 在 webview JS 执行完毕后触发，此时前端监听器已注册。
-        // 无论 RunEvent::Opened 和 webview 加载孰先孰后，这里都能兜底。
         .on_page_load(|webview, payload| {
             use tauri::webview::PageLoadEvent;
-            // PageLoadEvent::Finished 在 HTML 加载完即触发，早于 Vue onMounted 和事件监听器注册。
-            // 因此这里只做诊断日志，不发送事件（监听器还没就绪）。
-            // 实际推送由 notify_frontend_ready 完成（在监听器注册后由前端主动调用）。
             if payload.event() == PageLoadEvent::Finished {
-                eprintln!(
-                    "[marklight] on_page_load::Finished for url={}",
-                    payload.url()
-                );
-                if let Some(state) = webview.app_handle().try_state::<StartupOpenFile>() {
-                    if let Ok(guard) = state.0.lock() {
-                        eprintln!("[marklight] StartupOpenFile at page_load = {:?}", *guard);
-                    }
+                if let Some(state) = webview.app_handle().try_state::<LoadedWindows>() {
+                    let _ = state.mark_loaded(webview.label().to_string());
                 }
             }
         })
         .setup(|app| {
-            let handle = app.handle().clone();
-            app.manage(StartupOpenFile::default());
-            app.manage(PendingWindowOpenFiles::default());
+            app.manage(StartupOpenRequests::default());
+            app.manage(WindowOpenRequests::default());
+            app.manage(LoadedWindows::default());
+            app.manage(WorkspaceWatcherState::new(&app.handle())?);
 
-            // 所有平台均支持命令行参数打开文件（macOS 用于 dev 模式调试）
-            // 生产环境 macOS 通过 RunEvent::Opened 处理，CLI 参数作为补充
             {
                 use tauri_plugin_cli::CliExt;
                 if let Ok(matches) = app.cli().matches() {
                     if let Some(file_arg) = matches.args.get("file") {
                         if let Some(file_path) = file_arg.value.as_str() {
-                            if let Some(state) = app.try_state::<StartupOpenFile>() {
-                                if let Ok(mut startup_file) = state.0.lock() {
-                                    *startup_file = Some(file_path.to_string());
-                                }
+                            if let Some(state) = app.try_state::<StartupOpenRequests>() {
+                                let _ = state.replace(AppOpenPathsPayload {
+                                    paths: vec![file_path.to_string()],
+                                    source: AppOpenSource::Cli,
+                                });
                             }
                         }
                     }
                 }
             }
 
-            // 设置文件监听器
-            let (tx, rx) = std::sync::mpsc::channel();
-            let watcher = RecommendedWatcher::new(tx, Config::default())
-                .map_err(|e: notify::Error| e.to_string())?;
-
-            // 在后台线程处理监听事件，携带变更路径和类型
-            std::thread::spawn(move || {
-                use std::time::{Duration, Instant};
-                let mut last_emit = Instant::now() - Duration::from_secs(1);
-
-                for res in rx {
-                    match res {
-                        Ok(event) => {
-                            let now = Instant::now();
-                            if now.duration_since(last_emit) < Duration::from_millis(300) {
-                                continue;
-                            }
-                            last_emit = now;
-
-                            let kind = match event.kind {
-                                EventKind::Create(_) => "create",
-                                EventKind::Modify(_) => "modify",
-                                EventKind::Remove(_) => "remove",
-                                _ => "other",
-                            };
-                            let paths: Vec<String> = event
-                                .paths
-                                .iter()
-                                .map(|p| p.to_string_lossy().to_string())
-                                .collect();
-
-                            emit_file_changed(
-                                &handle,
-                                FileChangePayload {
-                                    kind: kind.to_string(),
-                                    paths,
-                                },
-                            );
-                        }
-                        Err(e) => println!("watch error: {:?}", e),
-                    }
-                }
-            });
-
-            app.manage(std::sync::Mutex::new(watcher));
-
-            menu::setup_menu(&app.handle(), &HashMap::new()).map_err(|e| e.to_string())?;
+            menu::setup_menu(&app.handle(), &HashMap::new()).map_err(error::AppError::from)?;
             menu::attach_menu_events(&app.handle());
 
             if let Some(main_window) = app.get_webview_window("main") {
                 #[cfg(any(target_os = "windows", target_os = "linux"))]
                 main_window
                     .set_decorations(false)
-                    .map_err(|e| e.to_string())?;
+                    .map_err(error::AppError::from)?;
 
                 #[cfg(target_os = "macos")]
                 apply_macos_window_background(&main_window, "#ffffff")?;
@@ -176,61 +100,56 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            read_file,
-            save_file,
-            list_directory,
-            save_image,
-            import_image,
-            resolve_image_path,
+            open_document,
+            save_document,
+            list_workspace_entries,
+            create_workspace_entry,
+            rename_workspace_entry,
+            trash_workspace_entry,
+            watch_workspace,
+            unwatch_workspace,
+            import_document_image,
+            resolve_document_image_path,
             fetch_remote_image,
-            open_new_window,
+            open_editor_window,
+            consume_window_open_request,
+            consume_startup_open_request,
+            refresh_native_menu_shortcuts,
             print_document,
-            rename_file,
-            delete_file,
-            create_file,
-            create_folder,
             reveal_in_finder,
-            consume_pending_window_open_file,
-            get_file_modified_time,
-            watch_directory,
-            unwatch_directory,
-            refresh_menu_shortcuts,
-            consume_startup_open_file,
-            notify_frontend_ready,
             set_window_background_color
         ])
         .build(tauri::generate_context!())
         .expect("error while running tauri application")
         .run(|app_handle, event| {
-            // ── 方案二：macOS RunEvent::Opened ──
-            // 热启动（App 已运行）时直接广播给已就绪的前端。
-            // 冷启动时存入 StartupOpenFile，由 on_page_load 在页面加载后推送。
             #[cfg(any(target_os = "macos", target_os = "ios"))]
             if let tauri::RunEvent::Opened { urls } = &event {
-                eprintln!("[marklight] RunEvent::Opened fired, {} URL(s)", urls.len());
-                let mut paths: Vec<String> = Vec::new();
-                for url in urls {
-                    eprintln!("[marklight]   url = {}", url);
-                    if let Ok(pb) = url.to_file_path() {
-                        if let Some(s) = pb.to_str() {
-                            paths.push(s.to_string());
-                        }
-                    }
-                }
+                let paths = urls
+                    .iter()
+                    .filter_map(|url| url.to_file_path().ok())
+                    .filter_map(|path| path.to_str().map(|value| value.to_string()))
+                    .collect::<Vec<_>>();
 
-                if let Some(first_path) = paths.first().cloned() {
-                    // 存入 StartupOpenFile（冷启动时 on_page_load 会在页面加载后推送）
-                    if let Some(state) = app_handle.try_state::<StartupOpenFile>() {
-                        if let Ok(mut startup_file) = state.0.lock() {
-                            if startup_file.is_none() {
-                                eprintln!("[marklight] Storing startup file: {}", first_path);
-                                *startup_file = Some(first_path);
-                            }
-                        }
+                if !paths.is_empty() {
+                    let has_loaded_window = app_handle
+                        .try_state::<LoadedWindows>()
+                        .and_then(|state| state.has_loaded_window().ok())
+                        .unwrap_or(false);
+
+                    if has_loaded_window {
+                        emit_app_open_paths(
+                            app_handle,
+                            AppOpenPathsPayload {
+                                paths,
+                                source: AppOpenSource::OsOpen,
+                            },
+                        );
+                    } else if let Some(state) = app_handle.try_state::<StartupOpenRequests>() {
+                        let _ = state.replace(AppOpenPathsPayload {
+                            paths,
+                            source: AppOpenSource::Startup,
+                        });
                     }
-                    // 热启动时前端已就绪，直接广播
-                    eprintln!("[marklight] Broadcasting tauri://open");
-                    emit_tauri_open(app_handle, paths);
                 }
             }
         });

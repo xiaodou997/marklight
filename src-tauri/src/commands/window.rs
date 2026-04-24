@@ -1,29 +1,13 @@
+use crate::error::AppError;
 use crate::events::emit_window_close_requested;
+use crate::models::{AppOpenPathsPayload, AppOpenSource};
+use crate::state::WindowOpenRequests;
 #[cfg(target_os = "macos")]
 use objc2_app_kit::{NSColor, NSWindow};
-use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::Mutex;
 use tauri::{State, TitleBarStyle, WebviewUrl, WebviewWindow, WebviewWindowBuilder};
 
 static WINDOW_COUNTER: AtomicU64 = AtomicU64::new(1);
-
-#[derive(Default)]
-pub struct PendingWindowOpenFiles(pub Mutex<HashMap<String, String>>);
-
-impl PendingWindowOpenFiles {
-    fn insert(&self, window_label: String, file_path: String) -> Result<(), String> {
-        self.0
-            .lock()
-            .map_err(|e| e.to_string())?
-            .insert(window_label, file_path);
-        Ok(())
-    }
-
-    fn take(&self, window_label: &str) -> Option<String> {
-        self.0.lock().ok()?.remove(window_label)
-    }
-}
 
 fn next_window_label() -> String {
     format!("main-{}", WINDOW_COUNTER.fetch_add(1, Ordering::Relaxed))
@@ -70,11 +54,14 @@ fn parse_hex_color(color: &str) -> Option<(f64, f64, f64, f64)> {
 }
 
 #[cfg(target_os = "macos")]
-pub fn apply_macos_window_background(window: &WebviewWindow, color: &str) -> Result<(), String> {
+pub fn apply_macos_window_background(window: &WebviewWindow, color: &str) -> Result<(), AppError> {
     let (red, green, blue, alpha) =
-        parse_hex_color(color).ok_or_else(|| format!("invalid color: {}", color))?;
+        parse_hex_color(color).ok_or_else(|| AppError::validation(format!("invalid color: {}", color)))?;
     unsafe {
-        let ns_window: &NSWindow = &*window.ns_window().map_err(|e| e.to_string())?.cast();
+        let ns_window: &NSWindow = &*window
+            .ns_window()
+            .map_err(|error| AppError::Native(error.to_string()))?
+            .cast();
         let background = NSColor::colorWithDeviceRed_green_blue_alpha(red, green, blue, alpha);
         ns_window.setBackgroundColor(Some(&background));
     }
@@ -82,22 +69,24 @@ pub fn apply_macos_window_background(window: &WebviewWindow, color: &str) -> Res
 }
 
 #[cfg(not(target_os = "macos"))]
-pub fn apply_macos_window_background(_window: &WebviewWindow, _color: &str) -> Result<(), String> {
+pub fn apply_macos_window_background(
+    _window: &WebviewWindow,
+    _color: &str,
+) -> Result<(), AppError> {
     Ok(())
 }
 
 #[tauri::command]
-pub fn set_window_background_color(window: WebviewWindow, color: String) -> Result<(), String> {
+pub fn set_window_background_color(window: WebviewWindow, color: String) -> Result<(), AppError> {
     apply_macos_window_background(&window, &color)
 }
 
-/// 打开新窗口
 #[tauri::command]
-pub async fn open_new_window(
+pub async fn open_editor_window(
     app: tauri::AppHandle,
-    pending_files: State<'_, PendingWindowOpenFiles>,
+    pending_requests: State<'_, WindowOpenRequests>,
     path: Option<String>,
-) -> Result<(), String> {
+) -> Result<(), AppError> {
     let window_label = next_window_label();
     let builder =
         WebviewWindowBuilder::new(&app, &window_label, WebviewUrl::App("index.html".into()))
@@ -112,7 +101,9 @@ pub async fn open_new_window(
     #[cfg(target_os = "macos")]
     let builder = builder.title_bar_style(TitleBarStyle::Transparent);
 
-    let window = builder.build().map_err(|e| e.to_string())?;
+    let window = builder
+        .build()
+        .map_err(|error| AppError::Native(error.to_string()))?;
 
     #[cfg(target_os = "macos")]
     apply_macos_window_background(&window, "#ffffff")?;
@@ -120,28 +111,34 @@ pub async fn open_new_window(
     attach_close_interceptor(&window);
 
     if let Some(file_path) = path {
-        pending_files.insert(window_label, file_path)?;
+        pending_requests.insert(
+            window_label,
+            AppOpenPathsPayload {
+                paths: vec![file_path],
+                source: AppOpenSource::NewWindow,
+            },
+        )?;
     }
     Ok(())
 }
 
 #[tauri::command]
-pub fn consume_pending_window_open_file(
-    pending_files: State<'_, PendingWindowOpenFiles>,
+pub fn consume_window_open_request(
+    pending_requests: State<'_, WindowOpenRequests>,
     window: WebviewWindow,
-) -> Option<String> {
-    pending_files.take(window.label())
+) -> Result<Option<AppOpenPathsPayload>, AppError> {
+    pending_requests.take(window.label())
 }
 
-/// 打印当前文档
 #[tauri::command]
-pub fn print_document(window: WebviewWindow) -> Result<(), String> {
-    window.print().map_err(|e| e.to_string())
+pub fn print_document(window: WebviewWindow) -> Result<(), AppError> {
+    window
+        .print()
+        .map_err(|error| AppError::Native(error.to_string()))
 }
 
-/// 在 Finder/资源管理器 中显示文件
 #[tauri::command]
-pub async fn reveal_in_finder(app: tauri::AppHandle, path: String) -> Result<(), String> {
+pub async fn reveal_in_finder(app: tauri::AppHandle, path: String) -> Result<(), AppError> {
     use tauri_plugin_opener::OpenerExt;
     #[cfg(target_os = "linux")]
     {
@@ -154,19 +151,21 @@ pub async fn reveal_in_finder(app: tauri::AppHandle, path: String) -> Result<(),
         };
         app.opener()
             .open_path(dir.to_string_lossy().to_string(), None::<String>)
-            .map_err(|e| e.to_string())
+            .map_err(|error| AppError::Native(error.to_string()))
     }
     #[cfg(not(target_os = "linux"))]
     {
         app.opener()
             .reveal_item_in_dir(path)
-            .map_err(|e| e.to_string())
+            .map_err(|error| AppError::Native(error.to_string()))
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{next_window_label, parse_hex_color, PendingWindowOpenFiles};
+    use super::{next_window_label, parse_hex_color};
+    use crate::models::{AppOpenPathsPayload, AppOpenSource};
+    use crate::state::WindowOpenRequests;
 
     #[test]
     fn next_window_label_is_unique() {
@@ -178,14 +177,26 @@ mod tests {
     }
 
     #[test]
-    fn pending_window_open_files_are_consumed_once() {
-        let pending = PendingWindowOpenFiles::default();
+    fn pending_window_open_requests_are_consumed_once() {
+        let pending = WindowOpenRequests::default();
         pending
-            .insert("main-9".to_string(), "/tmp/demo.md".to_string())
+            .insert(
+                "main-9".to_string(),
+                AppOpenPathsPayload {
+                    paths: vec!["/tmp/demo.md".to_string()],
+                    source: AppOpenSource::NewWindow,
+                },
+            )
             .unwrap();
 
-        assert_eq!(pending.take("main-9"), Some("/tmp/demo.md".to_string()));
-        assert_eq!(pending.take("main-9"), None);
+        assert_eq!(
+            pending.take("main-9").unwrap(),
+            Some(AppOpenPathsPayload {
+                paths: vec!["/tmp/demo.md".to_string()],
+                source: AppOpenSource::NewWindow,
+            })
+        );
+        assert_eq!(pending.take("main-9").unwrap(), None);
     }
 
     #[test]

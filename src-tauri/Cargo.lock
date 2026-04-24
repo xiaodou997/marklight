@@ -2298,6 +2298,7 @@ dependencies = [
  "tauri-plugin-opener",
  "tauri-plugin-store",
  "tauri-plugin-window-state",
+ "thiserror 2.0.18",
  "tokio",
  "trash",
 ]

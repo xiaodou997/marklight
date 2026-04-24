@@ -1,49 +1,31 @@
 <script setup lang="ts">
-import { computed, ref, reactive, onMounted, onUnmounted, watch, defineAsyncComponent } from 'vue';
+import { computed, defineAsyncComponent, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import type { Node as PMNode } from '@tiptap/pm/model';
 import { storeToRefs } from 'pinia';
-import { confirm, message } from '@tauri-apps/plugin-dialog';
+import { message } from '@tauri-apps/plugin-dialog';
+import { useAppWindowSession } from './composables/useAppWindowSession';
+import { useCommandDispatcher } from './composables/useCommandDispatcher';
+import { useDocumentSession } from './composables/useDocumentSession';
+import { useExportActions } from './composables/useExportActions';
+import { useImagePreview } from './composables/useImagePreview';
+import { useMenuEvents } from './composables/useMenuEvents';
+import { useMenuShortcutsSync } from './composables/useMenuShortcutsSync';
+import { useWorkspaceSession } from './composables/useWorkspaceSession';
+import CommandPalette from './components/Editor/CommandPalette.vue';
+import ShortcutsModal from './components/Editor/ShortcutsModal.vue';
+import Sidebar, { type OutlineItem } from './components/Editor/Sidebar.vue';
+import StatusBar from './components/Layout/StatusBar.vue';
+import TitleBar from './components/Layout/TitleBar.vue';
+import SettingsModal from './components/Settings/SettingsModal.vue';
+import EditorToolbar from './components/Toolbar/EditorToolbar.vue';
 import { useFileStore } from './stores/file';
 import { useSettingsStore } from './stores/settings';
-import { useFileOperations, type AutoSaveStatus } from './composables/useFileOperations';
-import { useCommandDispatcher } from './composables/useCommandDispatcher';
-import { useExportActions } from './composables/useExportActions';
-import { useMenuShortcutsSync } from './composables/useMenuShortcutsSync';
-import { useMenuEvents } from './composables/useMenuEvents';
-import { useFileTree } from './composables/useFileTree';
-import { useImagePreview } from './composables/useImagePreview';
-import { useWindowEvents, confirmUnsavedChanges } from './composables/useWindowEvents';
-import EditorToolbar from './components/Toolbar/EditorToolbar.vue';
-import StatusBar from './components/Layout/StatusBar.vue';
-import Sidebar, { type OutlineItem } from './components/Editor/Sidebar.vue';
-import SettingsModal from './components/Settings/SettingsModal.vue';
-import ShortcutsModal from './components/Editor/ShortcutsModal.vue';
-import CommandPalette from './components/Editor/CommandPalette.vue';
-import TitleBar from './components/Layout/TitleBar.vue';
-import { getCurrentWebview } from '@tauri-apps/api/webview';
-import { isMac } from './utils/platform';
 import { findCommandByShortcut } from './utils/shortcuts';
-import {
-  destroyCurrentWindow,
-  isCurrentWindowFullscreen,
-  openNewAppWindow,
-  setCurrentWindowFullscreen,
-  setCurrentWindowTitle,
-} from './services/tauri/window';
-import type { FileChangePayload } from './services/tauri/events';
-import { saveAllWindowState } from './services/tauri/window-state';
+import { isMac } from './utils/platform';
 import pkg from '../package.json';
 
 const MarkdownEditor = defineAsyncComponent(() => import('./components/Editor/MarkdownEditor.vue'));
 
-// --- Stores ---
-const fileStore = useFileStore();
-const settingsStore = useSettingsStore();
-const { settings, isLoaded } = storeToRefs(settingsStore);
-
-// --- Composables ---
-const { loadFileFromPath, handleNew, handleOpen, handleSave, handleSaveAs, setupAutoSave } =
-  useFileOperations();
 type EditorExpose = {
   scrollToPos: (pos: number) => void;
   openSearch: (showReplace?: boolean) => void;
@@ -54,6 +36,10 @@ type EditorExpose = {
   hasFocus?: () => boolean;
   executeCommand?: (commandId: string) => boolean;
 };
+
+const fileStore = useFileStore();
+const settingsStore = useSettingsStore();
+const { settings, isLoaded } = storeToRefs(settingsStore);
 const editorRef = ref<EditorExpose | null>(null);
 const appVersion = pkg.version;
 
@@ -66,6 +52,33 @@ const {
   resetToEditor,
 } = useImagePreview();
 
+const documentSession = useDocumentSession({
+  resetViewMode: resetToEditor,
+});
+
+async function handleOpenFile(path: string) {
+  await documentSession.openDocumentWithPrompt(path);
+}
+
+const workspaceSession = useWorkspaceSession({
+  openDocument: handleOpenFile,
+  onCurrentDocumentDeleted: resetToEditor,
+  onWorkspaceChanged: documentSession.handleWorkspaceChange,
+});
+const {
+  rootFolder,
+  treeNodes,
+  flatFiles,
+  pendingRenamePath,
+  toggleDir,
+  refreshTree,
+  renameEntry: handleFileRenamed,
+  deleteEntry: handleFileDeletedWrapper,
+  handleRenameCompleted,
+  revealInFinder: handleRevealInFinder,
+} = workspaceSession;
+const { autoSaveStatus, externalFileWarning } = documentSession;
+
 const { exportHtml, exportPdf, copyToWechat } = useExportActions({
   editorRef,
   activeViewMode,
@@ -73,39 +86,17 @@ const { exportHtml, exportPdf, copyToWechat } = useExportActions({
   settingsStore,
 });
 
-const {
-  rootFolder,
-  treeNodes,
-  flatFiles,
-  pendingRenamePath,
-  handleOpenFolder: fileTreeOpenFolder,
-  toggleDir,
-  refreshTree,
-  handleFileRenamed,
-  handleFileDeleted: fileTreeDeleteFile,
-  handleFileCreated: fileTreeCreateFile,
-  handleRenameCompleted,
-  handleRevealInFinder,
-  syncFolderFromFilePath,
-  setupFileChangeListener,
-  cleanup: cleanupFileTree,
-} = useFileTree();
-
 const { syncMenuShortcuts, stopWatching: stopWatchingMenuShortcuts } = useMenuShortcutsSync({
   customShortcuts: computed(() => settings.value.customShortcuts),
   isLoaded,
 });
 
-// --- UI state ---
 const isSidebarOpen = ref(true);
 const isSourceMode = ref(false);
 const sidebarMode = ref<'outline' | 'files'>('outline');
-const autoSaveStatus = ref<AutoSaveStatus | null>(null);
 const imagePasteWarning = ref<string | null>(null);
 const isCommandPaletteOpen = ref(false);
 const isShortcutsModalOpen = ref(false);
-const externalFileWarning = ref<string | null>(null);
-let externalFileWarningTimer: ReturnType<typeof setTimeout> | null = null;
 
 const stats = reactive({
   wordCount: 0,
@@ -114,95 +105,6 @@ const stats = reactive({
 });
 const outlineItems = ref<OutlineItem[]>([]);
 
-// --- File operations wrappers ---
-async function checkUnsavedChanges() {
-  if (!fileStore.currentFile.path && !fileStore.currentFile.content.trim()) {
-    return true;
-  }
-  if (fileStore.currentFile.isDirty) {
-    const confirmed = await confirm('当前文件有未保存的更改，是否放弃更改？', {
-      title: '未保存的更改',
-      kind: 'warning',
-    });
-    return confirmed;
-  }
-  return true;
-}
-
-async function handleOpenFile(path: string) {
-  if (!(await checkUnsavedChanges())) return;
-  const loaded = await loadFileFromPath(path);
-  if (loaded) {
-    clearExternalFileWarning();
-    resetToEditor();
-  }
-}
-
-function handleOpenFolder() {
-  fileTreeOpenFolder((mode) => {
-    sidebarMode.value = mode;
-  });
-}
-
-function handleFileDeletedWrapper(path: string) {
-  fileTreeDeleteFile(path, () => {
-    activeViewMode.value = 'editor';
-  });
-}
-
-function clearExternalFileWarning() {
-  if (externalFileWarningTimer) {
-    clearTimeout(externalFileWarningTimer);
-    externalFileWarningTimer = null;
-  }
-  externalFileWarning.value = null;
-}
-
-function showExternalFileWarning(message: string) {
-  clearExternalFileWarning();
-  externalFileWarning.value = message;
-  externalFileWarningTimer = setTimeout(() => {
-    externalFileWarning.value = null;
-    externalFileWarningTimer = null;
-  }, 4000);
-}
-
-async function handleRelevantFileChange(payload: FileChangePayload) {
-  const currentPath = fileStore.currentFile.path;
-  if (!currentPath || !payload.paths.includes(currentPath)) return;
-
-  if (payload.kind === 'remove') {
-    fileStore.reset();
-    resetToEditor();
-    showExternalFileWarning('当前文件已在外部被删除');
-    return;
-  }
-
-  if (payload.kind !== 'modify' && payload.kind !== 'create') return;
-  if (fileStore.currentFile.isDirty) {
-    showExternalFileWarning('检测到外部修改，保存时会再次确认');
-    return;
-  }
-
-  const loaded = await loadFileFromPath(currentPath);
-  if (loaded) {
-    showExternalFileWarning('已同步外部修改');
-  }
-}
-
-function handleFileCreatedWrapper(name: string, isFolder: boolean) {
-  if (!rootFolder.value) return;
-  fileTreeCreateFile(name, isFolder, rootFolder.value, handleOpenFile);
-}
-
-// --- Window events ---
-const { setup: setupWindowEvents, cleanup: cleanupWindowEvents } = useWindowEvents({
-  handleOpenFile,
-  handleSave,
-  isDirty: () => fileStore.currentFile.isDirty,
-});
-
-// --- Editor helpers ---
 function handleEditorUpdate(data: any) {
   if (data.wordCount !== undefined) stats.wordCount = data.wordCount;
   if (data.cursor) stats.cursor = data.cursor;
@@ -212,6 +114,21 @@ function handleEditorUpdate(data: any) {
 
 function scrollToHeading(pos: number) {
   editorRef.value?.scrollToPos(pos);
+}
+
+async function handleOpenFolder() {
+  const opened = await workspaceSession.openWorkspacePicker();
+  if (opened) {
+    sidebarMode.value = 'files';
+  }
+}
+
+async function handleOpenNewWindow(path?: string) {
+  await windowSession.handleOpenEditorWindow(path);
+}
+
+function handleFileCreatedWrapper(name: string, isFolder: boolean) {
+  void workspaceSession.createEntry(name, isFolder);
 }
 
 function toggleSidebar() {
@@ -245,18 +162,12 @@ const windowTitle = computed(() => {
   return file.isDirty ? `${fileName} ●` : fileName;
 });
 
-function updateWindowTitle() {
-  setCurrentWindowTitle(windowTitle.value).catch((err) => {
-    if (!err.includes('window.set_title not allowed')) {
-      console.error('Failed to set window title:', err);
-    }
-  });
-}
-
-// --- App-level actions ---
-async function handleOpenNewWindow(path?: string) {
-  await openNewAppWindow(path);
-}
+const windowSession = useAppWindowSession({
+  openDocument: handleOpenFile,
+  saveDocument: documentSession.saveCurrentDocument,
+  isDirty: () => fileStore.currentFile.isDirty,
+  windowTitle,
+});
 
 function showAbout() {
   message(
@@ -268,36 +179,17 @@ function showAbout() {
   );
 }
 
-async function toggleFullscreen() {
-  await setCurrentWindowFullscreen(!(await isCurrentWindowFullscreen()));
-}
-
-async function handleQuit() {
-  if (fileStore.currentFile.isDirty) {
-    const result = await confirmUnsavedChanges();
-    if (result === 'cancel') return;
-    if (result === 'save') {
-      const saved = await handleSave();
-      if (!saved) return;
-    }
-  }
-  await saveAllWindowState().catch(() => {
-    // Ignore window-state persistence failures and continue quitting.
-  });
-  await destroyCurrentWindow();
-}
-
 const { executeCommand } = useCommandDispatcher({
   editorRef,
   activeViewMode,
   isSourceMode,
   isSidebarOpen,
   sidebarMode,
-  handleNew,
-  handleOpen,
+  handleNew: documentSession.handleNewDocument,
+  handleOpen: documentSession.handleOpenDocument,
   handleOpenFolder,
-  handleSave,
-  handleSaveAs,
+  handleSave: documentSession.saveCurrentDocument,
+  handleSaveAs: documentSession.saveCurrentDocumentAs,
   handleOpenNewWindow,
   exportHtml,
   exportPdf,
@@ -313,11 +205,10 @@ const { executeCommand } = useCommandDispatcher({
   },
   toggleFocusMode: () => settingsStore.toggleFocusMode(),
   showAbout,
-  toggleFullscreen,
-  handleQuit,
+  toggleFullscreen: windowSession.toggleFullscreen,
+  handleQuit: windowSession.handleQuit,
 });
 
-// --- Image paste warning ---
 const handleImagePasteWarning = (event: Event) => {
   const detail = (event as CustomEvent).detail as string | undefined;
   if (!detail) return;
@@ -327,89 +218,46 @@ const handleImagePasteWarning = (event: Event) => {
   }, 3000);
 };
 
-// --- Watchers ---
 watch(
-  () => [fileStore.currentFile, activeViewMode.value, imagePreviewUrl.value],
-  () => {
-    if (fileStore.currentFile.path && activeViewMode.value === 'editor') {
-      syncFolderFromFilePath(fileStore.currentFile.path);
+  () => [fileStore.currentFile.path, activeViewMode.value] as const,
+  ([path, viewMode]) => {
+    if (path && viewMode === 'editor') {
+      workspaceSession.syncWorkspaceFromDocumentPath(path);
     }
-    updateWindowTitle();
   },
-  { deep: true },
+  { immediate: true },
 );
 
-// --- Menu events ---
 useMenuEvents(async (commandId) => {
   await executeCommand(commandId, 'menu');
 });
 
-// --- Lifecycle ---
-let cleanupAutoSave: (() => void) | null = null;
-
-// --- 阻止拖放文件导致 WebView 页面导航 ---
-function handleDragOver(e: DragEvent) {
-  e.preventDefault();
-}
-
-function handleDrop(e: DragEvent) {
-  e.preventDefault();
-}
-
-// --- Tauri 原生拖放事件：处理 .md 文件拖入 ---
-let unlistenDragDrop: (() => void) | null = null;
-
-async function setupAppDragDrop() {
-  const webview = getCurrentWebview();
-  unlistenDragDrop = await webview.onDragDropEvent(async (event) => {
-    if (event.payload.type !== 'drop') return;
-    const paths = event.payload.paths;
-    if (!paths?.length) return;
-    // 找到第一个 Markdown 文件并打开
-    const mdPath = paths.find((p) => /\.(md|markdown|txt)$/i.test(p));
-    if (mdPath) {
-      await handleOpenFile(mdPath);
-    }
-    // 图片文件的拖放由 MarkdownEditor 中的 onDragDropEvent 处理
-  });
-}
-
 onMounted(async () => {
-  updateWindowTitle();
   await settingsStore.init();
   document.addEventListener('copy', onCopy);
-  document.addEventListener('dragover', handleDragOver);
-  document.addEventListener('drop', handleDrop);
-  await setupAppDragDrop();
-
-  cleanupAutoSave = setupAutoSave(autoSaveStatus);
   window.addEventListener('image-paste-warning', handleImagePasteWarning as EventListener);
-
-  // 快捷键处理
   window.addEventListener('keydown', handleKeyDown);
-
-  // 窗口事件
-  await setupWindowEvents();
-  await setupFileChangeListener(handleRelevantFileChange);
+  await workspaceSession.setup();
+  await windowSession.setup();
   await syncMenuShortcuts();
 });
 
-async function handleKeyDown(e: KeyboardEvent) {
-  const target = e.target as HTMLElement | null;
+async function handleKeyDown(event: KeyboardEvent) {
+  const target = event.target as HTMLElement | null;
   if (target?.closest('[data-shortcut-capture="true"]')) {
     return;
   }
 
-  const command = findCommandByShortcut(e, settingsStore.settings.customShortcuts);
+  const command = findCommandByShortcut(event, settingsStore.settings.customShortcuts);
   if (command) {
     const handled = await executeCommand(command.id, 'shortcut');
     if (handled) {
-      e.preventDefault();
+      event.preventDefault();
       return;
     }
   }
 
-  if (e.key === 'Escape') {
+  if (event.key === 'Escape') {
     if (isFullscreenPreview.value) {
       isFullscreenPreview.value = false;
     } else if (settingsStore.isFocusMode) {
@@ -420,15 +268,10 @@ async function handleKeyDown(e: KeyboardEvent) {
 
 onUnmounted(() => {
   document.removeEventListener('copy', onCopy);
-  document.removeEventListener('dragover', handleDragOver);
-  document.removeEventListener('drop', handleDrop);
-  unlistenDragDrop?.();
   window.removeEventListener('keydown', handleKeyDown);
   window.removeEventListener('image-paste-warning', handleImagePasteWarning as EventListener);
-  clearExternalFileWarning();
-  cleanupAutoSave?.();
-  cleanupFileTree();
-  cleanupWindowEvents();
+  workspaceSession.cleanup();
+  windowSession.cleanup();
   stopWatchingMenuShortcuts();
 });
 </script>
@@ -447,6 +290,9 @@ onUnmounted(() => {
     >
       <EditorToolbar
         :is-source-mode="isSourceMode"
+        @new-file="documentSession.handleNewDocument"
+        @open-file="documentSession.handleOpenDocument"
+        @save-file="documentSession.saveCurrentDocument"
         @toggle-sidebar="toggleSidebar"
         @toggle-source="toggleSourceMode"
         @copy-wechat="copyToWechat"

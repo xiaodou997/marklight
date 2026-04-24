@@ -221,7 +221,7 @@
 import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue';
 import { confirm } from '@tauri-apps/plugin-dialog';
 import { getFileManagerName } from '../../utils/platform';
-import type { TreeNode } from '../../composables/useFileTree';
+import type { TreeNode } from '../../composables/useWorkspaceSession';
 
 export interface OutlineItem {
   text: string;

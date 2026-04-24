@@ -39,7 +39,7 @@ import Placeholder from '@tiptap/extension-placeholder';
 import { getCurrentWebview } from '@tauri-apps/api/webview';
 
 import { useFileStore } from '../../stores/file';
-import { importImageAsset } from '../../services/tauri/file-system';
+import { importDocumentImage } from '../../services/tauri/document';
 import { useSettingsStore } from '../../stores/settings';
 import { parseMarkdown } from './tiptap/markdown/parser';
 import { serializeMarkdown } from './tiptap/markdown/serializer';
@@ -588,9 +588,13 @@ async function setupDragDrop() {
         if (!['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'bmp'].includes(ext)) continue;
 
         try {
-          const savedPath = await importImageAsset(imagePath, filePath);
+          const savedImage = await importDocumentImage(imagePath, filePath);
 
-          editor.value?.chain().focus().setImage({ src: savedPath, alt: '' }).run();
+          editor.value
+            ?.chain()
+            .focus()
+            .setImage({ src: savedImage.relativePath, alt: '' })
+            .run();
         } catch (err) {
           console.error('Failed to handle dropped image:', err);
         }

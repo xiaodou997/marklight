@@ -7,9 +7,9 @@ import { useExportActions } from '../useExportActions';
 const mocks = vi.hoisted(() => ({
   saveMock: vi.fn(),
   messageMock: vi.fn(),
-  saveTextDocumentMock: vi.fn(),
+  saveDocumentMock: vi.fn(),
   writeHtmlMock: vi.fn(),
-  printCurrentDocumentMock: vi.fn(),
+  printDocumentMock: vi.fn(),
 }));
 
 vi.mock('@tauri-apps/plugin-dialog', () => ({
@@ -17,8 +17,8 @@ vi.mock('@tauri-apps/plugin-dialog', () => ({
   message: mocks.messageMock,
 }));
 
-vi.mock('../../services/tauri/file-system', () => ({
-  saveTextDocument: mocks.saveTextDocumentMock,
+vi.mock('../../services/tauri/document', () => ({
+  saveDocument: mocks.saveDocumentMock,
 }));
 
 vi.mock('@tauri-apps/plugin-clipboard-manager', () => ({
@@ -26,7 +26,7 @@ vi.mock('@tauri-apps/plugin-clipboard-manager', () => ({
 }));
 
 vi.mock('../../services/tauri/window', () => ({
-  printCurrentDocument: mocks.printCurrentDocumentMock,
+  printDocument: mocks.printDocumentMock,
 }));
 
 function createDoc(markdown: string) {
@@ -49,14 +49,14 @@ describe('useExportActions', () => {
   beforeEach(() => {
     mocks.saveMock.mockReset();
     mocks.messageMock.mockReset();
-    mocks.saveTextDocumentMock.mockReset();
+    mocks.saveDocumentMock.mockReset();
     mocks.writeHtmlMock.mockReset();
-    mocks.printCurrentDocumentMock.mockReset();
+    mocks.printDocumentMock.mockReset();
   });
 
   it('exports full html documents through the doc-based renderer', async () => {
     mocks.saveMock.mockResolvedValue('/tmp/export.html');
-    mocks.saveTextDocumentMock.mockResolvedValue(undefined);
+    mocks.saveDocumentMock.mockResolvedValue(undefined);
 
     const doc = createDoc('---\ntitle: Doc Export\n---\n\n# Heading\n');
     const editorRef = ref({
@@ -83,11 +83,11 @@ describe('useExportActions', () => {
     await exportHtml();
 
     expect(mocks.saveMock).toHaveBeenCalled();
-    expect(mocks.saveTextDocumentMock).toHaveBeenCalledTimes(1);
-    expect(mocks.saveTextDocumentMock.mock.calls[0][0]).toBe('/tmp/export.html');
-    expect(mocks.saveTextDocumentMock.mock.calls[0][1]).toContain('<!doctype html>');
-    expect(mocks.saveTextDocumentMock.mock.calls[0][1]).toContain('<title>Doc Export</title>');
-    expect(mocks.saveTextDocumentMock.mock.calls[0][1]).toContain('Heading');
+    expect(mocks.saveDocumentMock).toHaveBeenCalledTimes(1);
+    expect(mocks.saveDocumentMock.mock.calls[0][0]).toBe('/tmp/export.html');
+    expect(mocks.saveDocumentMock.mock.calls[0][1]).toContain('<!doctype html>');
+    expect(mocks.saveDocumentMock.mock.calls[0][1]).toContain('<title>Doc Export</title>');
+    expect(mocks.saveDocumentMock.mock.calls[0][1]).toContain('Heading');
   });
 
   it('copies wechat fragments instead of full documents', async () => {
