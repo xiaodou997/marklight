@@ -101,10 +101,17 @@ export const CustomImage = Image.extend({
       });
 
       let displayRequestId = 0;
+      let displaySrc = '';
 
       function syncView() {
         const attrs = getAttrs();
-        image.src = attrs.src;
+        const fallbackSrc = attrs.src;
+
+        if (displaySrc !== fallbackSrc) {
+          displaySrc = fallbackSrc;
+          image.src = fallbackSrc;
+        }
+
         image.alt = attrs.alt;
         image.title = attrs.title ?? '';
 
@@ -112,7 +119,9 @@ export const CustomImage = Image.extend({
           const requestId = ++displayRequestId;
           void getRemoteImageDisplaySrc(attrs.src).then((displaySrc) => {
             if (requestId === displayRequestId) {
-              image.src = displaySrc;
+              if (image.src !== displaySrc) {
+                image.src = displaySrc;
+              }
             }
           });
         }
@@ -220,7 +229,14 @@ export const CustomImage = Image.extend({
           return event.target instanceof Node && sourceText.contains(event.target);
         },
         ignoreMutation(mutation: MutationRecord | { type: 'selection'; target: Node }) {
-          return mutation.target instanceof Node && sourceText.contains(mutation.target);
+          return (
+            mutation.target instanceof Node
+            && (
+              mutation.target === dom
+              || sourceText.contains(mutation.target)
+              || image.contains(mutation.target)
+            )
+          );
         },
       };
     };

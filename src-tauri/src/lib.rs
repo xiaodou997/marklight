@@ -94,6 +94,11 @@ pub fn run() {
                 #[cfg(target_os = "macos")]
                 apply_macos_window_background(&main_window, "#ffffff")?;
 
+                #[cfg(debug_assertions)]
+                if std::env::var_os("MARKLIGHT_OPEN_DEVTOOLS").is_some() {
+                    main_window.open_devtools();
+                }
+
                 attach_close_interceptor(&main_window);
             }
 

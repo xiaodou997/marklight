@@ -11,6 +11,7 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "dev:tauri": "tauri dev",
+    "dev:tauri:inspect": "MARKLIGHT_OPEN_DEVTOOLS=1 tauri dev",
     "build:tauri": "tauri build",
     "test": "vitest run",
     "lint": "eslint src/",
