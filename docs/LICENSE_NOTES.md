@@ -30,9 +30,9 @@ MarkLight is licensed under the **Apache License 2.0**.
 
 ## 📄 完整许可 / Full License
 
-查看 [LICENSE](LICENSE) 文件获取 Apache 2.0 完整文本。
+查看 [LICENSE](../LICENSE) 文件获取 Apache 2.0 完整文本。
 
-See [LICENSE](LICENSE) for the full Apache 2.0 license text.
+See [LICENSE](../LICENSE) for the full Apache 2.0 license text.
 
 ---
 

@@ -44,9 +44,11 @@ MarkLight 现在采用明确的三层边界：
 
 更多说明见：
 
-- [ARCHITECTURE.md](./ARCHITECTURE.md)
-- [ENGINEERING_STANDARDS.md](./ENGINEERING_STANDARDS.md)
-- [ROADMAP.md](./ROADMAP.md)
+- [文档索引](./docs/README.md)
+- [架构说明](./docs/ARCHITECTURE.md)
+- [工程标准](./docs/ENGINEERING_STANDARDS.md)
+- [路线图](./docs/ROADMAP.md)
+- [更新日志](./docs/CHANGELOG.md)
 
 ## 技术栈
 
@@ -83,7 +85,7 @@ cargo check --manifest-path src-tauri/Cargo.toml
 ## 贡献
 
 - Issue 和 PR 欢迎提交到 GitHub
-- 架构或边界变更前，请先阅读 `ARCHITECTURE.md` 和 `ENGINEERING_STANDARDS.md`
+- 架构或边界变更前，请先阅读 `docs/ARCHITECTURE.md` 和 `docs/ENGINEERING_STANDARDS.md`
 - 新能力进入项目时，请优先证明为什么不能由现有插件或现有领域模块承担
 
 ## License
