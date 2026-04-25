@@ -13,9 +13,12 @@ use std::collections::HashMap;
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::{Path, PathBuf};
+use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::Manager;
 use tauri_plugin_window_state::StateFlags;
+
+static EARLY_OPEN_REQUEST: Mutex<Option<AppOpenPathsPayload>> = Mutex::new(None);
 
 #[tauri::command]
 fn consume_startup_open_request(
@@ -128,6 +131,27 @@ where
         .collect()
 }
 
+fn store_early_open_request(payload: AppOpenPathsPayload) {
+    let Ok(mut pending) = EARLY_OPEN_REQUEST.lock() else {
+        return;
+    };
+
+    if let Some(existing) = pending.as_mut() {
+        for path in payload.paths {
+            if !existing.paths.iter().any(|existing_path| existing_path == &path) {
+                existing.paths.push(path);
+            }
+        }
+        return;
+    }
+
+    *pending = Some(payload);
+}
+
+fn take_early_open_request() -> Option<AppOpenPathsPayload> {
+    EARLY_OPEN_REQUEST.lock().ok().and_then(|mut pending| pending.take())
+}
+
 fn dispatch_or_store_open_request(app: &tauri::AppHandle, payload: AppOpenPathsPayload) {
     append_startup_log(
         Some(app),
@@ -145,6 +169,12 @@ fn dispatch_or_store_open_request(app: &tauri::AppHandle, payload: AppOpenPathsP
     } else if let Some(state) = app.try_state::<StartupOpenRequests>() {
         append_startup_log(Some(app), "frontend not loaded, storing startup request");
         let _ = state.replace(payload);
+    } else {
+        append_startup_log(
+            Some(app),
+            "startup state not initialized, storing early request",
+        );
+        store_early_open_request(payload);
     }
 }
 
@@ -195,6 +225,16 @@ pub fn run() {
             app.manage(WorkspaceWatcherState::new(&app.handle())?);
 
             {
+                if let Some(payload) = take_early_open_request() {
+                    append_startup_log(
+                        Some(&app.handle()),
+                        format!("setup recovered early open request={:?}", payload),
+                    );
+                    if let Some(state) = app.try_state::<StartupOpenRequests>() {
+                        let _ = state.replace(payload);
+                    }
+                }
+
                 let raw_args = std::env::args().collect::<Vec<_>>();
                 append_startup_log(
                     Some(&app.handle()),
