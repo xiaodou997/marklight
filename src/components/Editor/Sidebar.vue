@@ -1,24 +1,29 @@
 <template>
   <div
     class="sidebar-container h-full flex flex-col select-none border-r"
-    style="background-color: var(--sidebar-bg); border-color: var(--border-color);"
+    style="background-color: var(--sidebar-bg); border-color: var(--border-color)"
   >
     <!-- 标签切换 -->
-    <div
-      class="flex border-b"
-      style="border-color: var(--border-color);"
-    >
+    <div class="flex border-b" style="border-color: var(--border-color)">
       <button
         @click="$emit('update:mode', 'outline')"
         class="flex-1 py-2 text-xs font-medium transition-colors"
-        :class="mode === 'outline' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'"
+        :class="
+          mode === 'outline'
+            ? 'text-blue-600 border-b-2 border-blue-600'
+            : 'text-gray-500 hover:text-gray-700'
+        "
       >
         大纲
       </button>
       <button
         @click="$emit('update:mode', 'files')"
         class="flex-1 py-2 text-xs font-medium transition-colors"
-        :class="mode === 'files' ? 'text-blue-600 border-b-2 border-blue-600' : 'text-gray-500 hover:text-gray-700'"
+        :class="
+          mode === 'files'
+            ? 'text-blue-600 border-b-2 border-blue-600'
+            : 'text-gray-500 hover:text-gray-700'
+        "
       >
         文件
       </button>
@@ -26,9 +31,7 @@
 
     <!-- 大纲模式 -->
     <div v-if="mode === 'outline'" class="flex-1 overflow-y-auto p-4">
-      <div v-if="outlineItems.length === 0" class="text-xs text-gray-400 px-2 italic">
-        暂无标题
-      </div>
+      <div v-if="outlineItems.length === 0" class="text-xs text-gray-400 px-2 italic">暂无标题</div>
       <nav class="space-y-1">
         <div
           v-for="item in outlineItems"
@@ -46,22 +49,23 @@
     <div v-else class="flex-1 flex flex-col overflow-hidden">
       <div v-if="!rootFolder" class="flex-1 p-4 text-xs text-gray-400 italic">
         请打开文件夹以查看文件列表
-        <button
-          @click="$emit('open-folder')"
-          class="block mt-2 text-blue-500 hover:underline"
-        >
+        <button @click="$emit('open-folder')" class="block mt-2 text-blue-500 hover:underline">
           打开文件夹
         </button>
       </div>
       <template v-else>
         <!-- 搜索框 -->
-        <div class="flex-shrink-0 px-3 py-2 border-b" style="border-color: var(--border-color);">
+        <div class="flex-shrink-0 px-3 py-2 border-b" style="border-color: var(--border-color)">
           <input
             v-model="searchQuery"
             type="text"
             placeholder="搜索文件..."
             class="w-full px-2 py-1 text-xs rounded focus:outline-none"
-            style="background: var(--bg-color); border: 1px solid var(--border-color); color: var(--text-color);"
+            style="
+              background: var(--bg-color);
+              border: 1px solid var(--border-color);
+              color: var(--text-color);
+            "
           />
         </div>
 
@@ -78,9 +82,11 @@
               @click="handleNodeClick(node, $event)"
               @contextmenu.prevent="showContextMenu($event, node)"
               class="flex items-center py-1 px-2 text-sm cursor-pointer transition-colors truncate"
-              :class="node.path === currentFilePath
-                ? 'bg-blue-50 text-blue-600'
-                : 'text-gray-600 hover:bg-gray-100'"
+              :class="
+                node.path === currentFilePath
+                  ? 'bg-blue-50 text-blue-600'
+                  : 'text-gray-600 hover:bg-gray-100'
+              "
             >
               <span class="mr-1.5 text-xs flex-shrink-0">{{ nodeIcon(node) }}</span>
               <span class="truncate text-xs">{{ node.name }}</span>
@@ -99,9 +105,11 @@
               @contextmenu.prevent="showContextMenu($event, node)"
               :style="{ paddingLeft: `${depth * 14 + 8}px` }"
               class="flex items-center py-1 pr-2 text-sm cursor-pointer transition-colors"
-              :class="node.path === currentFilePath
-                ? 'bg-blue-50 text-blue-600'
-                : 'text-gray-600 hover:bg-gray-100'"
+              :class="
+                node.path === currentFilePath
+                  ? 'bg-blue-50 text-blue-600'
+                  : 'text-gray-600 hover:bg-gray-100'
+              "
             >
               <!-- 展开/折叠箭头（仅目录） -->
               <span class="w-3 flex-shrink-0 text-center mr-0.5 text-xs text-gray-400">
@@ -118,7 +126,11 @@
     </div>
 
     <!-- 底部工具栏 -->
-    <div v-if="mode === 'files' && rootFolder" class="flex-shrink-0 border-t px-2 py-1.5" style="border-color: var(--border-color); background: var(--sidebar-bg);">
+    <div
+      v-if="mode === 'files' && rootFolder"
+      class="flex-shrink-0 border-t px-2 py-1.5"
+      style="border-color: var(--border-color); background: var(--sidebar-bg)"
+    >
       <div class="flex items-center justify-between">
         <span class="text-[10px] text-gray-400 truncate flex-1">{{ rootFolderName }}</span>
         <!-- 新建按钮 -->
@@ -127,7 +139,13 @@
           class="ml-2 flex-shrink-0 text-gray-400 hover:text-blue-500 transition-colors"
           title="新建"
         >
-          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <svg
+            class="w-4 h-4"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+          >
             <path d="M12 5v14M5 12h14" />
           </svg>
         </button>
@@ -176,7 +194,11 @@
       </div>
 
       <!-- 重命名对话框 -->
-      <div v-if="renameDialog.visible" class="dialog-overlay" @click.self="renameDialog.visible = false">
+      <div
+        v-if="renameDialog.visible"
+        class="dialog-overlay"
+        @click.self="renameDialog.visible = false"
+      >
         <div class="dialog">
           <div class="dialog-title">重命名</div>
           <input
@@ -188,7 +210,9 @@
             @keydown.esc="renameDialog.visible = false"
           />
           <div class="dialog-buttons">
-            <button class="dialog-btn dialog-btn-cancel" @click="renameDialog.visible = false">取消</button>
+            <button class="dialog-btn dialog-btn-cancel" @click="renameDialog.visible = false">
+              取消
+            </button>
             <button class="dialog-btn dialog-btn-confirm" @click="confirmRename">确定</button>
           </div>
         </div>
@@ -208,7 +232,9 @@
             @keydown.esc="newDialog.visible = false"
           />
           <div class="dialog-buttons">
-            <button class="dialog-btn dialog-btn-cancel" @click="newDialog.visible = false">取消</button>
+            <button class="dialog-btn dialog-btn-cancel" @click="newDialog.visible = false">
+              取消
+            </button>
             <button class="dialog-btn dialog-btn-confirm" @click="confirmNew">确定</button>
           </div>
         </div>
@@ -283,7 +309,7 @@ const flatTree = computed(() => flatten(props.treeNodes));
 const searchResults = computed(() => {
   if (!searchQuery.value) return [];
   const q = searchQuery.value.toLowerCase();
-  return collectAll(props.treeNodes).filter(n => n.name.toLowerCase().includes(q));
+  return collectAll(props.treeNodes).filter((n) => n.name.toLowerCase().includes(q));
 });
 
 const rootFolderName = computed(() => {
@@ -302,19 +328,27 @@ function nodeIcon(node: TreeNode): string {
 // ── 右键菜单 ──────────────────────────────────────────────────
 
 const contextMenu = ref<{ visible: boolean; x: number; y: number; node: TreeNode | null }>({
-  visible: false, x: 0, y: 0, node: null,
+  visible: false,
+  x: 0,
+  y: 0,
+  node: null,
 });
 
 const newMenu = ref<{ visible: boolean; x: number; y: number }>({
-  visible: false, x: 0, y: 0,
+  visible: false,
+  x: 0,
+  y: 0,
 });
 
 const renameDialog = ref<{ visible: boolean; newName: string }>({
-  visible: false, newName: '',
+  visible: false,
+  newName: '',
 });
 
 const newDialog = ref<{ visible: boolean; name: string; isFolder: boolean }>({
-  visible: false, name: '', isFolder: false,
+  visible: false,
+  name: '',
+  isFolder: false,
 });
 
 const renameInputRef = ref<HTMLInputElement | null>(null);
@@ -380,7 +414,12 @@ async function handleDelete() {
   const msg = node.is_dir
     ? `确定删除文件夹 "${node.name}" 及其所有内容？`
     : `确定删除文件 "${node.name}"？`;
-  const confirmed = await confirm(msg, { title: '删除确认', kind: 'warning' });
+  const confirmed = await confirm(msg, {
+    title: '删除确认',
+    kind: 'warning',
+    okLabel: '删除',
+    cancelLabel: '取消',
+  });
   if (confirmed) emit('file-deleted', node.path);
   contextMenu.value.visible = false;
 }
@@ -412,21 +451,24 @@ function confirmNew() {
 
 // ── pendingRenamePath 监听 ────────────────────────────────────
 
-watch(() => props.pendingRenamePath, (path) => {
-  if (!path) return;
-  const node = collectAll(props.treeNodes).find(n => n.path === path);
-  if (node) {
-    nextTick(() => {
-      contextMenu.value.node = node;
-      renameDialog.value.newName = node.name.replace(/\.md$/i, '');
-      renameDialog.value.visible = true;
+watch(
+  () => props.pendingRenamePath,
+  (path) => {
+    if (!path) return;
+    const node = collectAll(props.treeNodes).find((n) => n.path === path);
+    if (node) {
       nextTick(() => {
-        renameInputRef.value?.focus();
-        renameInputRef.value?.select();
+        contextMenu.value.node = node;
+        renameDialog.value.newName = node.name.replace(/\.md$/i, '');
+        renameDialog.value.visible = true;
+        nextTick(() => {
+          renameInputRef.value?.focus();
+          renameInputRef.value?.select();
+        });
       });
-    });
-  }
-});
+    }
+  },
+);
 
 // ── 点击外部关闭菜单 ──────────────────────────────────────────
 
@@ -452,7 +494,10 @@ onUnmounted(() => document.removeEventListener('click', handleClickOutside));
   color: var(--text-color);
 }
 
-.context-menu-items { display: flex; flex-direction: column; }
+.context-menu-items {
+  display: flex;
+  flex-direction: column;
+}
 
 .context-menu-item {
   display: flex;
@@ -464,14 +509,27 @@ onUnmounted(() => document.removeEventListener('click', handleClickOutside));
   transition: background-color 0.1s;
 }
 
-.context-menu-item:hover { background-color: rgba(0, 0, 0, 0.05); }
-.dark .context-menu-item:hover { background-color: rgba(255, 255, 255, 0.1); }
+.context-menu-item:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+.dark .context-menu-item:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
 
-.context-menu-item-danger { color: #dc2626; }
-.context-menu-item-danger:hover { background-color: #fef2f2; }
-.dark .context-menu-item-danger:hover { background-color: #450a0a; }
+.context-menu-item-danger {
+  color: #dc2626;
+}
+.context-menu-item-danger:hover {
+  background-color: #fef2f2;
+}
+.dark .context-menu-item-danger:hover {
+  background-color: #450a0a;
+}
 
-.context-menu-icon { margin-right: 8px; font-size: 14px; }
+.context-menu-icon {
+  margin-right: 8px;
+  font-size: 14px;
+}
 
 .dialog-overlay {
   position: fixed;
@@ -493,7 +551,11 @@ onUnmounted(() => document.removeEventListener('click', handleClickOutside));
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
 }
 
-.dialog-title { font-size: 16px; font-weight: 600; margin-bottom: 16px; }
+.dialog-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
 
 .dialog-input {
   width: 100%;
@@ -508,16 +570,42 @@ onUnmounted(() => document.removeEventListener('click', handleClickOutside));
   box-sizing: border-box;
 }
 
-.dialog-input:focus { border-color: var(--primary-color); }
+.dialog-input:focus {
+  border-color: var(--primary-color);
+}
 
-.dialog-buttons { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+.dialog-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 16px;
+}
 
-.dialog-btn { padding: 8px 16px; border-radius: 6px; font-size: 14px; cursor: pointer; transition: background-color 0.15s; }
+.dialog-btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
 
-.dialog-btn-cancel { background: rgba(0, 0, 0, 0.05); color: var(--text-color); opacity: 0.8; }
-.dark .dialog-btn-cancel { background: rgba(255, 255, 255, 0.1); }
-.dialog-btn-cancel:hover { opacity: 1; }
+.dialog-btn-cancel {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--text-color);
+  opacity: 0.8;
+}
+.dark .dialog-btn-cancel {
+  background: rgba(255, 255, 255, 0.1);
+}
+.dialog-btn-cancel:hover {
+  opacity: 1;
+}
 
-.dialog-btn-confirm { background: var(--primary-color); color: white; }
-.dialog-btn-confirm:hover { filter: brightness(1.1); }
+.dialog-btn-confirm {
+  background: var(--primary-color);
+  color: white;
+}
+.dialog-btn-confirm:hover {
+  filter: brightness(1.1);
+}
 </style>

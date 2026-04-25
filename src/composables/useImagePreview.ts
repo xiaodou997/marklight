@@ -15,7 +15,9 @@ export function useImagePreview() {
       if (fileStore.currentFile.isDirty) {
         const confirmed = await confirm('当前文件有未保存的更改，是否放弃更改？', {
           title: '未保存的更改',
-          kind: 'warning'
+          kind: 'warning',
+          okLabel: '放弃更改',
+          cancelLabel: '取消',
         });
         if (!confirmed) return;
       }

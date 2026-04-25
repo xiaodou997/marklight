@@ -1,10 +1,6 @@
 import { confirm, message, open, save } from '@tauri-apps/plugin-dialog';
 import { onUnmounted, ref, watch } from 'vue';
-import {
-  openDocument,
-  saveDocument,
-  type DocumentOpenResult,
-} from '../services/tauri/document';
+import { openDocument, saveDocument, type DocumentOpenResult } from '../services/tauri/document';
 import { normalizeTauriError } from '../services/tauri/client';
 import type { WorkspaceChangedPayload } from '../services/tauri/events';
 import { useFileStore } from '../stores/file';
@@ -61,6 +57,8 @@ export function useDocumentSession(options: DocumentSessionOptions) {
     return confirm('当前文件有未保存的更改，是否放弃更改？', {
       title: '未保存的更改',
       kind: 'warning',
+      okLabel: '放弃更改',
+      cancelLabel: '取消',
     });
   }
 
@@ -97,7 +95,11 @@ export function useDocumentSession(options: DocumentSessionOptions) {
     }
   }
 
-  async function persistDocument(path: string, force: boolean, expectedLastModifiedMs?: number | null) {
+  async function persistDocument(
+    path: string,
+    force: boolean,
+    expectedLastModifiedMs?: number | null,
+  ) {
     return saveDocument(path, fileStore.currentFile.content, expectedLastModifiedMs, force);
   }
 
@@ -108,11 +110,7 @@ export function useDocumentSession(options: DocumentSessionOptions) {
     }
 
     try {
-      const result = await persistDocument(
-        currentFile.path,
-        force,
-        currentFile.lastModifiedTime,
-      );
+      const result = await persistDocument(currentFile.path, force, currentFile.lastModifiedTime);
       fileStore.markSaved(result.lastModifiedMs);
       return true;
     } catch (error) {
@@ -121,6 +119,8 @@ export function useDocumentSession(options: DocumentSessionOptions) {
         const confirmed = await confirm('文件已被外部修改，是否强制覆盖？', {
           title: '检测到冲突',
           kind: 'warning',
+          okLabel: '强制覆盖',
+          cancelLabel: '取消',
         });
         if (!confirmed) {
           return false;
