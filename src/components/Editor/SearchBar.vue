@@ -14,7 +14,7 @@
           placeholder="搜索..."
           class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
           @input="onQueryChange"
-          @keydown.enter.prevent="onFindNext"
+          @keydown.enter.exact.prevent="onFindNext"
           @keydown.shift.enter.prevent="onFindPrev"
           @keydown.esc="onClose"
         />

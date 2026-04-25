@@ -103,7 +103,7 @@ export const useSettingsStore = defineStore('settings', () => {
   }
 
   async function loadSettingsFromStore(): Promise<void> {
-    let shouldPersistNormalizedState = false;
+    let shouldPersistNormalizedState: boolean;
 
     try {
       const [storedSettings, storedFocusMode] = await Promise.all([

@@ -305,14 +305,13 @@ function emitCursorInfo(ed: TiptapEditor) {
   const resolved = ed.state.doc.resolve(from);
   // 计算行号和列号
   let line = 1;
-  let col = 1;
   ed.state.doc.descendants((node, nodePos) => {
     if (node.isBlock && nodePos < from) {
       line++;
     }
     return nodePos < from;
   });
-  col = from - resolved.start(resolved.depth) + 1;
+  const col = from - resolved.start(resolved.depth) + 1;
 
   const sel = ed.state.selection;
   const selectionText = sel.empty ? '' : ed.state.doc.textBetween(sel.from, sel.to, '\n');

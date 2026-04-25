@@ -10,7 +10,7 @@ function getTopLevelBlockAt(view: EditorView, pos: number): { node: PMNode; pos:
   const depth = $pos.depth;
   if (depth === 0) return null;
 
-  let blockPos = $pos.before(1);
+  const blockPos = $pos.before(1);
   const node = view.state.doc.nodeAt(blockPos);
   if (!node) return null;
 

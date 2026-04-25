@@ -85,7 +85,7 @@ function renderInlines(inlines: ExportInline[], theme: ReturnType<typeof getExpo
 }
 
 function renderInline(inline: ExportInline, theme: ReturnType<typeof getExportThemeTokens>): string {
-  let content = '';
+  let content: string;
 
   switch (inline.kind) {
     case 'text':

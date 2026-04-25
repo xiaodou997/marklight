@@ -182,7 +182,7 @@ function renderInlines(inlines: ExportInline[], target: 'html' | 'wechat'): stri
 }
 
 function renderInline(inline: ExportInline, target: 'html' | 'wechat'): string {
-  let content = '';
+  let content: string;
 
   switch (inline.kind) {
     case 'text':
