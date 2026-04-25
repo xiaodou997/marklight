@@ -47,9 +47,11 @@
     "fileAssociations": [
       {
         "ext": ["md", "markdown"],
+        "contentTypes": ["net.daringfireball.markdown", "public.plain-text", "public.text"],
         "name": "Markdown Document",
         "description": "Open Markdown files with MarkLight",
-        "role": "Editor"
+        "role": "Editor",
+        "mimeType": "text/markdown"
       }
     ]
   },

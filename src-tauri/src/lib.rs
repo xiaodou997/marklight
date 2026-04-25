@@ -10,7 +10,10 @@ use events::emit_app_open_paths;
 use models::{AppOpenPathsPayload, AppOpenSource};
 use state::{LoadedWindows, StartupOpenRequests, WindowOpenRequests, WorkspaceWatcherState};
 use std::collections::HashMap;
+use std::fs::OpenOptions;
+use std::io::Write;
 use std::path::{Path, PathBuf};
+use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::Manager;
 use tauri_plugin_window_state::StateFlags;
 
@@ -18,7 +21,9 @@ use tauri_plugin_window_state::StateFlags;
 fn consume_startup_open_request(
     state: tauri::State<'_, StartupOpenRequests>,
 ) -> Result<Option<AppOpenPathsPayload>, error::AppError> {
-    state.take()
+    let payload = state.take()?;
+    append_startup_log(None, format!("consume_startup_open_request: {:?}", payload));
+    Ok(payload)
 }
 
 #[tauri::command]
@@ -28,7 +33,16 @@ fn notify_frontend_ready(
     window: tauri::WebviewWindow,
 ) -> Result<Option<AppOpenPathsPayload>, error::AppError> {
     loaded_windows.mark_loaded(window.label().to_string())?;
-    startup_requests.take()
+    let payload = startup_requests.take()?;
+    append_startup_log(
+        Some(&window.app_handle()),
+        format!(
+            "notify_frontend_ready: label={}, payload={:?}",
+            window.label(),
+            payload
+        ),
+    );
+    Ok(payload)
 }
 
 #[tauri::command]
@@ -47,6 +61,28 @@ fn supported_open_path(path: &Path) -> bool {
             .as_deref(),
         Some("md" | "markdown" | "txt")
     )
+}
+
+fn startup_log_path(app: Option<&tauri::AppHandle>) -> PathBuf {
+    app.and_then(|handle| handle.path().app_log_dir().ok())
+        .unwrap_or_else(std::env::temp_dir)
+        .join("startup-open.log")
+}
+
+fn append_startup_log(app: Option<&tauri::AppHandle>, message: impl AsRef<str>) {
+    let path = startup_log_path(app);
+    if let Some(parent) = path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+
+    let timestamp_ms = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_millis())
+        .unwrap_or_default();
+
+    if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(path) {
+        let _ = writeln!(file, "[{}] {}", timestamp_ms, message.as_ref());
+    }
 }
 
 fn normalize_open_path(value: &str, cwd: Option<&str>) -> Option<String> {
@@ -80,14 +116,21 @@ where
 }
 
 fn dispatch_or_store_open_request(app: &tauri::AppHandle, payload: AppOpenPathsPayload) {
+    append_startup_log(
+        Some(app),
+        format!("dispatch_or_store_open_request: {:?}", payload),
+    );
+
     let has_loaded_window = app
         .try_state::<LoadedWindows>()
         .and_then(|state| state.has_loaded_window().ok())
         .unwrap_or(false);
 
     if has_loaded_window {
+        append_startup_log(Some(app), "frontend loaded, emitting app-open-paths");
         emit_app_open_paths(app, payload);
     } else if let Some(state) = app.try_state::<StartupOpenRequests>() {
+        append_startup_log(Some(app), "frontend not loaded, storing startup request");
         let _ = state.replace(payload);
     }
 }
@@ -95,6 +138,10 @@ fn dispatch_or_store_open_request(app: &tauri::AppHandle, payload: AppOpenPathsP
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, args, cwd| {
+            append_startup_log(
+                Some(app),
+                format!("single-instance args={:?}, cwd={}", args, cwd),
+            );
             let paths = open_paths_from_args(args, Some(&cwd));
             if !paths.is_empty() {
                 dispatch_or_store_open_request(
@@ -135,10 +182,34 @@ pub fn run() {
             app.manage(WorkspaceWatcherState::new(&app.handle())?);
 
             {
+                let raw_args = std::env::args().collect::<Vec<_>>();
+                append_startup_log(
+                    Some(&app.handle()),
+                    format!("setup raw args={:?}", raw_args),
+                );
+
+                let raw_paths = open_paths_from_args(raw_args.iter().skip(1), None);
+                if !raw_paths.is_empty() {
+                    append_startup_log(
+                        Some(&app.handle()),
+                        format!("startup paths from raw args={:?}", raw_paths),
+                    );
+                    if let Some(state) = app.try_state::<StartupOpenRequests>() {
+                        let _ = state.replace(AppOpenPathsPayload {
+                            paths: raw_paths,
+                            source: AppOpenSource::Cli,
+                        });
+                    }
+                }
+
                 use tauri_plugin_cli::CliExt;
                 if let Ok(matches) = app.cli().matches() {
                     if let Some(file_arg) = matches.args.get("file") {
                         if let Some(file_path) = file_arg.value.as_str() {
+                            append_startup_log(
+                                Some(&app.handle()),
+                                format!("startup cli file arg={}", file_path),
+                            );
                             if let Some(file_path) = normalize_open_path(file_path, None) {
                                 if let Some(state) = app.try_state::<StartupOpenRequests>() {
                                     let _ = state.replace(AppOpenPathsPayload {
@@ -205,6 +276,10 @@ pub fn run() {
         .run(|app_handle, event| {
             #[cfg(any(target_os = "macos", target_os = "ios"))]
             if let tauri::RunEvent::Opened { urls } = &event {
+                append_startup_log(
+                    Some(app_handle),
+                    format!("RunEvent::Opened urls={:?}", urls),
+                );
                 let paths = urls
                     .iter()
                     .filter_map(|url| url.to_file_path().ok())
