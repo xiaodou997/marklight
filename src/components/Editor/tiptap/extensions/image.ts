@@ -53,6 +53,25 @@ export function parseImageMarkdown(markdown: string): ImageMarkdownAttrs | null 
   };
 }
 
+const remoteImageCache = new Map<string, Promise<string>>();
+
+function isRemoteImageSrc(src: string): boolean {
+  return /^https?:\/\//i.test(src);
+}
+
+async function getRemoteImageDisplaySrc(src: string): Promise<string> {
+  const cached = remoteImageCache.get(src);
+  if (cached) {
+    return cached;
+  }
+
+  const promise = import('../../../../services/tauri/document')
+    .then(({ fetchRemoteImageData }) => fetchRemoteImageData(src))
+    .catch(() => src);
+  remoteImageCache.set(src, promise);
+  return promise;
+}
+
 export const CustomImage = Image.extend({
   addNodeView() {
     return ({ node, getPos, editor }) => {
@@ -81,11 +100,23 @@ export const CustomImage = Image.extend({
         title: (node.attrs.title as string | null) ?? null,
       });
 
+      let displayRequestId = 0;
+
       function syncView() {
         const attrs = getAttrs();
         image.src = attrs.src;
         image.alt = attrs.alt;
         image.title = attrs.title ?? '';
+
+        if (isRemoteImageSrc(attrs.src)) {
+          const requestId = ++displayRequestId;
+          void getRemoteImageDisplaySrc(attrs.src).then((displaySrc) => {
+            if (requestId === displayRequestId) {
+              image.src = displaySrc;
+            }
+          });
+        }
+
         if (!isEditing) {
           sourceText.textContent = formatImageMarkdown(attrs);
         }

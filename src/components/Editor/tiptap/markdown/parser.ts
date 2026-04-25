@@ -381,6 +381,10 @@ function getTokenHandlers(schema: Schema): Record<string, TokenHandler> {
   handlers.html_inline = (state, token) => {
     // 跳过 task-lists 插件生成的 <input> 标签
     if (token.content.includes('type="checkbox"')) return;
+    if (/^<br\s*\/?>$/i.test(token.content.trim())) {
+      state.addNode(schema.nodes.hardBreak);
+      return;
+    }
     state.addText(token.content);
   };
 

@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+    tags:
+      - 'v*'
 
 jobs:
   repo-sync:
@@ -33,8 +35,11 @@ jobs:
           # 添加 Gitee 远程仓库
           git remote add gitee $GITEE_REPO || git remote set-url gitee $GITEE_REPO
 
-          # 推送到 Gitee（强制同步所有分支和标签）
-          git push -f gitee main
-          git push --tags gitee
+          # 只同步当前触发的 ref，避免 --tags 全量推送撞上 Gitee 已存在但对象不同的历史 tag。
+          if [ "$GITHUB_REF_TYPE" = "branch" ]; then
+            git push -f gitee HEAD:main
+          elif [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            git push -f gitee "refs/tags/$GITHUB_REF_NAME:refs/tags/$GITHUB_REF_NAME"
+          fi
 
           echo "✅ Sync to Gitee completed!"

@@ -43,6 +43,33 @@ function createTestSchema(): Schema {
       },
       hardBreak: { inline: true, group: 'inline', selectable: false, parseDOM: [{ tag: 'br' }], toDOM: () => ['br'] },
       horizontalRule: { group: 'block', parseDOM: [{ tag: 'hr' }], toDOM: () => ['hr'] },
+      table: {
+        group: 'block',
+        content: 'tableRow+',
+        tableRole: 'table',
+        parseDOM: [{ tag: 'table' }],
+        toDOM: () => ['table', ['tbody', 0]],
+      },
+      tableRow: {
+        content: '(tableHeader | tableCell)+',
+        tableRole: 'row',
+        parseDOM: [{ tag: 'tr' }],
+        toDOM: () => ['tr', 0],
+      },
+      tableHeader: {
+        content: 'paragraph+',
+        tableRole: 'header_cell',
+        isolating: true,
+        parseDOM: [{ tag: 'th' }],
+        toDOM: () => ['th', 0],
+      },
+      tableCell: {
+        content: 'paragraph+',
+        tableRole: 'cell',
+        isolating: true,
+        parseDOM: [{ tag: 'td' }],
+        toDOM: () => ['td', 0],
+      },
       image: {
         inline: true, group: 'inline',
         attrs: { src: { default: '' }, alt: { default: '' }, title: { default: null } },
@@ -207,6 +234,13 @@ describe('Round-trip: parse → serialize', () => {
 
     it('horizontal rule', () => {
       expect(roundTrip('---\n')).toBe(normalize('---\n'));
+    });
+
+    it('table cell hard break as br', () => {
+      const md = '| A | B |\n| --- | --- |\n| line1<br>line2 | ok |\n';
+      expect(roundTrip(md)).toBe(
+        normalize('| A              | B   |\n| -------------- | --- |\n| line1<br>line2 | ok  |\n'),
+      );
     });
   });
 

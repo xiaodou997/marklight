@@ -393,7 +393,7 @@ function cellToText(cell: PMNode): string {
       s.renderNode(child);
     }
   });
-  return s.output.trim();
+  return s.output.trim().replace(/ {2}\n/g, '<br>').replace(/\n/g, '<br>');
 }
 
 function escapeLinkTitle(title: string): string {

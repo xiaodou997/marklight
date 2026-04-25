@@ -258,6 +258,13 @@ async function handleKeyDown(event: KeyboardEvent) {
 
   const command = findCommandByShortcut(event, settingsStore.settings.customShortcuts);
   if (command) {
+    if (
+      target?.closest('.tiptap-editor')
+      && (command.id === 'editor.undo' || command.id === 'editor.redo')
+    ) {
+      return;
+    }
+
     const handled = await executeCommand(command.id, 'shortcut');
     if (handled) {
       event.preventDefault();
