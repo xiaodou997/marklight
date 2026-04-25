@@ -12,24 +12,24 @@
 ### Frontend and app
 
 ```bash
-pnpm install
-pnpm dev
-pnpm dev:tauri
-pnpm build
-pnpm build:tauri
-pnpm preview
-pnpm lint
-pnpm lint:fix
-pnpm format
+bun install
+bun run dev
+bun run dev:tauri
+bun run build
+bun run build:tauri
+bun run preview
+bun run lint
+bun run lint:fix
+bun run format
 ```
 
 ### Tests
 
-Vitest is configured in `vitest.config.ts`, but there is no `test` script in `package.json`.
-Run tests directly:
+Vitest is configured in `vitest.config.ts`.
+Run tests with:
 
 ```bash
-pnpm vitest run
+bun run test
 ```
 
 ## What lives where

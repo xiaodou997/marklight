@@ -63,15 +63,15 @@ MarkLight 现在采用明确的三层边界：
 ## 开发
 
 ```bash
-pnpm install
-pnpm dev
-pnpm dev:tauri
-pnpm build
-pnpm build:tauri
-pnpm lint
-pnpm format
-pnpm exec vue-tsc --noEmit
-pnpm vitest run
+bun install
+bun run dev
+bun run dev:tauri
+bun run build
+bun run build:tauri
+bun run lint
+bun run format
+bunx vue-tsc --noEmit
+bun run test
 cargo check --manifest-path src-tauri/Cargo.toml
 ```
 
