@@ -1,6 +1,6 @@
 [package]
 name = "marklight"
-version = "1.0.0"
+version = "1.1.0"
 description = "MarkLight - A lightweight Markdown editor"
 authors = ["luoxiaodou"]
 license = "Apache-2.0"
@@ -18,7 +18,7 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 tauri = { version = "2", features = ["protocol-asset"] }
 tauri-plugin-opener = "2"
-tauri-plugin-dialog = "2"
+tauri-plugin-dialog = "2.7.0"
 tauri-plugin-clipboard-manager = "2"
 tauri-plugin-cli = "2"
 serde = { version = "1", features = ["derive"] }
