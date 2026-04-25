@@ -87,6 +87,7 @@ pub enum AppOpenSource {
     Startup,
     Cli,
     OsOpen,
+    SingleInstance,
     NewWindow,
 }
 

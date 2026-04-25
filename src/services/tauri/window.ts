@@ -56,6 +56,10 @@ export async function consumeStartupOpenRequest() {
   return invokeCommand<AppOpenPathsPayload | null>('consume_startup_open_request');
 }
 
+export async function notifyFrontendReady() {
+  return invokeCommand<AppOpenPathsPayload | null>('notify_frontend_ready');
+}
+
 export async function consumeWindowOpenRequest() {
   return invokeCommand<AppOpenPathsPayload | null>('consume_window_open_request');
 }

@@ -10,6 +10,7 @@ use events::emit_app_open_paths;
 use models::{AppOpenPathsPayload, AppOpenSource};
 use state::{LoadedWindows, StartupOpenRequests, WindowOpenRequests, WorkspaceWatcherState};
 use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 use tauri::Manager;
 use tauri_plugin_window_state::StateFlags;
 
@@ -21,6 +22,16 @@ fn consume_startup_open_request(
 }
 
 #[tauri::command]
+fn notify_frontend_ready(
+    loaded_windows: tauri::State<'_, LoadedWindows>,
+    startup_requests: tauri::State<'_, StartupOpenRequests>,
+    window: tauri::WebviewWindow,
+) -> Result<Option<AppOpenPathsPayload>, error::AppError> {
+    loaded_windows.mark_loaded(window.label().to_string())?;
+    startup_requests.take()
+}
+
+#[tauri::command]
 fn refresh_native_menu_shortcuts(
     app: tauri::AppHandle,
     shortcuts: HashMap<String, String>,
@@ -28,8 +39,73 @@ fn refresh_native_menu_shortcuts(
     menu::setup_menu(&app, &shortcuts).map_err(error::AppError::from)
 }
 
+fn supported_open_path(path: &Path) -> bool {
+    matches!(
+        path.extension()
+            .and_then(|extension| extension.to_str())
+            .map(str::to_ascii_lowercase)
+            .as_deref(),
+        Some("md" | "markdown" | "txt")
+    )
+}
+
+fn normalize_open_path(value: &str, cwd: Option<&str>) -> Option<String> {
+    if value.starts_with('-') {
+        return None;
+    }
+
+    let path = PathBuf::from(value);
+    if !supported_open_path(&path) {
+        return None;
+    }
+
+    let path = if path.is_absolute() {
+        path
+    } else if let Some(cwd) = cwd {
+        PathBuf::from(cwd).join(path)
+    } else {
+        path
+    };
+    path.to_str().map(|value| value.to_string())
+}
+
+fn open_paths_from_args<I, S>(args: I, cwd: Option<&str>) -> Vec<String>
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<str>,
+{
+    args.into_iter()
+        .filter_map(|arg| normalize_open_path(arg.as_ref(), cwd))
+        .collect()
+}
+
+fn dispatch_or_store_open_request(app: &tauri::AppHandle, payload: AppOpenPathsPayload) {
+    let has_loaded_window = app
+        .try_state::<LoadedWindows>()
+        .and_then(|state| state.has_loaded_window().ok())
+        .unwrap_or(false);
+
+    if has_loaded_window {
+        emit_app_open_paths(app, payload);
+    } else if let Some(state) = app.try_state::<StartupOpenRequests>() {
+        let _ = state.replace(payload);
+    }
+}
+
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, args, cwd| {
+            let paths = open_paths_from_args(args, Some(&cwd));
+            if !paths.is_empty() {
+                dispatch_or_store_open_request(
+                    app,
+                    AppOpenPathsPayload {
+                        paths,
+                        source: AppOpenSource::SingleInstance,
+                    },
+                );
+            }
+        }))
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_clipboard_manager::init())
@@ -52,14 +128,6 @@ pub fn run() {
                 })
                 .build(),
         )
-        .on_page_load(|webview, payload| {
-            use tauri::webview::PageLoadEvent;
-            if payload.event() == PageLoadEvent::Finished {
-                if let Some(state) = webview.app_handle().try_state::<LoadedWindows>() {
-                    let _ = state.mark_loaded(webview.label().to_string());
-                }
-            }
-        })
         .setup(|app| {
             app.manage(StartupOpenRequests::default());
             app.manage(WindowOpenRequests::default());
@@ -71,12 +139,19 @@ pub fn run() {
                 if let Ok(matches) = app.cli().matches() {
                     if let Some(file_arg) = matches.args.get("file") {
                         if let Some(file_path) = file_arg.value.as_str() {
-                            if let Some(state) = app.try_state::<StartupOpenRequests>() {
+                            if let Some(file_path) = normalize_open_path(file_path, None) {
+                                if let Some(state) = app.try_state::<StartupOpenRequests>() {
+                                    let _ = state.replace(AppOpenPathsPayload {
+                                        paths: vec![file_path],
+                                        source: AppOpenSource::Cli,
+                                    });
+                                }
+                            } else if let Some(state) = app.try_state::<StartupOpenRequests>() {
                                 let _ = state.replace(AppOpenPathsPayload {
                                     paths: vec![file_path.to_string()],
                                     source: AppOpenSource::Cli,
                                 });
-                            }
+                            };
                         }
                     }
                 }
@@ -119,6 +194,7 @@ pub fn run() {
             open_editor_window,
             consume_window_open_request,
             consume_startup_open_request,
+            notify_frontend_ready,
             refresh_native_menu_shortcuts,
             print_document,
             reveal_in_finder,
@@ -136,25 +212,13 @@ pub fn run() {
                     .collect::<Vec<_>>();
 
                 if !paths.is_empty() {
-                    let has_loaded_window = app_handle
-                        .try_state::<LoadedWindows>()
-                        .and_then(|state| state.has_loaded_window().ok())
-                        .unwrap_or(false);
-
-                    if has_loaded_window {
-                        emit_app_open_paths(
-                            app_handle,
-                            AppOpenPathsPayload {
-                                paths,
-                                source: AppOpenSource::OsOpen,
-                            },
-                        );
-                    } else if let Some(state) = app_handle.try_state::<StartupOpenRequests>() {
-                        let _ = state.replace(AppOpenPathsPayload {
+                    dispatch_or_store_open_request(
+                        app_handle,
+                        AppOpenPathsPayload {
                             paths,
-                            source: AppOpenSource::Startup,
-                        });
-                    }
+                            source: AppOpenSource::OsOpen,
+                        },
+                    );
                 }
             }
         });

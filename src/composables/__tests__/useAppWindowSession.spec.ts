@@ -7,6 +7,7 @@ const consumeStartupOpenRequestMock = vi.fn();
 const consumeWindowOpenRequestMock = vi.fn();
 const destroyCurrentWindowMock = vi.fn();
 const isCurrentWindowFullscreenMock = vi.fn();
+const notifyFrontendReadyMock = vi.fn();
 const openEditorWindowMock = vi.fn();
 const setCurrentWindowFullscreenMock = vi.fn();
 const setCurrentWindowTitleMock = vi.fn();
@@ -43,6 +44,7 @@ vi.mock('../../services/tauri/window', () => ({
   consumeWindowOpenRequest: consumeWindowOpenRequestMock,
   destroyCurrentWindow: destroyCurrentWindowMock,
   isCurrentWindowFullscreen: isCurrentWindowFullscreenMock,
+  notifyFrontendReady: notifyFrontendReadyMock,
   openEditorWindow: openEditorWindowMock,
   setCurrentWindowFullscreen: setCurrentWindowFullscreenMock,
   setCurrentWindowTitle: setCurrentWindowTitleMock,
@@ -68,6 +70,8 @@ describe('useAppWindowSession', () => {
     consumeWindowOpenRequestMock.mockReset();
     destroyCurrentWindowMock.mockReset();
     isCurrentWindowFullscreenMock.mockReset();
+    notifyFrontendReadyMock.mockReset();
+    notifyFrontendReadyMock.mockResolvedValue(null);
     openEditorWindowMock.mockReset();
     setCurrentWindowFullscreenMock.mockReset();
     setCurrentWindowTitleMock.mockReset();
@@ -102,7 +106,30 @@ describe('useAppWindowSession', () => {
     expect(setCurrentWindowTitleMock).toHaveBeenCalledWith('Demo');
     expect(openDocument).toHaveBeenCalledWith('/tmp/startup.md');
     expect(openDocument).toHaveBeenCalledWith('/tmp/window.md');
+    expect(notifyFrontendReadyMock).toHaveBeenCalled();
     expect(onDragDropEventMock).toHaveBeenCalled();
+  });
+
+  it('opens a request that arrives before the frontend ready handshake', async () => {
+    const openDocument = vi.fn();
+    consumeStartupOpenRequestMock.mockResolvedValue(null);
+    consumeWindowOpenRequestMock.mockResolvedValue(null);
+    notifyFrontendReadyMock.mockResolvedValue({
+      paths: ['/tmp/os-open.md'],
+      source: 'os-open',
+    });
+
+    const { useAppWindowSession } = await import('../useAppWindowSession');
+    const session = useAppWindowSession({
+      openDocument,
+      saveDocument: vi.fn(),
+      isDirty: () => false,
+      windowTitle: ref('Demo'),
+    });
+
+    await session.setup();
+
+    expect(openDocument).toHaveBeenCalledWith('/tmp/os-open.md');
   });
 
   it('saves and closes after a close request confirms save', async () => {

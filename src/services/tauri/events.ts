@@ -3,7 +3,7 @@ import { APP_EVENT_NAMES } from './event-names';
 
 export type AppEventHandler<T> = (payload: T) => void | Promise<void>;
 export type FileChangeKind = 'create' | 'modify' | 'remove' | 'other';
-export type AppOpenSource = 'startup' | 'cli' | 'os-open' | 'new-window';
+export type AppOpenSource = 'startup' | 'cli' | 'os-open' | 'single-instance' | 'new-window';
 
 export interface AppOpenPathsPayload {
   paths: string[];

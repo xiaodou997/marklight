@@ -9,6 +9,7 @@ import {
   consumeWindowOpenRequest,
   destroyCurrentWindow,
   isCurrentWindowFullscreen,
+  notifyFrontendReady,
   openEditorWindow,
   setCurrentWindowFullscreen,
   setCurrentWindowTitle,
@@ -127,6 +128,7 @@ export function useAppWindowSession(options: AppWindowSessionOptions) {
     await handleOpenPayload(await consumeStartupOpenRequest());
     await handleOpenPayload(await consumeWindowOpenRequest());
     await setupDragDrop();
+    await handleOpenPayload(await notifyFrontendReady());
   }
 
   function cleanup() {
