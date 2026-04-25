@@ -53,23 +53,127 @@ export function parseImageMarkdown(markdown: string): ImageMarkdownAttrs | null 
   };
 }
 
-const remoteImageCache = new Map<string, Promise<string>>();
+type RemoteImageFetcher = (src: string) => Promise<string>;
+type RemoteImageCacheEntry =
+  | { status: 'fulfilled'; value: string }
+  | { status: 'pending'; promise: Promise<string> }
+  | { status: 'failed'; expiresAt: number };
+
+const MAX_REMOTE_IMAGE_CACHE_ENTRIES = 100;
+const MAX_CONCURRENT_REMOTE_IMAGE_FETCHES = 4;
+const REMOTE_IMAGE_FAILURE_TTL_MS = 5 * 60 * 1000;
+const remoteImageCache = new Map<string, RemoteImageCacheEntry>();
+const remoteImageQueue: Array<() => void> = [];
+
+let activeRemoteImageFetches = 0;
+let remoteImageFetcher: RemoteImageFetcher | null = null;
 
 function isRemoteImageSrc(src: string): boolean {
   return /^https?:\/\//i.test(src);
 }
 
-async function getRemoteImageDisplaySrc(src: string): Promise<string> {
-  const cached = remoteImageCache.get(src);
-  if (cached) {
-    return cached;
+function touchRemoteImageCacheEntry(src: string, entry: RemoteImageCacheEntry) {
+  remoteImageCache.delete(src);
+  remoteImageCache.set(src, entry);
+}
+
+function trimRemoteImageCache() {
+  while (remoteImageCache.size > MAX_REMOTE_IMAGE_CACHE_ENTRIES) {
+    let removableKey: string | null = null;
+    for (const [src, entry] of remoteImageCache) {
+      if (entry.status !== 'pending') {
+        removableKey = src;
+        break;
+      }
+    }
+
+    if (!removableKey) {
+      break;
+    }
+    remoteImageCache.delete(removableKey);
+  }
+}
+
+function runWithRemoteImageConcurrency<T>(task: () => Promise<T>): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const run = () => {
+      activeRemoteImageFetches += 1;
+      task()
+        .then(resolve, reject)
+        .finally(() => {
+          activeRemoteImageFetches -= 1;
+          remoteImageQueue.shift()?.();
+        });
+    };
+
+    if (activeRemoteImageFetches < MAX_CONCURRENT_REMOTE_IMAGE_FETCHES) {
+      run();
+    } else {
+      remoteImageQueue.push(run);
+    }
+  });
+}
+
+function getRemoteImageFetcher(): RemoteImageFetcher {
+  remoteImageFetcher ??= async (src: string) => {
+    const { fetchRemoteImageData } = await import('../../../../services/tauri/document');
+    return fetchRemoteImageData(src);
+  };
+  return remoteImageFetcher;
+}
+
+export async function getRemoteImageDisplaySrc(src: string): Promise<string> {
+  if (!isRemoteImageSrc(src)) {
+    return src;
   }
 
-  const promise = import('../../../../services/tauri/document')
-    .then(({ fetchRemoteImageData }) => fetchRemoteImageData(src))
-    .catch(() => src);
-  remoteImageCache.set(src, promise);
+  const now = Date.now();
+  const cached = remoteImageCache.get(src);
+  if (cached) {
+    if (cached.status === 'fulfilled') {
+      touchRemoteImageCacheEntry(src, cached);
+      return cached.value;
+    }
+    if (cached.status === 'pending') {
+      touchRemoteImageCacheEntry(src, cached);
+      return cached.promise;
+    }
+    if (cached.expiresAt > now) {
+      touchRemoteImageCacheEntry(src, cached);
+      return src;
+    }
+    remoteImageCache.delete(src);
+  }
+
+  const promise = runWithRemoteImageConcurrency(() => getRemoteImageFetcher()(src))
+    .then((displaySrc) => {
+      touchRemoteImageCacheEntry(src, { status: 'fulfilled', value: displaySrc });
+      trimRemoteImageCache();
+      return displaySrc;
+    })
+    .catch(() => {
+      touchRemoteImageCacheEntry(src, {
+        status: 'failed',
+        expiresAt: Date.now() + REMOTE_IMAGE_FAILURE_TTL_MS,
+      });
+      trimRemoteImageCache();
+      return src;
+    });
+
+  remoteImageCache.set(src, { status: 'pending', promise });
+  trimRemoteImageCache();
   return promise;
+}
+
+export function __setRemoteImageFetcherForTests(fetcher: RemoteImageFetcher | null) {
+  remoteImageFetcher = fetcher;
+}
+
+export function __resetRemoteImageCacheForTests() {
+  remoteImageCache.clear();
+  remoteImageQueue.splice(0, remoteImageQueue.length);
+  activeRemoteImageFetches = 0;
+  remoteImageFetcher = null;
 }
 
 export const CustomImage = Image.extend({
