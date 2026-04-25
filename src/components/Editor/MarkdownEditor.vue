@@ -30,6 +30,7 @@
 import { onMounted, ref, watch, shallowRef, onBeforeUnmount } from 'vue';
 import { debounce } from 'lodash-es';
 import { Editor as TiptapEditor, EditorContent } from '@tiptap/vue-3';
+import type { SuggestionKeyDownProps, SuggestionProps } from '@tiptap/suggestion';
 import StarterKit from '@tiptap/starter-kit';
 import Highlight from '@tiptap/extension-highlight';
 import Link from '@tiptap/extension-link';
@@ -95,6 +96,8 @@ import SearchBar from './SearchBar.vue';
 import './tiptap/editor.css';
 import 'highlight.js/styles/github.css';
 import 'katex/dist/katex.min.css';
+
+type SlashCommandSuggestionProps = SuggestionProps<SlashCommandItem, SlashCommandItem>;
 
 // 深色模式 highlight.js 主题切换
 const hljsDarkCssId = 'hljs-dark-theme';
@@ -206,20 +209,20 @@ function createEditor(content: string) {
             );
           },
           render: () => ({
-            onStart: (props: Record<string, unknown>) => {
-              slashMenuItems.value = props.items as SlashCommandItem[];
-              slashMenuCommand.value = props.command as (item: SlashCommandItem) => void;
-              const rect = (props.clientRect as () => DOMRect | null)?.();
+            onStart: (props: SlashCommandSuggestionProps) => {
+              slashMenuItems.value = props.items;
+              slashMenuCommand.value = props.command;
+              const rect = props.clientRect?.();
               if (rect) slashMenuRef.value?.show({ top: rect.bottom + 4, left: rect.left });
             },
-            onUpdate: (props: Record<string, unknown>) => {
-              slashMenuItems.value = props.items as SlashCommandItem[];
-              slashMenuCommand.value = props.command as (item: SlashCommandItem) => void;
-              const rect = (props.clientRect as () => DOMRect | null)?.();
+            onUpdate: (props: SlashCommandSuggestionProps) => {
+              slashMenuItems.value = props.items;
+              slashMenuCommand.value = props.command;
+              const rect = props.clientRect?.();
               if (rect) slashMenuRef.value?.show({ top: rect.bottom + 4, left: rect.left });
             },
-            onKeyDown: (props: Record<string, unknown>) => {
-              const event = props.event as KeyboardEvent;
+            onKeyDown: (props: SuggestionKeyDownProps) => {
+              const { event } = props;
               if (event.key === 'Escape') {
                 slashMenuRef.value?.hide();
                 return true;

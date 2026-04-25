@@ -1,7 +1,7 @@
 import { Extension } from '@tiptap/vue-3';
 import Suggestion from '@tiptap/suggestion';
-import type { Editor } from '@tiptap/vue-3';
-import type { Range } from '@tiptap/vue-3';
+import type { SuggestionOptions } from '@tiptap/suggestion';
+import type { Editor, Range } from '@tiptap/core';
 
 export interface SlashCommandItem {
   title: string;
@@ -9,6 +9,15 @@ export interface SlashCommandItem {
   icon: string;
   category: string;
   command: (props: { editor: Editor; range: Range }) => void;
+}
+
+type SlashCommandSuggestionOptions = Omit<
+  SuggestionOptions<SlashCommandItem, SlashCommandItem>,
+  'editor'
+>;
+
+interface SlashCommandsOptions {
+  suggestion: SlashCommandSuggestionOptions;
 }
 
 export const slashCommandItems: SlashCommandItem[] = [
@@ -156,10 +165,10 @@ export const slashCommandItems: SlashCommandItem[] = [
   },
 ];
 
-export const SlashCommands = Extension.create({
+export const SlashCommands = Extension.create<SlashCommandsOptions>({
   name: 'slashCommands',
 
-  addOptions() {
+  addOptions(): SlashCommandsOptions {
     return {
       suggestion: {
         char: '/',
@@ -172,6 +181,9 @@ export const SlashCommands = Extension.create({
               item.description.toLowerCase().includes(q) ||
               item.category.toLowerCase().includes(q),
           );
+        },
+        command: ({ editor, range, props }) => {
+          props.command({ editor, range });
         },
       },
     };
