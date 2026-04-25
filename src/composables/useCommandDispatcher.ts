@@ -2,6 +2,7 @@ import { openUrl } from '@tauri-apps/plugin-opener';
 import type { Ref } from 'vue';
 import type { CommandSource } from '../commands/registry';
 import { getCommand } from '../commands/registry';
+import { revealStartupOpenLog } from '../services/tauri/window';
 
 type SidebarMode = 'outline' | 'files';
 type ViewMode = 'editor' | 'image';
@@ -147,6 +148,9 @@ export function useCommandDispatcher(options: CommandDispatcherOptions) {
         return true;
       case 'help.issues':
         await openUrl('https://github.com/xiaodou997/marklight/issues');
+        return true;
+      case 'help.diagnostics':
+        await revealStartupOpenLog();
         return true;
       case 'app.quit':
         await options.handleQuit();

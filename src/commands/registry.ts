@@ -143,6 +143,16 @@ export const COMMANDS: CommandDefinition[] = [
     palette: true,
   },
   {
+    id: 'help.diagnostics',
+    title: '打开启动诊断日志',
+    description: '在 Finder 中定位冷启动文件打开诊断日志',
+    icon: '🧪',
+    scope: 'app',
+    group: 'help',
+    menuSection: 'help',
+    palette: true,
+  },
+  {
     id: 'editor.undo',
     title: '撤销',
     description: '撤销最近一次编辑',

@@ -233,6 +233,14 @@ fn build_menu(
             &MenuItem::with_id(app, "help.github", "项目主页 (GitHub)", true, None::<&str>)?,
             &MenuItem::with_id(app, "help.gitee", "项目主页 (Gitee)", true, None::<&str>)?,
             &MenuItem::with_id(app, "help.issues", "报告问题", true, None::<&str>)?,
+            &PredefinedMenuItem::separator(app)?,
+            &MenuItem::with_id(
+                app,
+                "help.diagnostics",
+                "打开启动诊断日志",
+                true,
+                None::<&str>,
+            )?,
         ],
     )?;
 

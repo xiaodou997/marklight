@@ -53,6 +53,19 @@ fn refresh_native_menu_shortcuts(
     menu::setup_menu(&app, &shortcuts).map_err(error::AppError::from)
 }
 
+#[tauri::command]
+fn reveal_startup_open_log(app: tauri::AppHandle) -> Result<String, error::AppError> {
+    use tauri_plugin_opener::OpenerExt;
+
+    append_startup_log(Some(&app), "reveal_startup_open_log");
+    let path = startup_log_path(Some(&app));
+    let path = path.to_string_lossy().to_string();
+    app.opener()
+        .reveal_item_in_dir(path.clone())
+        .map_err(|error| error::AppError::Native(error.to_string()))?;
+    Ok(path)
+}
+
 fn supported_open_path(path: &Path) -> bool {
     matches!(
         path.extension()
@@ -267,6 +280,7 @@ pub fn run() {
             consume_startup_open_request,
             notify_frontend_ready,
             refresh_native_menu_shortcuts,
+            reveal_startup_open_log,
             print_document,
             reveal_in_finder,
             set_window_background_color

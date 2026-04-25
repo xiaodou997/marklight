@@ -52,6 +52,10 @@ export async function refreshNativeMenuShortcuts(shortcuts: Record<string, strin
   await invokeCommand<void>('refresh_native_menu_shortcuts', { shortcuts });
 }
 
+export async function revealStartupOpenLog() {
+  return invokeCommand<string>('reveal_startup_open_log');
+}
+
 export async function consumeStartupOpenRequest() {
   return invokeCommand<AppOpenPathsPayload | null>('consume_startup_open_request');
 }

@@ -6,6 +6,10 @@ vi.mock('@tauri-apps/plugin-opener', () => ({
   openUrl: vi.fn(),
 }));
 
+vi.mock('../../services/tauri/window', () => ({
+  revealStartupOpenLog: vi.fn(),
+}));
+
 function createDispatcher() {
   const editorExecute = vi.fn();
   const hasFocus = vi.fn(() => true);
