@@ -9,21 +9,21 @@
   >
     <!-- 主工具栏 -->
     <div class="bubble-menu-toolbar">
-      <button @click="exec('bold')" :class="btnClass(activeMarks.bold)" title="加粗">
+      <button :class="btnClass(activeMarks.bold)" title="加粗" @click="exec('bold')">
         <span class="font-bold text-lg">B</span>
       </button>
-      <button @click="exec('italic')" :class="btnClass(activeMarks.italic)" title="斜体">
+      <button :class="btnClass(activeMarks.italic)" title="斜体" @click="exec('italic')">
         <span class="italic text-lg">I</span>
       </button>
-      <button @click="exec('code')" :class="btnClass(activeMarks.code)" title="行内代码">
+      <button :class="btnClass(activeMarks.code)" title="行内代码" @click="exec('code')">
         <span class="font-mono text-sm">&lt;/&gt;</span>
       </button>
-      <button @click="toggleLinkInput" :class="btnClass(activeMarks.link)" title="链接">
+      <button :class="btnClass(activeMarks.link)" title="链接" @click="toggleLinkInput">
         <span>🔗</span>
       </button>
       <div class="bubble-menu-divider"></div>
-      <button @click="exec('h1')" class="bubble-menu-heading-btn">H1</button>
-      <button @click="exec('h2')" class="bubble-menu-heading-btn">H2</button>
+      <button class="bubble-menu-heading-btn" @click="exec('h1')">H1</button>
+      <button class="bubble-menu-heading-btn" @click="exec('h2')">H2</button>
     </div>
 
     <!-- 链接输入区 -->
@@ -37,10 +37,10 @@
         @keydown.enter="applyLink"
         @keydown.escape="cancelLink"
       />
-      <button @click="applyLink" class="bubble-menu-btn-primary">
+      <button class="bubble-menu-btn-primary" @click="applyLink">
         确定
       </button>
-      <button v-if="activeMarks.link" @click="removeLink" class="bubble-menu-btn-danger">
+      <button v-if="activeMarks.link" class="bubble-menu-btn-danger" @click="removeLink">
         移除
       </button>
     </div>
@@ -50,8 +50,19 @@
 <script setup lang="ts">
 import { ref, reactive, nextTick } from 'vue';
 
+type BubbleMenuActionData = {
+  href?: string;
+};
+
+type ActiveMarks = {
+  bold: boolean;
+  italic: boolean;
+  code: boolean;
+  link: boolean;
+};
+
 const props = defineProps<{
-  onAction: (type: string, data?: any) => void;
+  onAction: (type: string, data?: BubbleMenuActionData) => void;
 }>();
 
 const visible = ref(false);
@@ -60,7 +71,7 @@ const activeMarks = reactive({
   bold: false,
   italic: false,
   code: false,
-  link: false
+  link: false,
 });
 
 // 链接输入相关
@@ -70,7 +81,7 @@ const linkInputRef = ref<HTMLInputElement | null>(null);
 
 const btnClass = (active: boolean) => [
   'bubble-menu-btn',
-  active ? 'bubble-menu-btn--active' : ''
+  active ? 'bubble-menu-btn--active' : '',
 ];
 
 const exec = (type: string) => {
@@ -111,7 +122,7 @@ const cancelLink = () => {
 
 // 暴露更新方法给插件调用
 defineExpose({
-  update(show: boolean, left: number, top: number, marks: any, linkHref?: string) {
+  update(show: boolean, left: number, top: number, marks: Partial<ActiveMarks>, linkHref?: string) {
     visible.value = show;
     pos.left = left;
     pos.top = top;
@@ -127,7 +138,7 @@ defineExpose({
       showLinkInput.value = false;
       linkUrl.value = '';
     }
-  }
+  },
 });
 </script>
 

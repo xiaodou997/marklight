@@ -27,18 +27,18 @@
       
       <!-- 上一个/下一个 -->
       <button
-        @click="onFindPrev"
         class="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded"
         title="上一个 (Shift+Enter)"
+        @click="onFindPrev"
       >
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
         </svg>
       </button>
       <button
-        @click="onFindNext"
         class="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded"
         title="下一个 (Enter)"
+        @click="onFindNext"
       >
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
@@ -47,7 +47,6 @@
       
       <!-- 大小写敏感 -->
       <button
-        @click="toggleCaseSensitive"
         :class="[
           'p-1.5 rounded font-medium text-xs',
           caseSensitive
@@ -55,15 +54,16 @@
             : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
         ]"
         title="区分大小写"
+        @click="toggleCaseSensitive"
       >
         Aa
       </button>
       
       <!-- 关闭 -->
       <button
-        @click="onClose"
         class="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded"
         title="关闭 (Esc)"
+        @click="onClose"
       >
         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -82,16 +82,16 @@
         @keydown.enter.prevent="onReplace"
       />
       <button
-        @click="onReplace"
         class="px-3 py-1.5 text-sm bg-gray-100 text-gray-700 hover:bg-gray-200 rounded"
         title="替换当前"
+        @click="onReplace"
       >
         替换
       </button>
       <button
-        @click="onReplaceAll"
         class="px-3 py-1.5 text-sm bg-blue-500 text-white hover:bg-blue-600 rounded"
         title="全部替换"
+        @click="onReplaceAll"
       >
         全部
       </button>
@@ -100,8 +100,8 @@
     <!-- 切换替换模式 -->
     <button
       v-if="!showReplace"
-      @click="toggleReplace"
       class="mt-2 text-xs text-blue-500 hover:text-blue-600"
+      @click="toggleReplace"
     >
       显示替换
     </button>

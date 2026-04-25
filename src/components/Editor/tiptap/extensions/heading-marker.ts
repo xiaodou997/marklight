@@ -13,13 +13,23 @@
  *   由 appendTransaction 强制维护。
  */
 import { Node, mergeAttributes } from '@tiptap/vue-3';
+import { InputRule } from '@tiptap/core';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
+import type { ChainedCommands, CommandProps, Range } from '@tiptap/core';
 import type { Node as PMNode, NodeType } from '@tiptap/pm/model';
 
 const MARKER_NAME = 'headingMarker';
 const HEADING_NAME = 'heading';
 const LEVELS = [1, 2, 3, 4, 5, 6] as const;
 type Level = (typeof LEVELS)[number];
+type HeadingCommandContext = {
+  commands: Pick<CommandProps['commands'], 'setNode' | 'toggleNode'>;
+};
+type HeadingCommand = (attributes: { level: number }) => (props: HeadingCommandContext) => boolean;
+type HeadingInputRuleProps = {
+  range: Range;
+  chain: () => ChainedCommands;
+};
 
 // ── headingMarker：原子 inline 节点 ─────────────────────────────
 
@@ -98,29 +108,32 @@ export const HeadingWithMarker = Node.create({
     return {
       setHeading:
         (attributes: { level: number }) =>
-        ({ commands }: { commands: any }) => {
+        ({ commands }: HeadingCommandContext) => {
           if (!LEVELS.includes(attributes.level as Level)) return false;
           return commands.setNode(this.name, attributes);
         },
       toggleHeading:
         (attributes: { level: number }) =>
-        ({ commands }: { commands: any }) => {
+        ({ commands }: HeadingCommandContext) => {
           if (!LEVELS.includes(attributes.level as Level)) return false;
           return commands.toggleNode(this.name, 'paragraph', attributes);
         },
-    } as Partial<Record<string, (...args: any[]) => any>>;
+    } as Record<string, HeadingCommand>;
   },
 
   addInputRules() {
-    return LEVELS.map((level) => ({
-      find: new RegExp(`^(#{${level}})\\s$`),
-      handler: ({ range, chain }: any) => {
-        chain()
-          .deleteRange({ from: range.from, to: range.to })
-          .setNode(this.name, { level })
-          .run();
-      },
-    })) as any;
+    return LEVELS.map(
+      (level) =>
+        new InputRule({
+          find: new RegExp(`^(#{${level}})\\s$`),
+          handler: ({ range, chain }: HeadingInputRuleProps) => {
+            chain()
+              .deleteRange({ from: range.from, to: range.to })
+              .setNode(this.name, { level })
+              .run();
+          },
+        }),
+    );
   },
 
   addProseMirrorPlugins() {

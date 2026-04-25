@@ -8,6 +8,7 @@
  */
 import { Node, Extension } from '@tiptap/vue-3';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
+import type { Transaction } from '@tiptap/pm/state';
 import type { Node as PMNode, NodeType, MarkType } from '@tiptap/pm/model';
 import type { ViewMutationRecord } from '@tiptap/pm/view';
 import { TOKEN_NODE_NAMES } from './mark-tokens';
@@ -301,7 +302,7 @@ export const LinkUrl = Node.create({
  * 在 linkUrl 节点位置附近找到 link mark run，更新其 href
  */
 function syncLinkMarkHref(
-  tr: any,
+  tr: Transaction,
   linkUrlPos: number,
   linkMarkType: MarkType,
   newHref: string,
@@ -320,7 +321,7 @@ function syncLinkMarkHref(
 
   parent.forEach((child: PMNode, offset: number) => {
     if (offset >= linkUrlOffset) return;
-    if (child.isText && child.marks.some((m: any) => m.type.name === 'link')) {
+    if (child.isText && child.marks.some((mark) => mark.type.name === 'link')) {
       const absPos = parentStart + offset;
       if (linkFrom === -1) linkFrom = absPos;
       linkTo = absPos + child.nodeSize;
@@ -447,9 +448,9 @@ function collectLinkRuns(block: PMNode, blockStart: number): LinkRun[] {
 }
 
 type LinkAction =
-  | { kind: 'insert'; pos: number; tokenName: string; attrs?: Record<string, any> }
+  | { kind: 'insert'; pos: number; tokenName: string; attrs?: Record<string, unknown> }
   | { kind: 'delete'; from: number; to: number }
-  | { kind: 'updateAttrs'; pos: number; attrs: Record<string, any> };
+  | { kind: 'updateAttrs'; pos: number; attrs: Record<string, unknown> };
 
 function buildLinkTokenSyncPlugin(): Plugin {
   return new Plugin({

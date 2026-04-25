@@ -134,11 +134,9 @@ export const useSettingsStore = defineStore('settings', {
             this.isFocusMode = false;
             shouldPersistNormalizedState = true;
           }
-          console.log('[Settings] 已从 Store 加载');
         } else {
           this.settings = normalizeSettings();
           this.isFocusMode = false;
-          console.log('[Settings] 首次启动，使用默认配置');
           shouldPersistNormalizedState = true;
         }
 

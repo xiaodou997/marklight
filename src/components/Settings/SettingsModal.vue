@@ -205,9 +205,9 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
       <div
         v-if="settingsStore.isModalOpen"
         class="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm"
+        tabindex="-1"
         @click="onOverlayClick"
         @keydown="onKeyDown"
-        tabindex="-1"
       >
         <div
           class="rounded-xl shadow-2xl w-[1040px] max-w-[94vw] max-h-[84vh] overflow-hidden flex flex-col"
@@ -342,9 +342,7 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
                       </div>
 
                       <div class="space-y-2 settings-form-item">
-                        <label class="block text-sm font-medium" style="color: var(--text-color)"
-                          >字体族</label
-                        >
+                        <label class="block text-sm font-medium" style="color: var(--text-color)">字体族</label>
                         <select
                           v-model="settings.fontFamily"
                           class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono"
@@ -402,13 +400,13 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
                         <p class="settings-row-desc">在编辑器左侧显示行号</p>
                       </div>
                       <button
-                        @click="settings.showLineNumbers = !settings.showLineNumbers"
                         type="button"
                         role="switch"
                         class="settings-switch"
                         :class="{ 'settings-switch--on': settings.showLineNumbers }"
                         :aria-checked="settings.showLineNumbers"
                         aria-label="切换显示行号"
+                        @click="settings.showLineNumbers = !settings.showLineNumbers"
                       >
                         <span
                           class="settings-switch__thumb"
@@ -423,13 +421,13 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
                         <p class="settings-row-desc">启用系统拼写检查</p>
                       </div>
                       <button
-                        @click="settings.spellCheck = !settings.spellCheck"
                         type="button"
                         role="switch"
                         class="settings-switch"
                         :class="{ 'settings-switch--on': settings.spellCheck }"
                         :aria-checked="settings.spellCheck"
                         aria-label="切换拼写检查"
+                        @click="settings.spellCheck = !settings.spellCheck"
                       >
                         <span
                           class="settings-switch__thumb"
@@ -444,13 +442,13 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
                         <p class="settings-row-desc">启动时自动展开侧边栏大纲</p>
                       </div>
                       <button
-                        @click="settings.outlineExpanded = !settings.outlineExpanded"
                         type="button"
                         role="switch"
                         class="settings-switch"
                         :class="{ 'settings-switch--on': settings.outlineExpanded }"
                         :aria-checked="settings.outlineExpanded"
                         aria-label="切换大纲默认展开"
+                        @click="settings.outlineExpanded = !settings.outlineExpanded"
                       >
                         <span
                           class="settings-switch__thumb"
@@ -592,13 +590,13 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
                         <p class="settings-row-desc">编辑时自动保存文件</p>
                       </div>
                       <button
-                        @click="settings.autoSave = !settings.autoSave"
                         type="button"
                         role="switch"
                         class="settings-switch"
                         :class="{ 'settings-switch--on': settings.autoSave }"
                         :aria-checked="settings.autoSave"
                         aria-label="切换自动保存"
+                        @click="settings.autoSave = !settings.autoSave"
                       >
                         <span
                           class="settings-switch__thumb"
@@ -609,9 +607,7 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
 
                     <div v-if="settings.autoSave" class="settings-row settings-row--column">
                       <div>
-                        <label class="settings-row-title"
-                          >保存间隔: {{ settings.autoSaveInterval }} 秒</label
-                        >
+                        <label class="settings-row-title">保存间隔: {{ settings.autoSaveInterval }} 秒</label>
                         <p class="settings-row-desc">在不打断写作的前提下平衡安全性与性能。</p>
                       </div>
                       <div class="space-y-2 w-full">

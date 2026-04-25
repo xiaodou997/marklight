@@ -54,12 +54,12 @@
     </div>
 
     <div class="flex items-center h-full" data-tauri-no-drag>
-      <div @click="minimize" class="control-btn hover:bg-black/5">
+      <div class="control-btn hover:bg-black/5" @click="minimize">
         <svg class="w-3 h-3" viewBox="0 0 12 12">
           <rect fill="currentColor" width="10" height="1" x="1" y="6" />
         </svg>
       </div>
-      <div @click="toggleMaximize" class="control-btn hover:bg-black/5">
+      <div class="control-btn hover:bg-black/5" @click="toggleMaximize">
         <svg class="w-3 h-3" viewBox="0 0 12 12">
           <rect
             fill="currentColor"
@@ -73,7 +73,7 @@
           />
         </svg>
       </div>
-      <div @click="close" class="control-btn hover:bg-red-500 hover:text-white group">
+      <div class="control-btn hover:bg-red-500 hover:text-white group" @click="close">
         <svg class="w-3 h-3" viewBox="0 0 12 12">
           <path
             fill="currentColor"

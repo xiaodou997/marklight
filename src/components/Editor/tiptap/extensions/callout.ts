@@ -32,14 +32,14 @@ export const Callout = Node.create({
       type: {
         default: 'note',
         parseHTML: (element: HTMLElement) => element.getAttribute('data-callout-type') || 'note',
-        renderHTML: (attributes: Record<string, any>) => ({
+        renderHTML: (attributes: Record<string, unknown>) => ({
           'data-callout-type': attributes.type,
         }),
       },
       title: {
         default: '',
         parseHTML: (element: HTMLElement) => element.getAttribute('data-callout-title') || '',
-        renderHTML: (attributes: Record<string, any>) => ({
+        renderHTML: (attributes: Record<string, unknown>) => ({
           'data-callout-title': attributes.title,
         }),
       },

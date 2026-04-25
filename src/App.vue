@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, defineAsyncComponent, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import type { Node as PMNode } from '@tiptap/pm/model';
+import type { EditorView } from '@tiptap/pm/view';
 import { storeToRefs } from 'pinia';
 import { message } from '@tauri-apps/plugin-dialog';
 import { useAppWindowSession } from './composables/useAppWindowSession';
@@ -32,9 +33,16 @@ type EditorExpose = {
   getContent?: () => string;
   getDoc?: () => PMNode | null;
   getSelectionMarkdown?: () => string;
-  getEditorView: () => any;
+  getEditorView: () => EditorView | null;
   hasFocus?: () => boolean;
   executeCommand?: (commandId: string) => boolean;
+};
+
+type EditorUpdatePayload = {
+  wordCount?: number;
+  cursor?: { line: number; col: number };
+  selectionText?: string;
+  outline?: OutlineItem[];
 };
 
 const fileStore = useFileStore();
@@ -105,7 +113,7 @@ const stats = reactive({
 });
 const outlineItems = ref<OutlineItem[]>([]);
 
-function handleEditorUpdate(data: any) {
+function handleEditorUpdate(data: EditorUpdatePayload) {
   if (data.wordCount !== undefined) stats.wordCount = data.wordCount;
   if (data.cursor) stats.cursor = data.cursor;
   if (data.selectionText !== undefined) stats.selectionText = data.selectionText;
@@ -368,8 +376,8 @@ onUnmounted(() => {
               border: 1px solid var(--border-color);
             "
             :value="fileStore.currentFile.content"
-            @input="(e) => fileStore.setContent((e.target as HTMLTextAreaElement).value)"
             placeholder="在此输入 Markdown 源码..."
+            @input="(e) => fileStore.setContent((e.target as HTMLTextAreaElement).value)"
           ></textarea>
         </div>
       </main>

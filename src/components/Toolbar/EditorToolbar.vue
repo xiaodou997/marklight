@@ -1,21 +1,21 @@
 <template>
   <!-- macOS 上完全隐藏工具栏，使用原生菜单 -->
-  <div 
-    v-if="!isMac" 
+  <div
+    v-if="!isMac"
     class="h-10 border-b flex items-center px-4 shadow-sm select-none z-10 transition-colors"
     style="background-color: var(--bg-color); border-color: var(--border-color);"
   >
     <div class="flex items-center space-x-2">
-      <button @click="$emit('new-file')" class="px-3 py-1 text-sm hover:bg-gray-100 rounded text-gray-600 font-medium">新建</button>
-      <button @click="$emit('open-file')" class="px-3 py-1 text-sm hover:bg-gray-100 rounded text-gray-600 font-medium">打开</button>
-      <button @click="$emit('save-file')" class="px-3 py-1 text-sm hover:bg-gray-100 rounded text-gray-600 font-medium">保存</button>
+      <button class="px-3 py-1 text-sm hover:bg-gray-100 rounded text-gray-600 font-medium" @click="$emit('new-file')">新建</button>
+      <button class="px-3 py-1 text-sm hover:bg-gray-100 rounded text-gray-600 font-medium" @click="$emit('open-file')">打开</button>
+      <button class="px-3 py-1 text-sm hover:bg-gray-100 rounded text-gray-600 font-medium" @click="$emit('save-file')">保存</button>
       <div class="mx-1 h-4 w-px bg-gray-200"></div>
 
-      <button 
-        @click="$emit('toggle-source')" 
+      <button
         class="flex items-center space-x-1 px-3 py-1 text-sm rounded border transition-colors"
         :class="isSourceMode ? 'bg-blue-500 text-white border-blue-600' : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100'"
         title="切换源码模式 (Cmd+/)"
+        @click="$emit('toggle-source')"
       >
         <span class="font-mono">&lt;/&gt;</span>
         <span>源码</span>

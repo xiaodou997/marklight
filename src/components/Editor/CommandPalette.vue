@@ -28,7 +28,7 @@
 
           <!-- 文件列表 -->
           <div v-if="!isCommandMode" class="command-list">
-            <div class="command-list-header" v-if="filteredFiles.length > 0">文件</div>
+            <div v-if="filteredFiles.length > 0" class="command-list-header">文件</div>
             <div
               v-for="(file, index) in filteredFiles"
               :key="file.path"

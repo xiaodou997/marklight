@@ -6,24 +6,24 @@
     <!-- 标签切换 -->
     <div class="flex border-b" style="border-color: var(--border-color)">
       <button
-        @click="$emit('update:mode', 'outline')"
         class="flex-1 py-2 text-xs font-medium transition-colors"
         :class="
           mode === 'outline'
             ? 'text-blue-600 border-b-2 border-blue-600'
             : 'text-gray-500 hover:text-gray-700'
         "
+        @click="$emit('update:mode', 'outline')"
       >
         大纲
       </button>
       <button
-        @click="$emit('update:mode', 'files')"
         class="flex-1 py-2 text-xs font-medium transition-colors"
         :class="
           mode === 'files'
             ? 'text-blue-600 border-b-2 border-blue-600'
             : 'text-gray-500 hover:text-gray-700'
         "
+        @click="$emit('update:mode', 'files')"
       >
         文件
       </button>
@@ -36,9 +36,9 @@
         <div
           v-for="item in outlineItems"
           :key="item.pos"
-          @click="$emit('scroll-to', item.pos)"
           :style="{ paddingLeft: `${(item.level - 1) * 12 + 8}px` }"
           class="group flex items-center py-1.5 px-2 rounded-md text-sm text-gray-600 hover:bg-blue-50 hover:text-blue-600 cursor-pointer transition-colors"
+          @click="$emit('scroll-to', item.pos)"
         >
           <span class="truncate">{{ item.text }}</span>
         </div>
@@ -49,7 +49,7 @@
     <div v-else class="flex-1 flex flex-col overflow-hidden">
       <div v-if="!rootFolder" class="flex-1 p-4 text-xs text-gray-400 italic">
         请打开文件夹以查看文件列表
-        <button @click="$emit('open-folder')" class="block mt-2 text-blue-500 hover:underline">
+        <button class="block mt-2 text-blue-500 hover:underline" @click="$emit('open-folder')">
           打开文件夹
         </button>
       </div>
@@ -79,14 +79,14 @@
             <div
               v-for="node in searchResults"
               :key="node.path"
-              @click="handleNodeClick(node, $event)"
-              @contextmenu.prevent="showContextMenu($event, node)"
               class="flex items-center py-1 px-2 text-sm cursor-pointer transition-colors truncate"
               :class="
                 node.path === currentFilePath
                   ? 'bg-blue-50 text-blue-600'
                   : 'text-gray-600 hover:bg-gray-100'
               "
+              @click="handleNodeClick(node, $event)"
+              @contextmenu.prevent="showContextMenu($event, node)"
             >
               <span class="mr-1.5 text-xs flex-shrink-0">{{ nodeIcon(node) }}</span>
               <span class="truncate text-xs">{{ node.name }}</span>
@@ -101,8 +101,6 @@
             <div
               v-for="{ node, depth } in flatTree"
               :key="node.path"
-              @click="handleNodeClick(node, $event)"
-              @contextmenu.prevent="showContextMenu($event, node)"
               :style="{ paddingLeft: `${depth * 14 + 8}px` }"
               class="flex items-center py-1 pr-2 text-sm cursor-pointer transition-colors"
               :class="
@@ -110,6 +108,8 @@
                   ? 'bg-blue-50 text-blue-600'
                   : 'text-gray-600 hover:bg-gray-100'
               "
+              @click="handleNodeClick(node, $event)"
+              @contextmenu.prevent="showContextMenu($event, node)"
             >
               <!-- 展开/折叠箭头（仅目录） -->
               <span class="w-3 flex-shrink-0 text-center mr-0.5 text-xs text-gray-400">
@@ -135,9 +135,9 @@
         <span class="text-[10px] text-gray-400 truncate flex-1">{{ rootFolderName }}</span>
         <!-- 新建按钮 -->
         <button
-          @click="showNewMenu"
           class="ml-2 flex-shrink-0 text-gray-400 hover:text-blue-500 transition-colors"
           title="新建"
+          @click="showNewMenu"
         >
           <svg
             class="w-4 h-4"

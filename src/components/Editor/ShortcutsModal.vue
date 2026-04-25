@@ -4,7 +4,7 @@ import { isMac } from '../../utils/platform';
 import { getShortcutGroups, formatShortcutDisplay } from '../../utils/shortcuts';
 import { useSettingsStore } from '../../stores/settings';
 
-const props = defineProps<{
+defineProps<{
   visible: boolean;
 }>();
 
@@ -42,9 +42,9 @@ function onKeyDown(e: KeyboardEvent) {
       <div
         v-if="visible"
         class="modal-overlay"
+        tabindex="-1"
         @click="onOverlayClick"
         @keydown="onKeyDown"
-        tabindex="-1"
       >
         <div class="modal-container" @click.stop>
           <!-- 头部 -->

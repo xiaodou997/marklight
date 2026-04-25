@@ -7,6 +7,7 @@
  * - 支持语言标识
  */
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
+import type { Editor } from '@tiptap/core';
 import type { Node as PMNode } from '@tiptap/pm/model';
 import { common, createLowlight } from 'lowlight';
 
@@ -22,7 +23,7 @@ export function getCodeBlockLanguageLabel(language: string | null | undefined): 
 }
 
 function updateCodeBlockLanguage(
-  editor: any,
+  editor: Editor,
   node: PMNode,
   getPos: (() => number | undefined) | boolean,
   language: string | null,

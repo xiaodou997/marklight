@@ -26,6 +26,10 @@ function getMermaid() {
 
 let mermaidCounter = 0;
 
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 export const MermaidBlock = Node.create({
   name: 'mermaidBlock',
   group: 'block',
@@ -86,8 +90,8 @@ export const MermaidBlock = Node.create({
           const id = `mermaid-${++mermaidCounter}`;
           const { svg } = await mermaid.default.render(id, source);
           renderDiv.innerHTML = svg;
-        } catch (err: any) {
-          renderDiv.innerHTML = `<span class="mk-mermaid-error">图表语法错误: ${err?.message || err}</span>`;
+        } catch (err: unknown) {
+          renderDiv.innerHTML = `<span class="mk-mermaid-error">图表语法错误: ${getErrorMessage(err)}</span>`;
         }
       }
 

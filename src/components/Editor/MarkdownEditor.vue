@@ -98,6 +98,15 @@ import 'highlight.js/styles/github.css';
 import 'katex/dist/katex.min.css';
 
 type SlashCommandSuggestionProps = SuggestionProps<SlashCommandItem, SlashCommandItem>;
+type EditorUpdatePayload = {
+  wordCount?: number;
+  cursor?: { line: number; col: number };
+  selectionText?: string;
+  outline?: Array<{ level: number; text: string; pos: number }>;
+};
+type BubbleMenuActionData = {
+  href?: string;
+};
 
 // 深色模式 highlight.js 主题切换
 const hljsDarkCssId = 'hljs-dark-theme';
@@ -118,7 +127,7 @@ function syncHljsTheme() {
 }
 
 const props = defineProps<{ initialContent?: string }>();
-const emit = defineEmits<{ (e: 'update', data: any): void }>();
+const emit = defineEmits<{ (e: 'update', data: EditorUpdatePayload): void }>();
 
 const fileStore = useFileStore();
 const settingsStore = useSettingsStore();
@@ -367,12 +376,13 @@ function updateBubbleMenu(ed: TiptapEditor) {
     link: ed.isActive('link'),
   };
 
-  const linkHref = ed.getAttributes('link')?.href;
+  const linkAttributes = ed.getAttributes('link') as { href?: unknown };
+  const linkHref = typeof linkAttributes.href === 'string' ? linkAttributes.href : undefined;
 
   bubbleMenuRef.value?.update(true, left, top, marks, linkHref);
 }
 
-function onBubbleMenuAction(type: string, data?: any) {
+function onBubbleMenuAction(type: string, data?: BubbleMenuActionData) {
   if (!editor.value) return;
   const chain = editor.value.chain().focus();
 

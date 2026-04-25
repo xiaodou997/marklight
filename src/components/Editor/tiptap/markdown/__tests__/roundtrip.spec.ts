@@ -5,7 +5,7 @@
  * 这些测试不依赖 DOM/Editor（纯 schema + parser + serializer）。
  */
 import { describe, it, expect } from 'vitest';
-import { Schema } from '@tiptap/pm/model';
+import { Schema, type Node as PMNode } from '@tiptap/pm/model';
 import { parseMarkdown } from '../parser';
 import { serializeMarkdown } from '../serializer';
 
@@ -22,7 +22,7 @@ function createTestSchema(): Schema {
         attrs: { level: { default: 1 } },
         defining: true,
         parseDOM: [1, 2, 3, 4, 5, 6].map((level) => ({ tag: `h${level}`, attrs: { level } })),
-        toDOM: (node: any) => [`h${node.attrs.level}`, 0],
+        toDOM: (node: PMNode) => [`h${node.attrs.level}`, 0],
       },
       headingMarker: {
         inline: true,
@@ -30,7 +30,7 @@ function createTestSchema(): Schema {
         selectable: true,
         attrs: { level: { default: 1 } },
         parseDOM: [{ tag: 'span[data-heading-marker]' }],
-        toDOM: (node: any) => ['span', { 'data-heading-marker': '', 'data-level': node.attrs.level }, '#'.repeat(node.attrs.level) + ' '],
+        toDOM: (node: PMNode) => ['span', { 'data-heading-marker': '', 'data-level': node.attrs.level }, '#'.repeat(node.attrs.level) + ' '],
       },
       blockquote: { group: 'block', content: 'block+', parseDOM: [{ tag: 'blockquote' }], toDOM: () => ['blockquote', 0] },
       bulletList: { group: 'block', content: 'listItem+', parseDOM: [{ tag: 'ul' }], toDOM: () => ['ul', 0] },

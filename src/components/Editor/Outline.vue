@@ -8,9 +8,9 @@
       <div
         v-for="item in items"
         :key="item.pos"
-        @click="$emit('item-click', item.pos)"
         :style="{ paddingLeft: `${(item.level - 1) * 12 + 8}px` }"
         class="group flex items-center py-1.5 px-2 rounded-md text-sm text-gray-600 hover:bg-blue-50 hover:text-blue-600 cursor-pointer transition-colors"
+        @click="$emit('item-click', item.pos)"
       >
         <span class="truncate">{{ item.text }}</span>
       </div>
