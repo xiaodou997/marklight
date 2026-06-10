@@ -12,6 +12,9 @@
 
 ## 根目录保留项
 
-- `README.md`：项目入口与快速说明。
+- `README.md`：英文项目入口与快速说明。
+- `README.zh-CN.md`：简体中文项目入口。
+- `README.ja-JP.md`：日语项目入口。
+- `README.ko-KR.md`：韩语项目入口。
 - `LICENSE`：标准 Apache 2.0 完整许可证文本。
 - `AGENTS.md`：面向代码代理的项目上下文和协作说明。

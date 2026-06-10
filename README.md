@@ -2,10 +2,20 @@
   <img src="./public/icon.png" width="160" alt="MarkLight Logo" />
 </p>
 
-<h1 align="center">墨光 (MarkLight)</h1>
+<h1 align="center">MarkLight</h1>
 
 <p align="center">
-  <strong>一款基于 Tauri 2、Rust 领域内核与 TipTap 的本地优先 Markdown 编辑器</strong>
+  <strong>A local-first Markdown editor built with Tauri 2, a Rust domain core, and TipTap.</strong>
+</p>
+
+<p align="center">
+  <a href="./README.md">English</a>
+  ·
+  <a href="./README.zh-CN.md">简体中文</a>
+  ·
+  <a href="./README.ja-JP.md">日本語</a>
+  ·
+  <a href="./README.ko-KR.md">한국어</a>
 </p>
 
 <p align="center">
@@ -20,47 +30,47 @@
   </a>
 </p>
 
-## 核心特性
+## Highlights
 
-- 所见即所得编辑：基于 TipTap / ProseMirror，代码块、表格、数学公式、Mermaid、Callout 等都在渲染态编辑。
-- 本地优先：文档、图片和工作区全部在本地管理，图片自动落到文档目录下的 `assets/`。
-- 多窗口桌面体验：支持新窗口打开文档、窗口状态持久化、原生菜单和系统打印。
-- 结构化工作区：Rust 负责目录过滤、watcher 聚合、外部变更事件和保存冲突检测。
-- 微信与 HTML 导出：前端渲染导出内容，原生侧负责打印与文件写入。
+- WYSIWYG editing: powered by TipTap / ProseMirror, with editable rendered blocks for code, tables, math, Mermaid diagrams, callouts, and more.
+- Local-first workflow: documents, images, and workspaces stay on your machine. Dropped images are saved into an `assets/` folder next to the current document.
+- Desktop-native experience: multi-window editing, persisted window state, native menus, and system printing.
+- Structured workspaces: Rust handles directory filtering, watcher aggregation, external change events, and save-conflict detection.
+- WeChat and HTML export: the frontend renders export-ready content while the native layer handles printing and file writes.
 
-## 技术架构
+## Architecture
 
-MarkLight 现在采用明确的三层边界：
+MarkLight uses three clear layers:
 
-- Vue 3 + Pinia + TipTap：负责 UI、编辑器体验和命令分发
-- Tauri 2：负责插件、权限边界和命令/事件桥接
-- Rust 领域内核：负责文档、工作区、窗口运行时和 watcher 一致性
+- Vue 3 + Pinia + TipTap: UI, editor interactions, and command dispatch.
+- Tauri 2: plugins, permission boundaries, and the command/event bridge.
+- Rust domain core: document, workspace, window runtime, and watcher consistency.
 
-约束如下：
+Project constraints:
 
-- 前端业务层不直接调用 `invoke` / `listen` / `emit`
-- Rust 对外命令全部返回结构化 DTO 和 `AppError`
-- 通用桌面能力优先使用官方插件
+- Frontend business logic does not call `invoke`, `listen`, or `emit` directly.
+- Public Rust commands return structured DTOs and `AppError`.
+- Common desktop capabilities should use official Tauri plugins first.
 
-更多说明见：
+More documentation:
 
-- [文档索引](./docs/README.md)
-- [架构说明](./docs/ARCHITECTURE.md)
-- [工程标准](./docs/ENGINEERING_STANDARDS.md)
-- [路线图](./docs/ROADMAP.md)
-- [更新日志](./docs/CHANGELOG.md)
+- [Documentation index](./docs/README.md)
+- [Architecture](./docs/ARCHITECTURE.md)
+- [Engineering standards](./docs/ENGINEERING_STANDARDS.md)
+- [Roadmap](./docs/ROADMAP.md)
+- [Changelog](./docs/CHANGELOG.md)
 
-## 技术栈
+## Tech Stack
 
-- 桌面框架：Tauri 2
-- 原生内核：Rust
-- 前端：Vue 3 + TypeScript + Pinia + Vite
-- 编辑器：TipTap / ProseMirror
-- Markdown：markdown-it + 自定义 parser / serializer
-- 样式：Tailwind CSS
-- 原生插件：store / window-state / dialog / opener / cli
+- Desktop framework: Tauri 2
+- Native core: Rust
+- Frontend: Vue 3 + TypeScript + Pinia + Vite
+- Editor: TipTap / ProseMirror
+- Markdown: markdown-it + custom parser / serializer
+- Styling: Tailwind CSS
+- Native plugins: store / window-state / dialog / opener / cli
 
-## 开发
+## Development
 
 ```bash
 bun install
@@ -75,19 +85,19 @@ bun run test
 cargo check --manifest-path src-tauri/Cargo.toml
 ```
 
-## 当前架构重点
+## Current Architecture Notes
 
-- 文档保存冲突检测已经统一移到 Rust `save_document`
-- 工作区 watcher 事件统一为 `workspace-changed`
-- 启动打开、系统打开、多窗口待处理打开请求统一使用 `app-open-paths` payload 模型
-- `App.vue` 只做组合面，文档/工作区/窗口生命周期已经分别下沉到 session composable
+- Save-conflict detection is centralized in Rust `save_document`.
+- Workspace watcher events are normalized as `workspace-changed`.
+- Startup open, system open, and multi-window pending open requests share the `app-open-paths` payload model.
+- `App.vue` is now a composition surface. Document, workspace, and window lifecycles live in dedicated session composables.
 
-## 贡献
+## Contributing
 
-- Issue 和 PR 欢迎提交到 GitHub
-- 架构或边界变更前，请先阅读 `docs/ARCHITECTURE.md` 和 `docs/ENGINEERING_STANDARDS.md`
-- 新能力进入项目时，请优先证明为什么不能由现有插件或现有领域模块承担
+- Issues and pull requests are welcome on GitHub.
+- Before changing architecture or ownership boundaries, read `docs/ARCHITECTURE.md` and `docs/ENGINEERING_STANDARDS.md`.
+- When adding a capability, first justify why it cannot be handled by existing plugins or domain modules.
 
 ## License
 
-MarkLight 基于 [Apache License 2.0](LICENSE) 开源。
+MarkLight is open source under the [Apache License 2.0](LICENSE).
