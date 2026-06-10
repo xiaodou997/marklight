@@ -13,10 +13,7 @@ function createSemanticDoc() {
     schema.nodes.frontmatter.create(null, [
       schema.text('title: Export Title\ndescription: Export description\ntags: [alpha, beta]'),
     ]),
-    schema.nodes.heading.create({ level: 1 }, [
-      schema.nodes.headingMarker.create({ level: 1 }),
-      schema.text('Heading'),
-    ]),
+    schema.nodes.heading.create({ level: 1 }, [schema.text('Heading')]),
     schema.nodes.callout.create({ type: 'tip', title: 'Keep going' }, [
       schema.nodes.paragraph.create(null, [
         schema.nodes.wikilink.create({ target: 'Page', alias: 'Alias' }),
@@ -46,17 +43,12 @@ function createSemanticDoc() {
 }
 
 describe('buildExportTree', () => {
-  it('filters editor-only nodes and keeps stable mark order', () => {
+  it('builds semantic headings and keeps stable mark order', () => {
     const schema = createMarkdownCompatSchema();
     const doc = schema.nodes.doc.create(null, [
-      schema.nodes.heading.create({ level: 2 }, [
-        schema.nodes.headingMarker.create({ level: 2 }),
-        schema.text('Export Title'),
-      ]),
+      schema.nodes.heading.create({ level: 2 }, [schema.text('Export Title')]),
       schema.nodes.paragraph.create(null, [
-        schema.nodes.boldOpen.create(),
         schema.text('Hello', [schema.marks.bold.create(), schema.marks.italic.create()]),
-        schema.nodes.boldClose.create(),
       ]),
     ]);
 

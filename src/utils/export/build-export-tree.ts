@@ -1,5 +1,4 @@
 import type { Mark, Node as PMNode } from '@tiptap/pm/model';
-import { TOKEN_NODE_NAMES } from '../../components/Editor/tiptap/extensions/mark-tokens';
 import type {
   ExportBlock,
   ExportCallout,
@@ -12,8 +11,6 @@ import type {
   ExportTableCell,
   ExportTableRow,
 } from './model';
-
-const EDITOR_ONLY_NODE_NAMES = new Set([...TOKEN_NODE_NAMES, 'headingMarker']);
 
 export function buildExportTree(doc: PMNode): ExportDocument {
   const metadata = extractMetadata(doc);
@@ -73,7 +70,7 @@ function buildBlocks(parent: PMNode): ExportBlock[] {
 }
 
 function buildBlock(node: PMNode): ExportBlock | null {
-  if (EDITOR_ONLY_NODE_NAMES.has(node.type.name) || node.type.name === 'frontmatter') {
+  if (node.type.name === 'frontmatter') {
     return null;
   }
 
@@ -198,10 +195,6 @@ function buildInlineContent(parent: PMNode): ExportInline[] {
   const inlines: ExportInline[] = [];
 
   parent.forEach((child) => {
-    if (EDITOR_ONLY_NODE_NAMES.has(child.type.name)) {
-      return;
-    }
-
     if (child.isText) {
       inlines.push({
         kind: 'text',

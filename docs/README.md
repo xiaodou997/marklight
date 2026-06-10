@@ -9,6 +9,7 @@
 - [路线图](./ROADMAP.md)：当前阶段、已完成能力和后续计划。
 - [更新日志](./CHANGELOG.md)：版本变更记录。
 - [许可证说明](./LICENSE_NOTES.md)：Apache 2.0 许可的简要说明。
+- [语义编辑模型](./SEMANTIC_EDITOR_MODEL.md)：编辑器文档模型重构的不变量和迁移方向。
 
 ## 根目录保留项
 
