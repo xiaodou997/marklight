@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
-import type { Node as PMNode } from '@tiptap/pm/model';
-import type { EditorView } from '@tiptap/pm/view';
+import { computed, defineAsyncComponent, onMounted, onUnmounted, ref, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useAppWindowSession } from './composables/useAppWindowSession';
 import { useCommandDispatcher } from './composables/useCommandDispatcher';
 import { useAppDomEvents } from './composables/useAppDomEvents';
+import { useAppEditorState } from './composables/useAppEditorState';
 import { useDocumentSession } from './composables/useDocumentSession';
 import { useExportActions } from './composables/useExportActions';
 import { useImagePreview } from './composables/useImagePreview';
@@ -16,7 +15,7 @@ import CommandPalette from './components/Editor/CommandPalette.vue';
 import ImageFullscreenOverlay from './components/Editor/ImageFullscreenOverlay.vue';
 import ImagePreviewView from './components/Editor/ImagePreviewView.vue';
 import ShortcutsModal from './components/Editor/ShortcutsModal.vue';
-import Sidebar, { type OutlineItem } from './components/Editor/Sidebar.vue';
+import Sidebar from './components/Editor/Sidebar.vue';
 import SourceEditorView from './components/Editor/SourceEditorView.vue';
 import StatusBar from './components/Layout/StatusBar.vue';
 import TitleBar from './components/Layout/TitleBar.vue';
@@ -31,29 +30,12 @@ import pkg from '../package.json';
 
 const MarkdownEditor = defineAsyncComponent(() => import('./components/Editor/MarkdownEditor.vue'));
 
-type EditorExpose = {
-  scrollToPos: (pos: number) => void;
-  openSearch: (showReplace?: boolean) => void;
-  getContent?: () => string;
-  getDoc?: () => PMNode | null;
-  getSelectionMarkdown?: () => string;
-  getEditorView: () => EditorView | null;
-  hasFocus?: () => boolean;
-  executeCommand?: (commandId: string) => boolean;
-};
-
-type EditorUpdatePayload = {
-  wordCount?: number;
-  cursor?: { line: number; col: number };
-  selectionText?: string;
-  outline?: OutlineItem[];
-};
-
 const fileStore = useFileStore();
 const settingsStore = useSettingsStore();
 const { settings, isLoaded } = storeToRefs(settingsStore);
-const editorRef = ref<EditorExpose | null>(null);
 const appVersion = pkg.version;
+const { editorRef, stats, outlineItems, handleEditorUpdate, scrollToHeading } =
+  useAppEditorState();
 
 const {
   activeViewMode,
@@ -109,24 +91,6 @@ const sidebarMode = ref<'outline' | 'files'>('outline');
 const imagePasteWarning = ref<string | null>(null);
 const isCommandPaletteOpen = ref(false);
 const isShortcutsModalOpen = ref(false);
-
-const stats = reactive({
-  wordCount: 0,
-  cursor: { line: 1, col: 1 },
-  selectionText: '',
-});
-const outlineItems = ref<OutlineItem[]>([]);
-
-function handleEditorUpdate(data: EditorUpdatePayload) {
-  if (data.wordCount !== undefined) stats.wordCount = data.wordCount;
-  if (data.cursor) stats.cursor = data.cursor;
-  if (data.selectionText !== undefined) stats.selectionText = data.selectionText;
-  if (data.outline) outlineItems.value = data.outline;
-}
-
-function scrollToHeading(pos: number) {
-  editorRef.value?.scrollToPos(pos);
-}
 
 async function handleOpenFolder() {
   const opened = await workspaceSession.openWorkspacePicker();
