@@ -120,54 +120,16 @@
       @new-folder="handleNewFolder"
     />
 
-    <Teleport to="body">
-      <!-- 重命名对话框 -->
-      <div
-        v-if="renameDialog.visible"
-        class="dialog-overlay"
-        @click.self="renameDialog.visible = false"
-      >
-        <div class="dialog">
-          <div class="dialog-title">重命名</div>
-          <input
-            ref="renameInputRef"
-            v-model="renameDialog.newName"
-            type="text"
-            class="dialog-input"
-            @keydown.enter="confirmRename"
-            @keydown.esc="renameDialog.visible = false"
-          />
-          <div class="dialog-buttons">
-            <button class="dialog-btn dialog-btn-cancel" @click="renameDialog.visible = false">
-              取消
-            </button>
-            <button class="dialog-btn dialog-btn-confirm" @click="confirmRename">确定</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- 新建对话框 -->
-      <div v-if="newDialog.visible" class="dialog-overlay" @click.self="newDialog.visible = false">
-        <div class="dialog">
-          <div class="dialog-title">{{ newDialog.isFolder ? '新建文件夹' : '新建文件' }}</div>
-          <input
-            ref="newInputRef"
-            v-model="newDialog.name"
-            type="text"
-            class="dialog-input"
-            :placeholder="newDialog.isFolder ? '文件夹名称' : '文件名 (如: note.md)'"
-            @keydown.enter="confirmNew"
-            @keydown.esc="newDialog.visible = false"
-          />
-          <div class="dialog-buttons">
-            <button class="dialog-btn dialog-btn-cancel" @click="newDialog.visible = false">
-              取消
-            </button>
-            <button class="dialog-btn dialog-btn-confirm" @click="confirmNew">确定</button>
-          </div>
-        </div>
-      </div>
-    </Teleport>
+    <SidebarFileDialogs
+      :rename-dialog="renameDialog"
+      :new-dialog="newDialog"
+      @close-rename="renameDialog.visible = false"
+      @update-rename-name="renameDialog.newName = $event"
+      @confirm-rename="confirmRename"
+      @close-new="newDialog.visible = false"
+      @update-new-name="newDialog.name = $event"
+      @confirm-new="confirmNew"
+    />
   </div>
 </template>
 
@@ -177,6 +139,7 @@ import { confirm } from '@tauri-apps/plugin-dialog';
 import type { TreeNode } from '../../composables/useWorkspaceSession';
 import FileTreePanel from './FileTreePanel.vue';
 import FileTreeSearchResults from './FileTreeSearchResults.vue';
+import SidebarFileDialogs from './SidebarFileDialogs.vue';
 import SidebarMenus from './SidebarMenus.vue';
 import SidebarOutlinePanel, { type SidebarOutlineItem } from './SidebarOutlinePanel.vue';
 
@@ -271,9 +234,6 @@ const newDialog = ref<{ visible: boolean; name: string; isFolder: boolean }>({
   isFolder: false,
 });
 
-const renameInputRef = ref<HTMLInputElement | null>(null);
-const newInputRef = ref<HTMLInputElement | null>(null);
-
 function showContextMenu(event: MouseEvent, node: TreeNode) {
   contextMenu.value = { visible: true, x: event.clientX, y: event.clientY, node };
 }
@@ -313,10 +273,6 @@ function handleRename() {
   renameDialog.value.newName = contextMenu.value.node.name;
   renameDialog.value.visible = true;
   contextMenu.value.visible = false;
-  nextTick(() => {
-    renameInputRef.value?.focus();
-    renameInputRef.value?.select();
-  });
 }
 
 function confirmRename() {
@@ -360,7 +316,6 @@ function handleNewFile() {
 function handleNewFolder() {
   newDialog.value = { visible: true, name: '', isFolder: true };
   newMenu.value.visible = false;
-  nextTick(() => newInputRef.value?.focus());
 }
 
 function confirmNew() {
@@ -381,10 +336,6 @@ watch(
         contextMenu.value.node = node;
         renameDialog.value.newName = node.name.replace(/\.md$/i, '');
         renameDialog.value.visible = true;
-        nextTick(() => {
-          renameInputRef.value?.focus();
-          renameInputRef.value?.select();
-        });
       });
     }
   },
@@ -400,83 +351,3 @@ function handleClickOutside() {
 onMounted(() => document.addEventListener('click', handleClickOutside));
 onUnmounted(() => document.removeEventListener('click', handleClickOutside));
 </script>
-
-<style scoped>
-.dialog-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.dialog {
-  background: var(--bg-color);
-  color: var(--text-color);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  padding: 20px;
-  min-width: 300px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
-}
-
-.dialog-title {
-  font-size: 16px;
-  font-weight: 600;
-  margin-bottom: 16px;
-}
-
-.dialog-input {
-  width: 100%;
-  padding: 10px 12px;
-  background: var(--sidebar-bg);
-  color: var(--text-color);
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  font-size: 14px;
-  outline: none;
-  transition: border-color 0.15s;
-  box-sizing: border-box;
-}
-
-.dialog-input:focus {
-  border-color: var(--primary-color);
-}
-
-.dialog-buttons {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 16px;
-}
-
-.dialog-btn {
-  padding: 8px 16px;
-  border-radius: 6px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: background-color 0.15s;
-}
-
-.dialog-btn-cancel {
-  background: rgba(0, 0, 0, 0.05);
-  color: var(--text-color);
-  opacity: 0.8;
-}
-.dark .dialog-btn-cancel {
-  background: rgba(255, 255, 255, 0.1);
-}
-.dialog-btn-cancel:hover {
-  opacity: 1;
-}
-
-.dialog-btn-confirm {
-  background: var(--primary-color);
-  color: white;
-}
-.dialog-btn-confirm:hover {
-  filter: brightness(1.1);
-}
-</style>
