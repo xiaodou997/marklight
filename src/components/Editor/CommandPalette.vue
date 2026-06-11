@@ -8,78 +8,36 @@
       >
         <div class="command-palette">
           <!-- 搜索输入 -->
-          <div class="command-input-wrapper">
-            <svg class="command-input-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="11" cy="11" r="8" />
-              <path d="m21 21-4.35-4.35" />
-            </svg>
-            <input
-              ref="inputRef"
-              v-model="searchQuery"
-              type="text"
-              class="command-input"
-              :placeholder="isCommandMode ? '搜索命令...' : '搜索文件... (输入 > 搜索命令)'"
-              @keydown.down.prevent="selectNext"
-              @keydown.up.prevent="selectPrev"
-              @keydown.enter.prevent="executeSelected"
-              @keydown.esc="close"
-            />
-          </div>
+          <CommandPaletteSearchInput
+            v-model="searchQuery"
+            :visible="visible"
+            :is-command-mode="isCommandMode"
+            @select-next="selectNext"
+            @select-prev="selectPrev"
+            @execute-selected="executeSelected"
+            @close="close"
+          />
 
           <!-- 文件列表 -->
-          <div v-if="!isCommandMode" class="command-list">
-            <div v-if="filteredFiles.length > 0" class="command-list-header">文件</div>
-            <div
-              v-for="(file, index) in filteredFiles"
-              :key="file.path"
-              class="command-item"
-              :class="{ 'command-item-selected': index === selectedIndex }"
-              @click="openFile(file)"
-              @mouseenter="selectedIndex = index"
-            >
-              <div class="command-item-icon">
-                <template v-if="file.is_dir">📁</template>
-                <template v-else-if="file.is_md">📝</template>
-                <template v-else>📄</template>
-              </div>
-              <div class="command-item-content">
-                <div class="command-item-title">{{ file.name }}</div>
-                <div class="command-item-path">{{ getRelativePath(file.path) }}</div>
-              </div>
-            </div>
-            <div v-if="filteredFiles.length === 0 && searchQuery" class="command-empty">
-              没有找到匹配的文件
-            </div>
-            <div v-if="filteredFiles.length === 0 && !searchQuery && allFiles.length === 0" class="command-empty">
-              请先打开文件夹
-            </div>
-            <div v-if="filteredFiles.length === 0 && !searchQuery && allFiles.length > 0" class="command-empty">
-              输入关键词搜索文件
-            </div>
-          </div>
+          <CommandPaletteFileList
+            v-if="!isCommandMode"
+            :files="filteredFiles"
+            :selected-index="selectedIndex"
+            :search-query="searchQuery"
+            :has-workspace-files="allFiles.length > 0"
+            :current-folder="currentFolder"
+            @open="openFile"
+            @select="selectedIndex = $event"
+          />
 
           <!-- 命令列表 -->
-          <div v-else class="command-list">
-            <div
-              v-for="(command, index) in filteredCommands"
-              :key="command.id"
-              class="command-item"
-              :class="{ 'command-item-selected': index === selectedIndex }"
-              @click="executeCommand(command)"
-              @mouseenter="selectedIndex = index"
-            >
-              <div class="command-item-icon">{{ command.icon }}</div>
-              <div class="command-item-content">
-                <div class="command-item-title">{{ command.title }}</div>
-                <div v-if="command.shortcut" class="command-item-shortcut">
-                  {{ formatShortcutDisplay(command.shortcut) }}
-                </div>
-              </div>
-            </div>
-            <div v-if="filteredCommands.length === 0" class="command-empty">
-              没有找到匹配的命令
-            </div>
-          </div>
+          <CommandPaletteCommandList
+            v-else
+            :commands="filteredCommands"
+            :selected-index="selectedIndex"
+            @execute="executeCommand"
+            @select="selectedIndex = $event"
+          />
         </div>
       </div>
     </Transition>
@@ -87,45 +45,32 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick } from 'vue';
-import {
-  COMMANDS,
-  getShortcut,
-  type CommandDefinition,
-} from '../../commands/registry';
-import { formatShortcutDisplay } from '../../utils/shortcuts';
+import { ref, computed, watch } from 'vue';
+import { COMMANDS, getShortcut } from '../../commands/registry';
 import { useSettingsStore } from '../../stores/settings';
-
-interface Command extends CommandDefinition {
-  shortcut?: string;
-}
-
-interface FileInfo {
-  name: string;
-  path: string;
-  is_dir: boolean;
-  is_md: boolean;
-}
+import CommandPaletteCommandList from './CommandPaletteCommandList.vue';
+import CommandPaletteFileList from './CommandPaletteFileList.vue';
+import CommandPaletteSearchInput from './CommandPaletteSearchInput.vue';
+import type { CommandPaletteCommand, CommandPaletteFile } from './command-palette-types';
 
 const props = defineProps<{
   visible: boolean;
-  files?: FileInfo[];
+  files?: CommandPaletteFile[];
   currentFolder?: string | null;
 }>();
 
 const emit = defineEmits<{
   (e: 'close'): void;
-  (e: 'execute', command: Command): void;
+  (e: 'execute', command: CommandPaletteCommand): void;
   (e: 'open-file', path: string): void;
 }>();
 
 const settingsStore = useSettingsStore();
-const inputRef = ref<HTMLInputElement | null>(null);
 const searchQuery = ref('');
 const selectedIndex = ref(0);
 
 // 扁平化所有文件（递归）
-const allFiles = computed<FileInfo[]>(() => {
+const allFiles = computed<CommandPaletteFile[]>(() => {
   // 这里只使用传入的文件列表，不递归
   // 如果需要递归搜索，需要在 Rust 端实现
   return props.files || [];
@@ -145,7 +90,7 @@ const actualQuery = computed(() => {
 });
 
 // 命令列表
-const commands = computed<Command[]>(() =>
+const commands = computed<CommandPaletteCommand[]>(() =>
   COMMANDS
     .filter((command) => command.palette !== false)
     .map((command) => ({
@@ -174,12 +119,6 @@ const filteredFiles = computed(() => {
     file.name.toLowerCase().includes(query)
   ).slice(0, 20);
 });
-
-// 获取相对路径
-function getRelativePath(path: string) {
-  if (!props.currentFolder) return path;
-  return path.replace(props.currentFolder, '~');
-}
 
 // 当前结果列表长度
 const currentListLength = computed(() => {
@@ -211,12 +150,12 @@ const executeSelected = () => {
   }
 };
 
-const executeCommand = (command: Command) => {
+const executeCommand = (command: CommandPaletteCommand) => {
   emit('execute', command);
   close();
 };
 
-const openFile = (file: FileInfo) => {
+const openFile = (file: CommandPaletteFile) => {
   emit('open-file', file.path);
   close();
 };
@@ -230,9 +169,6 @@ watch(() => props.visible, (visible) => {
   if (visible) {
     searchQuery.value = '';
     selectedIndex.value = 0;
-    nextTick(() => {
-      inputRef.value?.focus();
-    });
   }
 });
 
@@ -264,103 +200,6 @@ watch(searchQuery, () => {
   overflow: hidden;
   display: flex;
   flex-direction: column;
-}
-
-.command-input-wrapper {
-  display: flex;
-  align-items: center;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border-color);
-}
-
-.command-input-icon {
-  width: 20px;
-  height: 20px;
-  color: #9ca3af;
-  margin-right: 12px;
-  flex-shrink: 0;
-}
-
-.command-input {
-  flex: 1;
-  font-size: 16px;
-  border: none;
-  outline: none;
-  background: transparent;
-  color: inherit;
-}
-
-.command-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: 8px;
-}
-
-.command-list-header {
-  font-size: 11px;
-  font-weight: 600;
-  color: #9ca3af;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  padding: 4px 12px;
-  margin-bottom: 4px;
-}
-
-.command-item {
-  display: flex;
-  align-items: center;
-  padding: 10px 12px;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background-color 0.1s;
-}
-
-.command-item:hover,
-.command-item-selected {
-  background: rgba(0, 0, 0, 0.05);
-}
-
-.dark .command-item:hover,
-.dark .command-item-selected {
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.command-item-icon {
-  font-size: 18px;
-  width: 28px;
-  text-align: center;
-  margin-right: 12px;
-}
-
-.command-item-content {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.command-item-title {
-  font-size: 14px;
-  color: inherit;
-}
-
-.command-item-path {
-  font-size: 12px;
-  color: #9ca3af;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-}
-
-.command-item-shortcut {
-  font-size: 12px;
-  color: #9ca3af;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-}
-
-.command-empty {
-  padding: 24px;
-  text-align: center;
-  color: #9ca3af;
-  font-size: 14px;
 }
 
 /* 过渡动画 */
