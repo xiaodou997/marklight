@@ -76,21 +76,15 @@
             <div v-if="searchResults.length === 0" class="px-4 py-3 text-xs text-gray-400 italic">
               没有匹配的文件
             </div>
-            <div
+            <FileTreeNode
               v-for="node in searchResults"
               :key="node.path"
-              class="flex items-center py-1 px-2 text-sm cursor-pointer transition-colors truncate"
-              :class="
-                node.path === currentFilePath
-                  ? 'bg-blue-50 text-blue-600'
-                  : 'text-gray-600 hover:bg-gray-100'
-              "
-              @click="handleNodeClick(node, $event)"
-              @contextmenu.prevent="showContextMenu($event, node)"
-            >
-              <span class="mr-1.5 text-xs flex-shrink-0">{{ nodeIcon(node) }}</span>
-              <span class="truncate text-xs">{{ node.name }}</span>
-            </div>
+              :node="node"
+              :current-file-path="currentFilePath"
+              :show-toggle="false"
+              @select="handleNodeClick"
+              @context-menu="showContextMenu"
+            />
           </template>
 
           <!-- 正常树视图 -->
@@ -98,28 +92,15 @@
             <div v-if="flatTree.length === 0" class="px-4 py-3 text-xs text-gray-400 italic">
               当前文件夹为空
             </div>
-            <div
+            <FileTreeNode
               v-for="{ node, depth } in flatTree"
               :key="node.path"
-              :style="{ paddingLeft: `${depth * 14 + 8}px` }"
-              class="flex items-center py-1 pr-2 text-sm cursor-pointer transition-colors"
-              :class="
-                node.path === currentFilePath
-                  ? 'bg-blue-50 text-blue-600'
-                  : 'text-gray-600 hover:bg-gray-100'
-              "
-              @click="handleNodeClick(node, $event)"
-              @contextmenu.prevent="showContextMenu($event, node)"
-            >
-              <!-- 展开/折叠箭头（仅目录） -->
-              <span class="w-3 flex-shrink-0 text-center mr-0.5 text-xs text-gray-400">
-                <template v-if="node.is_dir">{{ node.expanded ? '▾' : '▸' }}</template>
-              </span>
-              <!-- 图标 -->
-              <span class="mr-1.5 text-xs flex-shrink-0">{{ nodeIcon(node) }}</span>
-              <!-- 名称 -->
-              <span class="truncate text-xs">{{ node.name }}</span>
-            </div>
+              :node="node"
+              :depth="depth"
+              :current-file-path="currentFilePath"
+              @select="handleNodeClick"
+              @context-menu="showContextMenu"
+            />
           </template>
         </div>
       </template>
@@ -248,6 +229,7 @@ import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue';
 import { confirm } from '@tauri-apps/plugin-dialog';
 import { getFileManagerName } from '../../utils/platform';
 import type { TreeNode } from '../../composables/useWorkspaceSession';
+import FileTreeNode from './FileTreeNode.vue';
 
 export interface OutlineItem {
   text: string;
@@ -317,13 +299,6 @@ const rootFolderName = computed(() => {
   const parts = props.rootFolder.split(/[/\\]/).filter(Boolean);
   return parts[parts.length - 1] ?? props.rootFolder;
 });
-
-function nodeIcon(node: TreeNode): string {
-  if (node.is_dir) return node.expanded ? '📂' : '📁';
-  if (node.is_md) return '📝';
-  if (node.is_image) return '🖼️';
-  return '📄';
-}
 
 // ── 右键菜单 ──────────────────────────────────────────────────
 
