@@ -1,7 +1,7 @@
-import { confirm, message, open, save } from '@tauri-apps/plugin-dialog';
 import { onUnmounted, ref, watch } from 'vue';
 import { openDocument, saveDocument, type DocumentOpenResult } from '../services/tauri/document';
 import { normalizeTauriError } from '../services/tauri/client';
+import { confirm, message, open, save } from '../services/tauri/dialog';
 import type { WorkspaceChangedPayload } from '../services/tauri/events';
 import { useFileStore } from '../stores/file';
 import { useSettingsStore } from '../stores/settings';

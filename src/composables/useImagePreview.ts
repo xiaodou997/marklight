@@ -1,7 +1,7 @@
 import { ref } from 'vue';
-import { confirm } from '@tauri-apps/plugin-dialog';
 import { useFileStore } from '../stores/file';
 import { toAssetUrl } from '../services/tauri/asset';
+import { confirm } from '../services/tauri/dialog';
 import { authorizeImageAsset } from '../services/tauri/document';
 
 export function useImagePreview() {

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { confirm } from '@tauri-apps/plugin-dialog';
 import { useSettingsStore } from '../../stores/settings';
+import { confirm } from '../../services/tauri/dialog';
 import AppearanceSettingsPanel from './AppearanceSettingsPanel.vue';
 import EditorSettingsPanel from './EditorSettingsPanel.vue';
 import ExportSettingsPanel from './ExportSettingsPanel.vue';

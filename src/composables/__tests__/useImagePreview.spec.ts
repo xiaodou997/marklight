@@ -12,7 +12,7 @@ const fileStoreState = {
   },
 };
 
-vi.mock('@tauri-apps/plugin-dialog', () => ({
+vi.mock('../../services/tauri/dialog', () => ({
   confirm: mocks.confirmMock,
 }));
 

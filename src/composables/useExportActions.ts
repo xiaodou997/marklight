@@ -1,7 +1,7 @@
 import type { Ref } from 'vue';
 import type { Node as PMNode } from '@tiptap/pm/model';
-import { save, message } from '@tauri-apps/plugin-dialog';
 import { writeHtml } from '@tauri-apps/plugin-clipboard-manager';
+import { message, save } from '../services/tauri/dialog';
 import { saveDocument } from '../services/tauri/document';
 import { printDocument } from '../services/tauri/window';
 import {

@@ -1,7 +1,7 @@
 import { computed, nextTick, shallowRef, type ComponentPublicInstance } from 'vue';
-import { confirm } from '@tauri-apps/plugin-dialog';
 
 import type { Settings } from '../../stores/settings';
+import { confirm } from '../../services/tauri/dialog';
 import { isMac } from '../../utils/platform';
 import {
   eventToKeyString,

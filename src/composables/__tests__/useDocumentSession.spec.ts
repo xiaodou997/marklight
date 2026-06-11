@@ -37,7 +37,7 @@ const settingsStoreState = {
   },
 };
 
-vi.mock('@tauri-apps/plugin-dialog', () => ({
+vi.mock('../../services/tauri/dialog', () => ({
   open: openMock,
   save: saveMock,
   confirm: confirmMock,

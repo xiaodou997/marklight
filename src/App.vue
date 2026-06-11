@@ -3,7 +3,6 @@ import { computed, defineAsyncComponent, onMounted, onUnmounted, reactive, ref, 
 import type { Node as PMNode } from '@tiptap/pm/model';
 import type { EditorView } from '@tiptap/pm/view';
 import { storeToRefs } from 'pinia';
-import { message } from '@tauri-apps/plugin-dialog';
 import { useAppWindowSession } from './composables/useAppWindowSession';
 import { useCommandDispatcher } from './composables/useCommandDispatcher';
 import { useDocumentSession } from './composables/useDocumentSession';
@@ -21,6 +20,7 @@ import SettingsModal from './components/Settings/SettingsModal.vue';
 import EditorToolbar from './components/Toolbar/EditorToolbar.vue';
 import { useFileStore } from './stores/file';
 import { useSettingsStore } from './stores/settings';
+import { message } from './services/tauri/dialog';
 import { findCommandByShortcut } from './utils/shortcuts';
 import { isMac } from './utils/platform';
 import pkg from '../package.json';

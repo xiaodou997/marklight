@@ -12,7 +12,7 @@ const mocks = vi.hoisted(() => ({
   printDocumentMock: vi.fn(),
 }));
 
-vi.mock('@tauri-apps/plugin-dialog', () => ({
+vi.mock('../../services/tauri/dialog', () => ({
   save: mocks.saveMock,
   message: mocks.messageMock,
 }));

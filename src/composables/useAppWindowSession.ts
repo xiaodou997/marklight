@@ -1,6 +1,6 @@
-import { confirm } from '@tauri-apps/plugin-dialog';
 import type { Ref } from 'vue';
 import { onUnmounted, watch } from 'vue';
+import { confirm } from '../services/tauri/dialog';
 import type { AppOpenPathsPayload } from '../services/tauri/events';
 import { listenAppOpenPaths, listenWindowCloseRequested } from '../services/tauri/events';
 import { listenCurrentWebviewDragDrop } from '../services/tauri/webview';

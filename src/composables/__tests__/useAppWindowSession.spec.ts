@@ -24,7 +24,7 @@ function createListenerMock(eventName: string) {
   });
 }
 
-vi.mock('@tauri-apps/plugin-dialog', () => ({
+vi.mock('../../services/tauri/dialog', () => ({
   confirm: confirmMock,
 }));
 

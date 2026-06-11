@@ -1,5 +1,5 @@
-import { open, message } from '@tauri-apps/plugin-dialog';
 import { computed, onUnmounted, ref } from 'vue';
+import { message, open } from '../services/tauri/dialog';
 import type { WorkspaceChangedPayload } from '../services/tauri/events';
 import { listenWorkspaceChanged } from '../services/tauri/events';
 import {
