@@ -67,6 +67,12 @@ import {
   type SlashCommandItem,
 } from './tiptap/extensions/slash-commands';
 import { DragHandle } from './tiptap/extensions/drag-handle';
+import {
+  extractEditorOutline,
+  getEditorCursorInfo,
+  getEditorWordCount,
+  type EditorOutlineItem,
+} from './tiptap/editor-metadata';
 import { useEditorSearch } from './tiptap/useEditorSearch';
 import BubbleMenuComponent from './views/BubbleMenu.vue';
 import SlashMenu from './views/SlashMenu.vue';
@@ -80,7 +86,7 @@ type EditorUpdatePayload = {
   wordCount?: number;
   cursor?: { line: number; col: number };
   selectionText?: string;
-  outline?: Array<{ level: number; text: string; pos: number }>;
+  outline?: EditorOutlineItem[];
 };
 type BubbleMenuActionData = {
   href?: string;
@@ -267,50 +273,14 @@ const debouncedUpdate = debounce((ed: TiptapEditor) => {
     fileStore.setContent(markdown);
   }
 
-  // 统计信息
-  const text = ed.state.doc.textContent;
-  const wordCount = text.replace(/\s+/g, '').length;
-
-  // 大纲提取
-  const outline = extractOutline(ed);
+  const wordCount = getEditorWordCount(ed);
+  const outline = extractEditorOutline(ed);
 
   emit('update', { wordCount, outline });
 }, 300);
 
 function emitCursorInfo(ed: TiptapEditor) {
-  const { from } = ed.state.selection;
-  const resolved = ed.state.doc.resolve(from);
-  // 计算行号和列号
-  let line = 1;
-  ed.state.doc.descendants((node, nodePos) => {
-    if (node.isBlock && nodePos < from) {
-      line++;
-    }
-    return nodePos < from;
-  });
-  const col = from - resolved.start(resolved.depth) + 1;
-
-  const sel = ed.state.selection;
-  const selectionText = sel.empty ? '' : ed.state.doc.textBetween(sel.from, sel.to, '\n');
-
-  emit('update', {
-    cursor: { line, col },
-    selectionText,
-  });
-}
-
-function extractOutline(ed: TiptapEditor): Array<{ level: number; text: string; pos: number }> {
-  const outline: Array<{ level: number; text: string; pos: number }> = [];
-  ed.state.doc.descendants((node, pos) => {
-    if (node.type.name === 'heading') {
-      outline.push({
-        level: node.attrs.level,
-        text: node.textContent,
-        pos,
-      });
-    }
-  });
-  return outline;
+  emit('update', getEditorCursorInfo(ed));
 }
 
 // ── BubbleMenu ────────────────────────────────────────────────
