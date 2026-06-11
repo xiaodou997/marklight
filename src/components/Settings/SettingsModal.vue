@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue';
 import { confirm } from '@tauri-apps/plugin-dialog';
 import { useSettingsStore } from '../../stores/settings';
+import ExportSettingsPanel from './ExportSettingsPanel.vue';
 import SaveSettingsPanel from './SaveSettingsPanel.vue';
 import SettingsFontSelect from './SettingsFontSelect.vue';
 import SettingsModalFooter from './SettingsModalFooter.vue';
@@ -13,7 +14,6 @@ import SettingsRangeField from './SettingsRangeField.vue';
 import SettingsSidebarNav, { type SettingsTabKey } from './SettingsSidebarNav.vue';
 import SettingsSwitch from './SettingsSwitch.vue';
 import SettingsTabWidthSelector from './SettingsTabWidthSelector.vue';
-import WechatThemeSelector from './WechatThemeSelector.vue';
 import { useShortcutSettings } from './useShortcutSettings';
 
 const settingsStore = useSettingsStore();
@@ -355,28 +355,10 @@ function onKeyDown(e: KeyboardEvent) {
                 />
 
                 <!-- 导出设置 -->
-                <div v-show="activeTab === 'export'" class="space-y-6">
-                  <section class="settings-section-card settings-section-card--hero">
-                    <div>
-                      <div class="settings-section-title">导出主题</div>
-                      <p class="settings-section-desc">
-                        控制复制到微信等场景时的排版风格和主色表现。
-                      </p>
-                    </div>
-                  </section>
-
-                  <section class="settings-section-card">
-                    <div class="settings-section-heading">
-                      <div>
-                        <div class="settings-section-title">主题选择</div>
-                        <p class="settings-section-desc">
-                          当前为复制到微信的富文本导出提供单独的排版主题。
-                        </p>
-                      </div>
-                    </div>
-                    <WechatThemeSelector v-model="settings.wechatTheme" />
-                  </section>
-                </div>
+                <ExportSettingsPanel
+                  v-show="activeTab === 'export'"
+                  v-model:wechat-theme="settings.wechatTheme"
+                />
               </div>
             </div>
           </div>
