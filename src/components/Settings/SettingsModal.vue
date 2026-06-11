@@ -1,36 +1,32 @@
 <script setup lang="ts">
-import { ref, computed, nextTick } from 'vue';
+import { ref, computed } from 'vue';
 import { confirm } from '@tauri-apps/plugin-dialog';
 import { useSettingsStore } from '../../stores/settings';
 import { WECHAT_THEMES } from '../../utils/wechat-themes';
-import { isMac } from '../../utils/platform';
-import {
-  getCommand,
-  eventToKeyString,
-  formatShortcutDisplay,
-  getShortcutCommands,
-  getShortcutGroups,
-  type ShortcutDef,
-} from '../../utils/shortcuts';
 import ThemeSelector from './ThemeSelector.vue';
 import ThemeEditor from './ThemeEditor.vue';
+import { useShortcutSettings } from './useShortcutSettings';
 
 const settingsStore = useSettingsStore();
 const settings = settingsStore.settings;
 
 // 当前选中的设置分组
 const activeTab = ref<'appearance' | 'editor' | 'shortcuts' | 'save' | 'export'>('appearance');
-
-// 快捷键编辑状态
-const editingId = ref<string | null>(null);
-const editingKey = ref<string>('');
-const conflictWarning = ref<string | null>(null);
-const captureInputRef = ref<HTMLInputElement | null>(null);
-
-// 获取快捷键列表并按分组
-const shortcutGroups = computed(() => {
-  return getShortcutGroups(settings.customShortcuts);
-});
+const {
+  conflictWarning,
+  editingId,
+  editingKey,
+  formatShortcutDisplay,
+  isDefaultShortcut,
+  isMac,
+  resetAllShortcuts,
+  resetShortcut,
+  shortcutGroups,
+  startEdit,
+  setCaptureInputRef,
+  cancelEdit,
+  captureKeydown,
+} = useShortcutSettings(settings);
 
 // 字体选项
 const fontOptions = [
@@ -109,94 +105,6 @@ function onKeyDown(e: KeyboardEvent) {
   }
 }
 
-// 开始编辑快捷键
-function startEdit(item: ShortcutDef) {
-  editingId.value = item.id;
-  editingKey.value = settings.customShortcuts[item.id] ?? item.defaultShortcut ?? '';
-  conflictWarning.value = null;
-
-  nextTick(() => {
-    captureInputRef.value?.focus();
-  });
-}
-
-// 取消编辑
-function cancelEdit() {
-  editingId.value = null;
-  editingKey.value = '';
-  conflictWarning.value = null;
-}
-
-// 捕获快捷键
-function captureKeydown(event: KeyboardEvent, item: ShortcutDef) {
-  // 忽略单独的修饰键
-  if (['Control', 'Meta', 'Shift', 'Alt'].includes(event.key)) {
-    return;
-  }
-
-  // Escape 取消编辑
-  if (event.key === 'Escape') {
-    cancelEdit();
-    return;
-  }
-
-  event.preventDefault();
-  event.stopPropagation();
-
-  const keyStr = eventToKeyString(event);
-
-  // 检查是否只是修饰键（没有实际按键）
-  if (keyStr.endsWith('Mod-') || keyStr.endsWith('Shift-') || keyStr.endsWith('Alt-')) {
-    return;
-  }
-
-  const nextCustom = { ...settings.customShortcuts, [item.id]: keyStr };
-  const conflictingItems = getShortcutCommands(nextCustom).filter(
-    (command) => command.shortcut === keyStr && command.id !== item.id,
-  );
-
-  editingKey.value = keyStr;
-
-  if (conflictingItems.length > 0) {
-    conflictWarning.value = `快捷键冲突: ${conflictingItems.map((command) => command.description).join('、')}`;
-    return;
-  }
-
-  conflictWarning.value = null;
-  settings.customShortcuts[item.id] = keyStr;
-}
-
-// 重置单个快捷键
-function resetShortcut(item: ShortcutDef) {
-  const defaultDef = getCommand(item.id);
-  if (defaultDef?.defaultShortcut && settings.customShortcuts[item.id]) {
-    delete settings.customShortcuts[item.id];
-  }
-  conflictWarning.value = null;
-}
-
-// 重置所有快捷键
-async function resetAllShortcuts() {
-  const confirmed = await confirm('确定要重置所有快捷键为默认值吗？', {
-    title: '重置快捷键',
-    kind: 'warning',
-    okLabel: '重置',
-    cancelLabel: '取消',
-  });
-  if (confirmed) {
-    settings.customShortcuts = {};
-    conflictWarning.value = null;
-  }
-}
-
-// 判断是否使用默认快捷键
-function isDefaultShortcut(item: ShortcutDef): boolean {
-  const defaultDef = getCommand(item.id);
-  return (
-    !settings.customShortcuts[item.id] ||
-    settings.customShortcuts[item.id] === defaultDef?.defaultShortcut
-  );
-}
 </script>
 
 <template>
@@ -540,7 +448,7 @@ function isDefaultShortcut(item: ShortcutDef): boolean {
 
                           <input
                             v-if="editingId === item.id"
-                            ref="captureInputRef"
+                            :ref="setCaptureInputRef"
                             type="text"
                             readonly
                             data-shortcut-capture="true"
