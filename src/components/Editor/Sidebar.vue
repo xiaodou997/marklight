@@ -30,20 +30,11 @@
     </div>
 
     <!-- 大纲模式 -->
-    <div v-if="mode === 'outline'" class="flex-1 overflow-y-auto p-4">
-      <div v-if="outlineItems.length === 0" class="text-xs text-gray-400 px-2 italic">暂无标题</div>
-      <nav class="space-y-1">
-        <div
-          v-for="item in outlineItems"
-          :key="item.pos"
-          :style="{ paddingLeft: `${(item.level - 1) * 12 + 8}px` }"
-          class="group flex items-center py-1.5 px-2 rounded-md text-sm text-gray-600 hover:bg-blue-50 hover:text-blue-600 cursor-pointer transition-colors"
-          @click="$emit('scroll-to', item.pos)"
-        >
-          <span class="truncate">{{ item.text }}</span>
-        </div>
-      </nav>
-    </div>
+    <SidebarOutlinePanel
+      v-if="mode === 'outline'"
+      :items="outlineItems"
+      @scroll-to="$emit('scroll-to', $event)"
+    />
 
     <!-- 文件树模式 -->
     <div v-else class="flex-1 flex flex-col overflow-hidden">
@@ -217,12 +208,9 @@ import { getFileManagerName } from '../../utils/platform';
 import type { TreeNode } from '../../composables/useWorkspaceSession';
 import FileTreePanel from './FileTreePanel.vue';
 import FileTreeSearchResults from './FileTreeSearchResults.vue';
+import SidebarOutlinePanel, { type SidebarOutlineItem } from './SidebarOutlinePanel.vue';
 
-export interface OutlineItem {
-  text: string;
-  level: number;
-  pos: number;
-}
+export type OutlineItem = SidebarOutlineItem;
 
 const props = defineProps<{
   mode: 'outline' | 'files';
