@@ -152,4 +152,93 @@ describe('useDocumentSession', () => {
     expect(fileStoreState.setFile).toHaveBeenCalledWith('draft', '/tmp/demo.md', 2000);
     expect(fileStoreState.markSaved).toHaveBeenCalledWith(2000);
   });
+
+  it('reloads a clean current document after external workspace changes', async () => {
+    vi.useFakeTimers();
+    fileStoreState.currentFile = {
+      path: '/tmp/demo.md',
+      content: 'old',
+      isDirty: false,
+      lastModifiedTime: 1000,
+    };
+    openDocumentMock.mockResolvedValue({
+      path: '/tmp/demo.md',
+      content: 'updated',
+      lastModifiedMs: 1500,
+    });
+
+    const { useDocumentSession } = await import('../useDocumentSession');
+    const session = useDocumentSession({
+      resetViewMode: vi.fn(),
+    });
+
+    await session.handleWorkspaceChange({
+      rootPath: '/tmp',
+      kind: 'modify',
+      paths: ['/tmp/demo.md'],
+    });
+
+    expect(openDocumentMock).toHaveBeenCalledWith('/tmp/demo.md');
+    expect(fileStoreState.setFile).toHaveBeenCalledWith('updated', '/tmp/demo.md', 1500);
+    expect(session.externalFileWarning.value).toBe('已同步外部修改');
+
+    vi.clearAllTimers();
+    vi.useRealTimers();
+  });
+
+  it('does not reload dirty documents after external workspace changes', async () => {
+    vi.useFakeTimers();
+    fileStoreState.currentFile = {
+      path: '/tmp/demo.md',
+      content: 'draft',
+      isDirty: true,
+      lastModifiedTime: 1000,
+    };
+
+    const { useDocumentSession } = await import('../useDocumentSession');
+    const session = useDocumentSession({
+      resetViewMode: vi.fn(),
+    });
+
+    await session.handleWorkspaceChange({
+      rootPath: '/tmp',
+      kind: 'modify',
+      paths: ['/tmp/demo.md'],
+    });
+
+    expect(openDocumentMock).not.toHaveBeenCalled();
+    expect(session.externalFileWarning.value).toBe('检测到外部修改，保存时会再次确认');
+
+    vi.clearAllTimers();
+    vi.useRealTimers();
+  });
+
+  it('resets the current document when workspace reports it was deleted', async () => {
+    vi.useFakeTimers();
+    const resetViewMode = vi.fn();
+    fileStoreState.currentFile = {
+      path: '/tmp/demo.md',
+      content: 'draft',
+      isDirty: false,
+      lastModifiedTime: 1000,
+    };
+
+    const { useDocumentSession } = await import('../useDocumentSession');
+    const session = useDocumentSession({
+      resetViewMode,
+    });
+
+    await session.handleWorkspaceChange({
+      rootPath: '/tmp',
+      kind: 'remove',
+      paths: ['/tmp/demo.md'],
+    });
+
+    expect(fileStoreState.reset).toHaveBeenCalledTimes(1);
+    expect(resetViewMode).toHaveBeenCalledTimes(1);
+    expect(session.externalFileWarning.value).toBe('当前文件已在外部被删除');
+
+    vi.clearAllTimers();
+    vi.useRealTimers();
+  });
 });
