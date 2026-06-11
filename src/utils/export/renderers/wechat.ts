@@ -1,6 +1,14 @@
-import type { ExportBlock, ExportDocument, ExportInline, ExportListItem, ExportMark, ExportRenderOptions, WechatRenderResult } from '../model';
+import type {
+  ExportBlock,
+  ExportDocument,
+  ExportInline,
+  ExportListItem,
+  ExportMark,
+  ExportRenderOptions,
+  WechatRenderResult,
+} from '../model';
 import { getExportThemeTokens } from '../theme';
-import { escapeAttribute, escapeHtml, renderPlainText, wrapMarks } from '../utils';
+import { escapeAttribute, escapeHtml, renderPlainText, sanitizeHref, wrapMarks } from '../utils';
 
 export function renderWechatFragment(
   document: ExportDocument,
@@ -23,7 +31,10 @@ function renderBlock(block: ExportBlock, theme: ReturnType<typeof getExportTheme
       return `<p style="margin:0 0 1.2em;line-height:1.8;color:${theme.text};font-size:16px;">${renderInlines(block.inlines, theme)}</p>`;
     case 'heading': {
       const size = Math.max(18, 30 - block.level * 2);
-      const border = block.level <= 2 ? `border-${block.level === 1 ? 'bottom' : 'left'}:${block.level === 1 ? '3px solid' : '4px solid'} ${theme.accent};padding-${block.level === 1 ? 'bottom' : 'left'}:${block.level === 1 ? '8px' : '12px'};` : '';
+      const border =
+        block.level <= 2
+          ? `border-${block.level === 1 ? 'bottom' : 'left'}:${block.level === 1 ? '3px solid' : '4px solid'} ${theme.accent};padding-${block.level === 1 ? 'bottom' : 'left'}:${block.level === 1 ? '8px' : '12px'};`
+          : '';
       return `<h${block.level} style="margin:1.6em 0 0.8em;color:${theme.accentStrong};font-size:${size}px;line-height:1.35;${border}">${renderInlines(block.inlines, theme)}</h${block.level}>`;
     }
     case 'blockquote':
@@ -38,15 +49,18 @@ function renderBlock(block: ExportBlock, theme: ReturnType<typeof getExportTheme
       return `<pre style="margin:1.4em 0;padding:14px 16px;border-radius:12px;background:${theme.preBackground};color:${theme.preForeground};font-size:14px;line-height:1.65;overflow-x:auto;"><code>${escapeHtml(block.code)}</code></pre>`;
     case 'table':
       return `<table style="width:100%;border-collapse:collapse;margin:1.4em 0;">${block.rows
-        .map((row) => `<tr>${row.cells
-          .map((cell) => {
-            const tag = cell.kind === 'tableHeader' ? 'th' : 'td';
-            const bg = cell.kind === 'tableHeader' ? theme.surfaceMuted : '#ffffff';
-            return `<${tag} style="border:1px solid ${theme.border};padding:8px 10px;background:${bg};text-align:left;vertical-align:top;">${cell.blocks
-              .map((child) => renderBlock(child, theme))
-              .join('')}</${tag}>`;
-          })
-          .join('')}</tr>`)
+        .map(
+          (row) =>
+            `<tr>${row.cells
+              .map((cell) => {
+                const tag = cell.kind === 'tableHeader' ? 'th' : 'td';
+                const bg = cell.kind === 'tableHeader' ? theme.surfaceMuted : '#ffffff';
+                return `<${tag} style="border:1px solid ${theme.border};padding:8px 10px;background:${bg};text-align:left;vertical-align:top;">${cell.blocks
+                  .map((child) => renderBlock(child, theme))
+                  .join('')}</${tag}>`;
+              })
+              .join('')}</tr>`,
+        )
         .join('')}</table>`;
     case 'mathBlock':
       return `<pre data-math-block="true" style="margin:1.4em 0;padding:12px 14px;border-radius:12px;background:${theme.surfaceMuted};color:${theme.text};font-size:14px;white-space:pre-wrap;">${escapeHtml(block.latex)}</pre>`;
@@ -61,7 +75,11 @@ function renderBlock(block: ExportBlock, theme: ReturnType<typeof getExportTheme
   }
 }
 
-function renderListItem(item: ExportListItem, isTaskItem: boolean, theme: ReturnType<typeof getExportThemeTokens>): string {
+function renderListItem(
+  item: ExportListItem,
+  isTaskItem: boolean,
+  theme: ReturnType<typeof getExportThemeTokens>,
+): string {
   const prefix = isTaskItem
     ? `<span style="display:inline-block;margin-right:8px;color:${theme.accentStrong};font-weight:700;">${item.checked ? '☑' : '☐'}</span>`
     : '';
@@ -71,7 +89,10 @@ function renderListItem(item: ExportListItem, isTaskItem: boolean, theme: Return
     (item.blocks[0].kind === 'paragraph' || item.blocks[0].kind === 'heading')
   ) {
     const block = item.blocks[0];
-    const body = block.kind === 'paragraph' ? renderInlines(block.inlines, theme) : renderInlines(block.inlines, theme);
+    const body =
+      block.kind === 'paragraph'
+        ? renderInlines(block.inlines, theme)
+        : renderInlines(block.inlines, theme);
     return `<li style="margin-bottom:8px;line-height:1.7;color:${theme.text};">${prefix}${body}</li>`;
   }
 
@@ -80,11 +101,17 @@ function renderListItem(item: ExportListItem, isTaskItem: boolean, theme: Return
     .join('')}</li>`;
 }
 
-function renderInlines(inlines: ExportInline[], theme: ReturnType<typeof getExportThemeTokens>): string {
+function renderInlines(
+  inlines: ExportInline[],
+  theme: ReturnType<typeof getExportThemeTokens>,
+): string {
   return inlines.map((inline) => renderInline(inline, theme)).join('');
 }
 
-function renderInline(inline: ExportInline, theme: ReturnType<typeof getExportThemeTokens>): string {
+function renderInline(
+  inline: ExportInline,
+  theme: ReturnType<typeof getExportThemeTokens>,
+): string {
   let content: string;
 
   switch (inline.kind) {
@@ -107,7 +134,11 @@ function renderInline(inline: ExportInline, theme: ReturnType<typeof getExportTh
   }
 }
 
-function renderMark(content: string, mark: ExportMark, theme: ReturnType<typeof getExportThemeTokens>): string {
+function renderMark(
+  content: string,
+  mark: ExportMark,
+  theme: ReturnType<typeof getExportThemeTokens>,
+): string {
   switch (mark.kind) {
     case 'bold':
       return `<strong>${content}</strong>`;
@@ -121,7 +152,7 @@ function renderMark(content: string, mark: ExportMark, theme: ReturnType<typeof 
       return `<mark style="background:#fef08a;padding:1px 2px;border-radius:3px;">${content}</mark>`;
     case 'link': {
       const titleAttr = mark.title ? ` title="${escapeAttribute(mark.title)}"` : '';
-      return `<a href="${escapeAttribute(mark.href)}" style="color:${theme.accent};text-decoration:underline;"${titleAttr}>${content}</a>`;
+      return `<a href="${escapeAttribute(sanitizeHref(mark.href))}" style="color:${theme.accent};text-decoration:underline;"${titleAttr}>${content}</a>`;
     }
     case 'superscript':
       return `<sup>${content}</sup>`;

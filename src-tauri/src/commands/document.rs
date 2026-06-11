@@ -31,7 +31,9 @@ pub fn save_document(
         if let Some(expected) = expected_last_modified_ms {
             if let Ok(current_modified) = read_modified_time_ms(path_ref) {
                 if current_modified != expected {
-                    return Err(AppError::conflict("文件已被外部修改，请重新加载或选择强制覆盖"));
+                    return Err(AppError::conflict(
+                        "文件已被外部修改，请重新加载或选择强制覆盖",
+                    ));
                 }
             }
         }
@@ -65,11 +67,11 @@ pub fn import_document_image(
         fs::create_dir_all(&assets_dir)?;
     }
 
-    let target_path = assets_dir.join(filename);
-    fs::copy(source, target_path)?;
+    let (target_path, target_filename) = unique_asset_target(&assets_dir, filename);
+    fs::copy(source, &target_path)?;
 
     Ok(DocumentImageImportResult {
-        relative_path: format!("assets/{}", filename),
+        relative_path: format!("assets/{}", target_filename),
     })
 }
 
@@ -136,9 +138,35 @@ fn temp_path(path: &Path) -> PathBuf {
     path.with_file_name(format!(".{}.{}.tmp", file_name, millis))
 }
 
+fn unique_asset_target(assets_dir: &Path, filename: &str) -> (PathBuf, String) {
+    let original = Path::new(filename);
+    let stem = original
+        .file_stem()
+        .and_then(|value| value.to_str())
+        .filter(|value| !value.is_empty())
+        .unwrap_or("image");
+    let extension = original.extension().and_then(|value| value.to_str());
+
+    for suffix in 0.. {
+        let candidate_name = if suffix == 0 {
+            filename.to_string()
+        } else if let Some(extension) = extension {
+            format!("{stem}-{suffix}.{extension}")
+        } else {
+            format!("{stem}-{suffix}")
+        };
+        let candidate_path = assets_dir.join(&candidate_name);
+        if !candidate_path.exists() {
+            return (candidate_path, candidate_name);
+        }
+    }
+
+    unreachable!("unbounded suffix loop must return before exhausting usize");
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{atomic_write, open_document, save_document};
+    use super::{atomic_write, import_document_image, open_document, save_document};
     use crate::error::AppError;
     use std::fs;
     use std::path::PathBuf;
@@ -194,6 +222,32 @@ mod tests {
             AppError::Conflict(_) => {}
             other => panic!("expected conflict error, got {:?}", other),
         }
+
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn import_document_image_does_not_overwrite_existing_asset() {
+        let dir = test_dir();
+        let document_path = dir.join("demo.md");
+        let source_dir = dir.join("source");
+        let assets_dir = dir.join("assets");
+        fs::create_dir_all(&source_dir).unwrap();
+        fs::create_dir_all(&assets_dir).unwrap();
+        fs::write(&document_path, b"# demo").unwrap();
+        fs::write(assets_dir.join("cover.png"), b"existing").unwrap();
+        let source_path = source_dir.join("cover.png");
+        fs::write(&source_path, b"new").unwrap();
+
+        let imported = import_document_image(
+            source_path.to_string_lossy().to_string(),
+            document_path.to_string_lossy().to_string(),
+        )
+        .unwrap();
+
+        assert_eq!(imported.relative_path, "assets/cover-1.png");
+        assert_eq!(fs::read(assets_dir.join("cover.png")).unwrap(), b"existing");
+        assert_eq!(fs::read(assets_dir.join("cover-1.png")).unwrap(), b"new");
 
         let _ = fs::remove_dir_all(dir);
     }

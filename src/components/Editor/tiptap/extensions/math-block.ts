@@ -27,7 +27,11 @@ export const MathBlock = Node.create({
   },
 
   renderHTML({ HTMLAttributes }) {
-    return ['div', mergeAttributes(HTMLAttributes, { 'data-type': 'math-block', class: 'mk-math-block' }), 0];
+    return [
+      'div',
+      mergeAttributes(HTMLAttributes, { 'data-type': 'math-block', class: 'mk-math-block' }),
+      0,
+    ];
   },
 
   addNodeView() {
@@ -55,18 +59,25 @@ export const MathBlock = Node.create({
       let isEditing = false;
 
       function renderKatex(latex: string) {
+        renderDiv.replaceChildren();
         if (!latex.trim()) {
-          renderDiv.innerHTML = '<span class="mk-math-placeholder">点击输入数学公式</span>';
+          const placeholder = document.createElement('span');
+          placeholder.className = 'mk-math-placeholder';
+          placeholder.textContent = '点击输入数学公式';
+          renderDiv.appendChild(placeholder);
           return;
         }
         try {
           renderDiv.innerHTML = katex.renderToString(latex, {
             displayMode: true,
             throwOnError: false,
-            trust: true,
+            trust: false,
           });
         } catch {
-          renderDiv.innerHTML = `<span class="mk-math-error">${latex}</span>`;
+          const error = document.createElement('span');
+          error.className = 'mk-math-error';
+          error.textContent = latex;
+          renderDiv.appendChild(error);
         }
       }
 

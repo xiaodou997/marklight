@@ -20,6 +20,23 @@ export function escapeAttribute(value: string): string {
   return escapeHtml(value);
 }
 
+export function sanitizeHref(value: string): string {
+  const href = value.trim();
+  if (!href) {
+    return '';
+  }
+
+  if (/^(https?:|mailto:|tel:|#|\/|\.\/|\.\.\/)/i.test(href)) {
+    return href;
+  }
+
+  if (!/^[a-z][a-z0-9+.-]*:/i.test(href)) {
+    return href;
+  }
+
+  return '#';
+}
+
 export function slugifyMetaName(value: string): string {
   return value.trim().toLowerCase().replace(/\s+/g, '-');
 }
@@ -66,7 +83,9 @@ export function getBlockText(block: ExportBlock): string {
     case 'mermaidBlock':
       return block.source;
     case 'callout':
-      return [block.title || block.calloutType, ...block.blocks.map(getBlockText)].filter(Boolean).join('\n');
+      return [block.title || block.calloutType, ...block.blocks.map(getBlockText)]
+        .filter(Boolean)
+        .join('\n');
     case 'horizontalRule':
       return '---';
   }
@@ -77,7 +96,13 @@ export function getListItemText(item: ExportListItem): string {
 }
 
 export function renderPlainText(document: ExportDocument): string {
-  return document.blocks.map(getBlockText).join('\n\n').replace(/\n{3,}/g, '\n\n').trimEnd() + '\n';
+  return (
+    document.blocks
+      .map(getBlockText)
+      .join('\n\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trimEnd() + '\n'
+  );
 }
 
 export function mergeMetadataTitle(metadata: ExportMetadata, fallback: string): string {

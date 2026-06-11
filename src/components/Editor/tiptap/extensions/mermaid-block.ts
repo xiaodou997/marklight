@@ -16,7 +16,7 @@ function getMermaid() {
       mod.default.initialize({
         startOnLoad: false,
         theme: document.documentElement.classList.contains('dark') ? 'dark' : 'default',
-        securityLevel: 'loose',
+        securityLevel: 'strict',
       });
       return mod;
     });
@@ -48,7 +48,11 @@ export const MermaidBlock = Node.create({
   },
 
   renderHTML({ HTMLAttributes }) {
-    return ['div', mergeAttributes(HTMLAttributes, { 'data-type': 'mermaid-block', class: 'mk-mermaid-block' }), 0];
+    return [
+      'div',
+      mergeAttributes(HTMLAttributes, { 'data-type': 'mermaid-block', class: 'mk-mermaid-block' }),
+      0,
+    ];
   },
 
   addNodeView() {
@@ -79,19 +83,35 @@ export const MermaidBlock = Node.create({
       dom.appendChild(editDiv);
 
       let isEditing = false;
+      let renderVersion = 0;
+      let destroyed = false;
 
       async function renderMermaid(source: string) {
+        const version = ++renderVersion;
+        renderDiv.replaceChildren();
         if (!source.trim()) {
-          renderDiv.innerHTML = '<span class="mk-mermaid-placeholder">点击输入 Mermaid 图表</span>';
+          const placeholder = document.createElement('span');
+          placeholder.className = 'mk-mermaid-placeholder';
+          placeholder.textContent = '点击输入 Mermaid 图表';
+          renderDiv.appendChild(placeholder);
           return;
         }
         try {
           const mermaid = await getMermaid();
           const id = `mermaid-${++mermaidCounter}`;
           const { svg } = await mermaid.default.render(id, source);
+          if (destroyed || version !== renderVersion) {
+            return;
+          }
           renderDiv.innerHTML = svg;
         } catch (err: unknown) {
-          renderDiv.innerHTML = `<span class="mk-mermaid-error">图表语法错误: ${getErrorMessage(err)}</span>`;
+          if (destroyed || version !== renderVersion) {
+            return;
+          }
+          const error = document.createElement('span');
+          error.className = 'mk-mermaid-error';
+          error.textContent = `图表语法错误: ${getErrorMessage(err)}`;
+          renderDiv.appendChild(error);
         }
       }
 
@@ -178,7 +198,10 @@ export const MermaidBlock = Node.create({
         ignoreMutation() {
           return true;
         },
-        destroy() {},
+        destroy() {
+          destroyed = true;
+          renderVersion += 1;
+        },
       };
     };
   },

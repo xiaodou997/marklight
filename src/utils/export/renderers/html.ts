@@ -9,12 +9,7 @@ import type {
   ExportRenderOptions,
 } from '../model';
 import { getExportThemeTokens } from '../theme';
-import {
-  escapeAttribute,
-  escapeHtml,
-  mergeMetadataTitle,
-  wrapMarks,
-} from '../utils';
+import { escapeAttribute, escapeHtml, mergeMetadataTitle, sanitizeHref, wrapMarks } from '../utils';
 
 let mermaidCounter = 0;
 
@@ -25,7 +20,10 @@ export async function renderHtmlDocument(
   const theme = getExportThemeTokens(options.themeId);
   const title = mergeMetadataTitle(document.metadata, options.fileName ?? '');
   const metaTags = document.metadata.meta
-    .map((entry) => `<meta name="${escapeAttribute(entry.name)}" content="${escapeAttribute(entry.content)}" />`)
+    .map(
+      (entry) =>
+        `<meta name="${escapeAttribute(entry.name)}" content="${escapeAttribute(entry.content)}" />`,
+    )
     .join('\n');
   const body = await renderBlocks(document.blocks, 'html');
 
@@ -48,7 +46,10 @@ export async function renderHtmlDocument(
     .join('\n');
 }
 
-export async function renderBlocks(blocks: ExportBlock[], target: 'html' | 'wechat'): Promise<string> {
+export async function renderBlocks(
+  blocks: ExportBlock[],
+  target: 'html' | 'wechat',
+): Promise<string> {
   const rendered: string[] = [];
 
   for (const block of blocks) {
@@ -119,11 +120,11 @@ async function renderListItem(
   return `<li class="ml-export-list-item"${checkedAttr}>${checkbox}${body}</li>`;
 }
 
-async function renderListItemBody(blocks: ExportBlock[], target: 'html' | 'wechat'): Promise<string> {
-  if (
-    blocks.length === 1 &&
-    (blocks[0].kind === 'paragraph' || blocks[0].kind === 'heading')
-  ) {
+async function renderListItemBody(
+  blocks: ExportBlock[],
+  target: 'html' | 'wechat',
+): Promise<string> {
+  if (blocks.length === 1 && (blocks[0].kind === 'paragraph' || blocks[0].kind === 'heading')) {
     const block = blocks[0];
     if (block.kind === 'paragraph') {
       return `<span class="ml-export-list-item-inline">${renderInlines(block.inlines, target)}</span>`;
@@ -134,7 +135,10 @@ async function renderListItemBody(blocks: ExportBlock[], target: 'html' | 'wecha
   return `<div class="ml-export-list-item-body">${await renderBlocks(blocks, target)}</div>`;
 }
 
-function renderTableCell(cell: { kind: 'tableHeader' | 'tableCell'; blocks: ExportBlock[] }): string {
+function renderTableCell(cell: {
+  kind: 'tableHeader' | 'tableCell';
+  blocks: ExportBlock[];
+}): string {
   const tag = cell.kind === 'tableHeader' ? 'th' : 'td';
   const body = cell.blocks.map((block) => renderBlockSync(block)).join('');
   return `<${tag} class="ml-export-table-cell">${body}</${tag}>`;
@@ -150,15 +154,24 @@ function renderBlockSync(block: ExportBlock): string {
       return `<blockquote class="ml-export-blockquote">${block.blocks.map(renderBlockSync).join('')}</blockquote>`;
     case 'bulletList':
       return `<ul class="ml-export-list ml-export-list-bullet">${block.items
-        .map((item) => `<li class="ml-export-list-item">${item.blocks.map(renderBlockSync).join('')}</li>`)
+        .map(
+          (item) =>
+            `<li class="ml-export-list-item">${item.blocks.map(renderBlockSync).join('')}</li>`,
+        )
         .join('')}</ul>`;
     case 'orderedList':
       return `<ol class="ml-export-list ml-export-list-ordered">${block.items
-        .map((item) => `<li class="ml-export-list-item">${item.blocks.map(renderBlockSync).join('')}</li>`)
+        .map(
+          (item) =>
+            `<li class="ml-export-list-item">${item.blocks.map(renderBlockSync).join('')}</li>`,
+        )
         .join('')}</ol>`;
     case 'taskList':
       return `<ul class="ml-export-list ml-export-task-list">${block.items
-        .map((item) => `<li class="ml-export-list-item"><span class="ml-export-task-checkbox">${item.checked ? '☑' : '☐'}</span>${item.blocks.map(renderBlockSync).join('')}</li>`)
+        .map(
+          (item) =>
+            `<li class="ml-export-list-item"><span class="ml-export-task-checkbox">${item.checked ? '☑' : '☐'}</span>${item.blocks.map(renderBlockSync).join('')}</li>`,
+        )
         .join('')}</ul>`;
     case 'codeBlock':
       return `<pre class="ml-export-code-block"><code>${escapeHtml(block.code)}</code></pre>`;
@@ -222,7 +235,7 @@ function renderMark(content: string, mark: ExportMark): string {
       return `<mark>${content}</mark>`;
     case 'link': {
       const titleAttr = mark.title ? ` title="${escapeAttribute(mark.title)}"` : '';
-      return `<a href="${escapeAttribute(mark.href)}"${titleAttr}>${content}</a>`;
+      return `<a href="${escapeAttribute(sanitizeHref(mark.href))}"${titleAttr}>${content}</a>`;
     }
     case 'superscript':
       return `<sup>${content}</sup>`;
@@ -232,19 +245,25 @@ function renderMark(content: string, mark: ExportMark): string {
 }
 
 function renderInlineMath(latex: string): string {
-  return `<span class="ml-export-inline-math" data-latex="${escapeAttribute(latex)}">${katex.renderToString(latex, {
-    displayMode: false,
-    throwOnError: false,
-    trust: true,
-  })}</span>`;
+  return `<span class="ml-export-inline-math" data-latex="${escapeAttribute(latex)}">${katex.renderToString(
+    latex,
+    {
+      displayMode: false,
+      throwOnError: false,
+      trust: false,
+    },
+  )}</span>`;
 }
 
 function renderMathBlock(latex: string): string {
-  return `<div class="ml-export-math-block" data-latex="${escapeAttribute(latex)}">${katex.renderToString(latex, {
-    displayMode: true,
-    throwOnError: false,
-    trust: true,
-  })}</div>`;
+  return `<div class="ml-export-math-block" data-latex="${escapeAttribute(latex)}">${katex.renderToString(
+    latex,
+    {
+      displayMode: true,
+      throwOnError: false,
+      trust: false,
+    },
+  )}</div>`;
 }
 
 async function renderMermaidBlock(source: string): Promise<string> {
@@ -266,10 +285,10 @@ async function renderMermaidSvg(source: string): Promise<string | null> {
     const mermaid = mermaidModule.default;
     mermaid.initialize({
       startOnLoad: false,
-      securityLevel: 'loose',
+      securityLevel: 'strict',
       theme: document.documentElement.classList.contains('dark') ? 'dark' : 'default',
     });
-    const id = `marklight-export-mermaid-${mermaidCounter += 1}`;
+    const id = `marklight-export-mermaid-${(mermaidCounter += 1)}`;
     const { svg } = await mermaid.render(id, source);
     return svg;
   } catch {

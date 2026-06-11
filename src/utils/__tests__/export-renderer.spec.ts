@@ -19,19 +19,25 @@ function createSemanticDoc() {
         schema.nodes.wikilink.create({ target: 'Page', alias: 'Alias' }),
       ]),
     ]),
-    schema.nodes.paragraph.create(null, [
-      schema.nodes.mathInline.create({ latex: 'inline' }),
-    ]),
+    schema.nodes.paragraph.create(null, [schema.nodes.mathInline.create({ latex: 'inline' })]),
     schema.nodes.mathBlock.create(null, [schema.text('a^2 + b^2 = c^2')]),
     schema.nodes.mermaidBlock.create(null, [schema.text('graph TD\nA-->B')]),
     schema.nodes.table.create(null, [
       schema.nodes.tableRow.create(null, [
-        schema.nodes.tableHeader.create(null, [schema.nodes.paragraph.create(null, [schema.text('H1')])]),
-        schema.nodes.tableHeader.create(null, [schema.nodes.paragraph.create(null, [schema.text('H2')])]),
+        schema.nodes.tableHeader.create(null, [
+          schema.nodes.paragraph.create(null, [schema.text('H1')]),
+        ]),
+        schema.nodes.tableHeader.create(null, [
+          schema.nodes.paragraph.create(null, [schema.text('H2')]),
+        ]),
       ]),
       schema.nodes.tableRow.create(null, [
-        schema.nodes.tableCell.create(null, [schema.nodes.paragraph.create(null, [schema.text('A')])]),
-        schema.nodes.tableCell.create(null, [schema.nodes.paragraph.create(null, [schema.text('B')])]),
+        schema.nodes.tableCell.create(null, [
+          schema.nodes.paragraph.create(null, [schema.text('A')]),
+        ]),
+        schema.nodes.tableCell.create(null, [
+          schema.nodes.paragraph.create(null, [schema.text('B')]),
+        ]),
       ]),
     ]),
     schema.nodes.taskList.create(null, [
@@ -119,7 +125,10 @@ describe('renderEditorDocToHtmlDocument', () => {
   it('renders full html document from editor semantics', async () => {
     const doc = createSemanticDoc();
 
-    const html = await renderEditorDocToHtmlDocument(doc, { themeId: 'blue', fileName: 'fallback' });
+    const html = await renderEditorDocToHtmlDocument(doc, {
+      themeId: 'blue',
+      fileName: 'fallback',
+    });
 
     expect(html).toContain('<!doctype html>');
     expect(html).toContain('<title>Export Title</title>');
@@ -134,6 +143,26 @@ describe('renderEditorDocToHtmlDocument', () => {
     expect(html).toContain('ml-export-task-list');
     expect(html).not.toContain('<p class="ml-export-paragraph">title: Export Title');
   });
+
+  it('sanitizes dangerous link protocols in exported html', async () => {
+    const schema = createMarkdownCompatSchema();
+    const doc = schema.nodes.doc.create(null, [
+      schema.nodes.paragraph.create(null, [
+        schema.text('safe', [
+          schema.marks.link.create({ href: 'https://example.com', title: null }),
+        ]),
+        schema.text(' unsafe', [
+          schema.marks.link.create({ href: 'javascript:alert(1)', title: null }),
+        ]),
+      ]),
+    ]);
+
+    const html = await renderEditorDocToHtmlDocument(doc);
+
+    expect(html).toContain('href="https://example.com"');
+    expect(html).toContain('href="#"');
+    expect(html).not.toContain('href="javascript:alert(1)"');
+  });
 });
 
 describe('renderEditorDocToWechatFragment', () => {
@@ -142,7 +171,9 @@ describe('renderEditorDocToWechatFragment', () => {
     const doc = schema.nodes.doc.create(null, [
       schema.nodes.frontmatter.create(null, [schema.text('title: Hidden Frontmatter')]),
       schema.nodes.callout.create({ type: 'note', title: 'Heads up' }, [
-        schema.nodes.paragraph.create(null, [schema.nodes.wikilink.create({ target: 'Wiki', alias: '' })]),
+        schema.nodes.paragraph.create(null, [
+          schema.nodes.wikilink.create({ target: 'Wiki', alias: '' }),
+        ]),
       ]),
       schema.nodes.paragraph.create(null, [schema.nodes.mathInline.create({ latex: 'inline' })]),
       schema.nodes.mermaidBlock.create(null, [schema.text('graph TD\nA-->B')]),
@@ -158,5 +189,21 @@ describe('renderEditorDocToWechatFragment', () => {
     expect(result.html).not.toContain('Hidden Frontmatter');
     expect(result.text).toContain('Heads up');
     expect(result.text).toContain('Wiki');
+  });
+
+  it('sanitizes dangerous link protocols in copied wechat html', () => {
+    const schema = createMarkdownCompatSchema();
+    const doc = schema.nodes.doc.create(null, [
+      schema.nodes.paragraph.create(null, [
+        schema.text('unsafe', [
+          schema.marks.link.create({ href: 'javascript:alert(1)', title: null }),
+        ]),
+      ]),
+    ]);
+
+    const result = renderEditorDocToWechatFragment(doc);
+
+    expect(result.html).toContain('href="#"');
+    expect(result.html).not.toContain('href="javascript:alert(1)"');
   });
 });

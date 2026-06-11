@@ -39,11 +39,12 @@ export const MathInline = Node.create({
 
       function render(latex: string) {
         dom.dataset.latex = latex;
+        dom.replaceChildren();
         try {
           dom.innerHTML = katex.renderToString(latex, {
             displayMode: false,
             throwOnError: false,
-            trust: true,
+            trust: false,
           });
         } catch {
           dom.textContent = `$${latex}$`;
