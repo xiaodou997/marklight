@@ -11,6 +11,7 @@ import ThemeEditor from './ThemeEditor.vue';
 import SettingsRangeField from './SettingsRangeField.vue';
 import SettingsSidebarNav, { type SettingsTabKey } from './SettingsSidebarNav.vue';
 import SettingsSwitch from './SettingsSwitch.vue';
+import SettingsTabWidthSelector from './SettingsTabWidthSelector.vue';
 import WechatThemeSelector from './WechatThemeSelector.vue';
 import { useShortcutSettings } from './useShortcutSettings';
 
@@ -257,21 +258,7 @@ function onKeyDown(e: KeyboardEvent) {
                         <label class="settings-row-title">Tab 宽度</label>
                         <p class="settings-row-desc">控制缩进与代码块、列表的默认对齐宽度。</p>
                       </div>
-                      <div class="settings-option-grid">
-                        <button
-                          v-for="width in [2, 4]"
-                          :key="width"
-                          class="settings-option-btn"
-                          :style="
-                            settings.tabWidth === width
-                              ? 'border-color: var(--primary-color); background-color: rgba(99,102,241,0.08); color: var(--primary-color);'
-                              : 'border-color: var(--border-color); color: var(--text-color);'
-                          "
-                          @click="settings.tabWidth = width"
-                        >
-                          {{ width }} 空格
-                        </button>
-                      </div>
+                      <SettingsTabWidthSelector v-model="settings.tabWidth" />
                     </div>
                   </section>
                 </div>
@@ -580,26 +567,6 @@ function onKeyDown(e: KeyboardEvent) {
   line-height: 1.7;
 }
 
-.settings-option-grid {
-  width: 100%;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
-}
-
-.settings-option-btn {
-  padding: 12px 14px;
-  border: 1px solid var(--border-color);
-  border-radius: 16px;
-  background: var(--bg-color);
-  font-size: 14px;
-  font-weight: 600;
-  transition:
-    border-color 0.15s,
-    background-color 0.15s,
-    color 0.15s;
-}
-
 .settings-warning-card {
   padding: 14px 16px;
   border-color: #facc15;
@@ -661,8 +628,5 @@ function onKeyDown(e: KeyboardEvent) {
     flex-direction: column;
   }
 
-  .settings-option-grid {
-    grid-template-columns: 1fr;
-  }
 }
 </style>
