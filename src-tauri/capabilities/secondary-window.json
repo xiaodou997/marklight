@@ -25,7 +25,6 @@
     "store:allow-save",
     "store:allow-set",
     "window-state:allow-save-window-state",
-    "clipboard-manager:allow-write-text",
     "clipboard-manager:allow-write-html"
   ]
 }

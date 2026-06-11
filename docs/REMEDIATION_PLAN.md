@@ -51,12 +51,12 @@ cargo test --manifest-path src-tauri/Cargo.toml
 - `src/services/tauri/window.ts`、`window-state.ts`、`store.ts`、`document.ts`、`workspace.ts` 收敛主要原生能力。
 - `src/services/tauri/webview.ts` 收敛当前 webview drag/drop 订阅。
 - `src/services/tauri/asset.ts` 收敛 `convertFileSrc`。
+- `src/services/tauri/dialog.ts`、`clipboard.ts`、`opener.ts`、`os.ts` 收敛插件 API。
+- capability 已删除未使用的 `clipboard-manager:allow-write-text`，只保留当前微信复制需要的 HTML 写入权限。
 
 剩余工作：
 
-- 将业务层直接使用的 `@tauri-apps/plugin-dialog` 收敛到 dialog service。
-- 将业务层直接使用的 `@tauri-apps/plugin-opener`、`@tauri-apps/plugin-clipboard-manager`、`@tauri-apps/plugin-os` 收敛到 service 或明确的工具边界。
-- 审计 capability 中每个权限是否仍被使用，删除未使用授权。
+- 继续审计 capability 中每个权限是否仍被使用，删除有明确证据表明未使用的授权。
 - 为 service 层增加必要的单元测试或 mock 验证。
 
 ## 3. 命令系统
