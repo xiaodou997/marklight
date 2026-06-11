@@ -303,15 +303,6 @@ const nodeSerializers: Record<string, NodeSerializer> = {
 
   ...getPluginNodeSerializers(),
 
-  // ── Mermaid ──
-
-  mermaidBlock(state, node) {
-    state.writeLine('```mermaid');
-    state.writeLine(node.textContent);
-    state.writeLine('```');
-    state.closeBlock(node);
-  },
-
   // ── Callout ──
 
   callout(state, node) {

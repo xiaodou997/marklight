@@ -83,6 +83,14 @@ function createTestSchema(): Schema {
         parseDOM: [{ tag: 'div[data-type="math-block"]' }],
         toDOM: () => ['div', { 'data-type': 'math-block' }, 0],
       },
+      mermaidBlock: {
+        group: 'block',
+        content: 'text*',
+        marks: '',
+        code: true,
+        parseDOM: [{ tag: 'div[data-type="mermaid-block"]' }],
+        toDOM: () => ['div', { 'data-type': 'mermaid-block' }, 0],
+      },
       wikilink: {
         inline: true,
         group: 'inline',
@@ -214,6 +222,11 @@ describe('Round-trip: parse → serialize', () => {
 
     it('block math', () => {
       const md = '$$\n\\begin{aligned}\nd_{i, j} &\\leftarrow d_{i, j} + 1 \\\\\nd_{i, y + 1} &\\leftarrow d_{i, y + 1} - 1 \\\\\nd_{x + 1, j} &\\leftarrow d_{x + 1, j} - 1 \\\\\nd_{x + 1, y + 1} &\\leftarrow d_{x + 1, y + 1} + 1\n\\end{aligned}\n$$\n';
+      expect(roundTrip(md)).toBe(normalize(md));
+    });
+
+    it('mermaid block', () => {
+      const md = '```mermaid\ngraph TD\n  A --> B\n```\n';
       expect(roundTrip(md)).toBe(normalize(md));
     });
 

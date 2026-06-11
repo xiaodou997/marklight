@@ -16,7 +16,7 @@ import markdownItSub from 'markdown-it-sub';
 import markdownItSup from 'markdown-it-sup';
 import markdownItTexmath from 'markdown-it-texmath';
 import katex from 'katex';
-import { getPluginTokenHandlers } from './plugins';
+import { getPluginFenceHandlers, getPluginTokenHandlers } from './plugins';
 
 // ── markdown-it 实例 ───────────────────────────────────────────
 
@@ -120,6 +120,7 @@ export type TokenHandler = (
 
 function getTokenHandlers(schema: Schema): Record<string, TokenHandler> {
   const handlers: Record<string, TokenHandler> = {};
+  const fenceHandlers = getPluginFenceHandlers(schema);
 
   // ── 块级节点 ──
 
@@ -185,10 +186,8 @@ function getTokenHandlers(schema: Schema): Record<string, TokenHandler> {
     const lang = token.info?.trim()?.toLowerCase() || null;
     const content = token.content.replace(/\n$/, '');
 
-    // Mermaid 图表（仅 mermaid 语法；flow/seq 是 flowchart.js/js-sequence-diagrams 的不兼容语法）
-    if (lang === 'mermaid') {
-      if (schema.nodes.mermaidBlock) {
-        state.addNode(schema.nodes.mermaidBlock, {}, content ? [schema.text(content)] : undefined);
+    for (const handler of fenceHandlers) {
+      if (handler(state, token, lang, content)) {
         return;
       }
     }
