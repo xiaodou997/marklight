@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue';
 import { confirm } from '@tauri-apps/plugin-dialog';
 import { useSettingsStore } from '../../stores/settings';
+import SaveSettingsPanel from './SaveSettingsPanel.vue';
 import SettingsFontSelect from './SettingsFontSelect.vue';
 import SettingsModalFooter from './SettingsModalFooter.vue';
 import SettingsModalHeader from './SettingsModalHeader.vue';
@@ -347,52 +348,11 @@ function onKeyDown(e: KeyboardEvent) {
                 </div>
 
                 <!-- 保存设置 -->
-                <div v-show="activeTab === 'save'" class="space-y-6">
-                  <section class="settings-section-card settings-section-card--hero">
-                    <div>
-                      <div class="settings-section-title">文档保存</div>
-                      <p class="settings-section-desc">
-                        自动保存适合持续写作，关闭后会完全改回手动保存模式。
-                      </p>
-                    </div>
-                    <div class="settings-hero-metrics">
-                      <div class="settings-hero-chip">
-                        自动保存：{{ settings.autoSave ? '开启' : '关闭' }}
-                      </div>
-                      <div v-if="settings.autoSave" class="settings-hero-chip">
-                        间隔：{{ settings.autoSaveInterval }} 秒
-                      </div>
-                    </div>
-                  </section>
-
-                  <section class="settings-section-card">
-                    <div class="settings-row">
-                      <div>
-                        <label class="settings-row-title">自动保存</label>
-                        <p class="settings-row-desc">编辑时自动保存文件</p>
-                      </div>
-                      <SettingsSwitch v-model="settings.autoSave" label="切换自动保存" />
-                    </div>
-
-                    <div v-if="settings.autoSave" class="settings-row settings-row--column">
-                      <div>
-                        <label class="settings-row-title">保存间隔: {{ settings.autoSaveInterval }} 秒</label>
-                        <p class="settings-row-desc">在不打断写作的前提下平衡安全性与性能。</p>
-                      </div>
-                      <SettingsRangeField
-                        v-model="settings.autoSaveInterval"
-                        class="w-full"
-                        label="保存间隔"
-                        :min="10"
-                        :max="120"
-                        :step="10"
-                        value-suffix=" 秒"
-                        min-label="10秒"
-                        max-label="120秒"
-                      />
-                    </div>
-                  </section>
-                </div>
+                <SaveSettingsPanel
+                  v-show="activeTab === 'save'"
+                  v-model:auto-save="settings.autoSave"
+                  v-model:auto-save-interval="settings.autoSaveInterval"
+                />
 
                 <!-- 导出设置 -->
                 <div v-show="activeTab === 'export'" class="space-y-6">
