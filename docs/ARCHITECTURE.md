@@ -1,6 +1,6 @@
 # MarkLight Architecture
 
-更新时间：2026-04-24
+更新时间：2026-06-11
 
 ## 1. 系统目标与设计原则
 
@@ -8,7 +8,7 @@ MarkLight 是一个本地优先的 Markdown 编辑器桌面应用。系统目标
 
 - Rust 负责领域状态、一致性、原生能力编排和跨窗口运行时。
 - Tauri 负责插件、权限边界、窗口与事件通道。
-- Vue 负责视图、交互编排和编辑器体验。
+- Vue 负责视图、交互编排、命令分发和编辑器体验。
 - 通用桌面能力优先使用官方插件，业务语义优先收敛到 Rust 领域内核。
 
 核心原则：
@@ -16,6 +16,7 @@ MarkLight 是一个本地优先的 Markdown 编辑器桌面应用。系统目标
 - 领域优先：命令和事件使用文档、工作区、窗口等产品语义，不使用“通用文件工具”命名。
 - 单向边界：前端不直接越权访问原生能力，所有业务入口收敛到 `src/services/tauri/`。
 - 结构化契约：Rust 命令返回 DTO，Rust 错误返回结构化错误对象，事件使用固定 payload。
+- 命令单源：菜单、快捷键、命令面板和编辑器动作共享 `src/commands/registry.ts`。
 - 根组件降级：`App.vue` 只做组合面，不承载大块领域副作用。
 
 ## 2. 运行时拓扑
@@ -23,13 +24,14 @@ MarkLight 是一个本地优先的 Markdown 编辑器桌面应用。系统目标
 ```text
 Vue UI
   ├─ App shell / layout / command routing
-  ├─ TipTap editor / export / theme rendering
+  ├─ focused editor / settings / theme components
+  ├─ TipTap editor / Markdown plugins / export rendering
   └─ Pinia stores
         │
         ▼
 Tauri Shell
-  ├─ command invoke bridge
-  ├─ event bridge
+  ├─ service-wrapped command invoke bridge
+  ├─ service-wrapped event bridge
   ├─ capabilities / permissions
   └─ official plugins
         │
@@ -54,10 +56,11 @@ Native Plugins / OS APIs
 
 ### 前端属于什么
 
-- 编辑器渲染、命令分发、工具栏和侧边栏交互
+- 编辑器渲染、命令分发、工具栏、命令面板和侧边栏交互
 - TipTap 文档编辑、导出 UI、主题切换
 - 对 Rust DTO 和事件 payload 的消费
 - 应用级 UI 状态，例如侧边栏开关、命令面板、源码模式、图片预览
+- Markdown parser/serializer 插件调度和 round-trip fidelity 测试
 
 ### Rust 属于什么
 
@@ -126,7 +129,7 @@ Native Plugins / OS APIs
 
 ### Settings
 
-- 设置持久化走 `plugin-store`
+- 设置持久化走 `plugin-store`，由 `src/services/tauri/store.ts` 封装
 - `settings` store 只管理 UI 配置和主题，不管理文档/工作区/窗口运行时
 
 ### Export
@@ -187,27 +190,59 @@ Native Plugins / OS APIs
 
 ```text
 App.vue
-  ├─ Layout / modal composition
+  ├─ layout / modal / view composition
   ├─ useDocumentSession()
   ├─ useWorkspaceSession()
   ├─ useAppWindowSession()
   ├─ useCommandDispatcher()
+  ├─ useAppDomEvents()
+  ├─ useImagePreview()
   └─ useExportActions()
+
+src/commands/
+  └─ registry.ts   command ids, labels, default shortcuts, menu sections
 
 src/services/tauri/
   ├─ client.ts      structured invoke + error mapping
+  ├─ command-names.ts
   ├─ document.ts    document commands
   ├─ workspace.ts   workspace commands
   ├─ window.ts      window/native commands
   ├─ events.ts      typed event subscriptions
+  ├─ event-names.ts
+  ├─ asset.ts       convertFileSrc
+  ├─ webview.ts     webview drag/drop subscriptions
+  ├─ dialog.ts      plugin-dialog access
+  ├─ clipboard.ts   plugin-clipboard-manager access
+  ├─ opener.ts      plugin-opener access
+  ├─ os.ts          plugin-os access
+  ├─ window-state.ts
   └─ store.ts       plugin-store access
+
+src/components/Editor/
+  ├─ MarkdownEditor.vue
+  ├─ Sidebar.vue + focused sidebar panels/dialogs/menus
+  ├─ CommandPalette.vue + focused list/input views
+  ├─ ImagePreviewView.vue / SourceEditorView.vue
+  └─ tiptap/
+      ├─ extensions/
+      └─ markdown/
+          ├─ parser.ts / serializer.ts
+          └─ plugins/
+
+src/components/Settings/
+  ├─ SettingsModal.vue
+  ├─ focused settings panels and controls
+  └─ theme editor / selector components
 ```
 
 规则：
 
 - `App.vue` 只做组合，不直接接触 Tauri API
-- 复杂副作用进入 session composable
+- 复杂副作用进入 session 或 feature composable
 - 组件通过 props / emits 通信，命令通过统一 dispatcher 执行
+- 命令 id 必须来自 command registry
+- 新 Markdown 语法必须通过 markdown plugin registry 接入 parser/serializer
 
 ## 8. Rust 模块分层
 
