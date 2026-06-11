@@ -25,6 +25,12 @@ pub struct DocumentImageResolveResult {
     pub absolute_path: String,
 }
 
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ImageAssetAuthorizationResult {
+    pub path: String,
+}
+
 #[derive(
     Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq, PartialOrd, Ord, Hash,
 )]

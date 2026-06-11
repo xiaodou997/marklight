@@ -19,6 +19,10 @@ export interface DocumentImageResolveResult {
   absolutePath: string;
 }
 
+export interface ImageAssetAuthorizationResult {
+  path: string;
+}
+
 export async function openDocument(path: string) {
   return invokeCommand<DocumentOpenResult>('open_document', { path });
 }
@@ -49,6 +53,10 @@ export async function resolveDocumentImagePath(documentPath: string, relativePat
     documentPath,
     relativePath,
   });
+}
+
+export async function authorizeImageAsset(path: string) {
+  return invokeCommand<ImageAssetAuthorizationResult>('authorize_image_asset', { path });
 }
 
 export async function fetchRemoteImageData(url: string) {

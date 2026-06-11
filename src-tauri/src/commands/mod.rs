@@ -4,7 +4,8 @@ pub mod workspace;
 pub mod window;
 
 pub use document::{
-    import_document_image, open_document, resolve_document_image_path, save_document,
+    authorize_image_asset, import_document_image, open_document, resolve_document_image_path,
+    save_document,
 };
 pub use image::fetch_remote_image;
 pub use workspace::{

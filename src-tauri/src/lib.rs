@@ -314,6 +314,7 @@ pub fn run() {
             unwatch_workspace,
             import_document_image,
             resolve_document_image_path,
+            authorize_image_asset,
             fetch_remote_image,
             open_editor_window,
             consume_window_open_request,

@@ -1,11 +1,15 @@
 use crate::error::AppError;
 use crate::models::{
     DocumentImageImportResult, DocumentImageResolveResult, DocumentOpenResult, DocumentSaveResult,
+    ImageAssetAuthorizationResult,
 };
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
+use tauri::{AppHandle, Manager};
+
+const IMAGE_EXTENSIONS: [&str; 6] = ["png", "jpg", "jpeg", "gif", "webp", "svg"];
 
 #[tauri::command]
 pub fn open_document(path: String) -> Result<DocumentOpenResult, AppError> {
@@ -93,6 +97,19 @@ pub fn resolve_document_image_path(
     })
 }
 
+#[tauri::command]
+pub fn authorize_image_asset(
+    app: AppHandle,
+    path: String,
+) -> Result<ImageAssetAuthorizationResult, AppError> {
+    let canonical_path = validate_image_asset_path(Path::new(&path))?;
+    app.asset_protocol_scope().allow_file(&canonical_path)?;
+
+    Ok(ImageAssetAuthorizationResult {
+        path: canonical_path.to_string_lossy().to_string(),
+    })
+}
+
 pub(crate) fn atomic_write(path: &Path, content: &[u8]) -> Result<(), AppError> {
     let parent = path
         .parent()
@@ -115,6 +132,25 @@ pub(crate) fn atomic_write(path: &Path, content: &[u8]) -> Result<(), AppError> 
 
     fs::rename(&tmp_path, path)?;
     Ok(())
+}
+
+fn validate_image_asset_path(path: &Path) -> Result<PathBuf, AppError> {
+    let metadata = fs::metadata(path)?;
+    if !metadata.is_file() {
+        return Err(AppError::validation("只能预览图片文件"));
+    }
+
+    let extension = path
+        .extension()
+        .and_then(|value| value.to_str())
+        .map(|value| value.to_lowercase())
+        .ok_or_else(|| AppError::validation("无法识别图片类型"))?;
+
+    if !IMAGE_EXTENSIONS.contains(&extension.as_str()) {
+        return Err(AppError::validation("不支持的图片类型"));
+    }
+
+    Ok(path.canonicalize()?)
 }
 
 fn read_modified_time_ms(path: &Path) -> Result<u64, AppError> {
@@ -166,7 +202,10 @@ fn unique_asset_target(assets_dir: &Path, filename: &str) -> (PathBuf, String) {
 
 #[cfg(test)]
 mod tests {
-    use super::{atomic_write, import_document_image, open_document, save_document};
+    use super::{
+        atomic_write, import_document_image, open_document, save_document,
+        validate_image_asset_path,
+    };
     use crate::error::AppError;
     use std::fs;
     use std::path::PathBuf;
@@ -248,6 +287,35 @@ mod tests {
         assert_eq!(imported.relative_path, "assets/cover-1.png");
         assert_eq!(fs::read(assets_dir.join("cover.png")).unwrap(), b"existing");
         assert_eq!(fs::read(assets_dir.join("cover-1.png")).unwrap(), b"new");
+
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn validate_image_asset_path_rejects_non_images() {
+        let dir = test_dir();
+        let text_path = dir.join("demo.txt");
+        fs::write(&text_path, b"not an image").unwrap();
+
+        let error = validate_image_asset_path(&text_path).unwrap_err();
+
+        match error {
+            AppError::Validation(message) => assert_eq!(message, "不支持的图片类型"),
+            other => panic!("expected validation error, got {:?}", other),
+        }
+
+        let _ = fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn validate_image_asset_path_returns_canonical_image_path() {
+        let dir = test_dir();
+        let image_path = dir.join("cover.PNG");
+        fs::write(&image_path, b"image").unwrap();
+
+        let validated = validate_image_asset_path(&image_path).unwrap();
+
+        assert_eq!(validated, image_path.canonicalize().unwrap());
 
         let _ = fs::remove_dir_all(dir);
     }
