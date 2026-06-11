@@ -30,45 +30,17 @@
 import { onMounted, ref, shallowRef, onBeforeUnmount } from 'vue';
 import { debounce } from 'lodash-es';
 import { Editor as TiptapEditor, EditorContent } from '@tiptap/vue-3';
-import type { SuggestionKeyDownProps, SuggestionProps } from '@tiptap/suggestion';
-import StarterKit from '@tiptap/starter-kit';
-import Highlight from '@tiptap/extension-highlight';
-import Link from '@tiptap/extension-link';
-import TaskList from '@tiptap/extension-task-list';
-import TaskItem from '@tiptap/extension-task-item';
-import Placeholder from '@tiptap/extension-placeholder';
 
 import { useFileStore } from '../../stores/file';
 import { parseMarkdown } from './tiptap/markdown/parser';
 import { serializeMarkdown } from './tiptap/markdown/serializer';
-import { CustomCodeBlock } from './tiptap/extensions/code-block';
-import { SemanticHeading } from './tiptap/extensions/semantic-heading';
-import {
-  CustomTable,
-  CustomTableRow,
-  CustomTableHeader,
-  CustomTableCell,
-} from './tiptap/extensions/table';
-import { CustomImage } from './tiptap/extensions/image';
-import { MathBlock } from './tiptap/extensions/math-block';
-import { MathInline } from './tiptap/extensions/math-inline';
-import { MermaidBlock } from './tiptap/extensions/mermaid-block';
-import { Callout } from './tiptap/extensions/callout';
-import { Frontmatter } from './tiptap/extensions/frontmatter';
-import { MarkdownInputRules } from './tiptap/extensions/input-rules';
-import { Superscript, Subscript } from './tiptap/extensions/sub-sup';
-import { Wikilink } from './tiptap/extensions/wikilink';
-import {
-  SlashCommands,
-  slashCommandItems,
-  type SlashCommandItem,
-} from './tiptap/extensions/slash-commands';
-import { DragHandle } from './tiptap/extensions/drag-handle';
+import type { SlashCommandItem } from './tiptap/extensions/slash-commands';
 import {
   executeEditorCommand,
   runBubbleMenuAction,
   type BubbleMenuActionData,
 } from './tiptap/editor-commands';
+import { createEditorExtensions, type SlashMenuController } from './tiptap/editor-extensions';
 import {
   extractEditorOutline,
   getEditorCursorInfo,
@@ -85,7 +57,6 @@ import './tiptap/editor.css';
 import 'highlight.js/styles/github.css';
 import 'katex/dist/katex.min.css';
 
-type SlashCommandSuggestionProps = SuggestionProps<SlashCommandItem, SlashCommandItem>;
 type EditorUpdatePayload = {
   wordCount?: number;
   cursor?: { line: number; col: number };
@@ -100,7 +71,7 @@ const fileStore = useFileStore();
 const editorWrapRef = ref<HTMLElement | null>(null);
 const bubbleMenuRef = ref<InstanceType<typeof BubbleMenuComponent> | null>(null);
 const searchBarRef = ref<InstanceType<typeof SearchBar> | null>(null);
-const slashMenuRef = ref<InstanceType<typeof SlashMenu> | null>(null);
+const slashMenuRef = ref<SlashMenuController | null>(null);
 const slashMenuItems = ref<SlashCommandItem[]>([]);
 const slashMenuCommand = ref<(item: SlashCommandItem) => void>(() => {});
 useEditorAppearance();
@@ -128,81 +99,11 @@ function createEditor(content: string) {
   }
 
   const e = new TiptapEditor({
-    extensions: [
-      StarterKit.configure({
-        // 禁用 StarterKit 内置的 codeBlock，使用 CodeBlockLowlight
-        codeBlock: false,
-        // 禁用 StarterKit 内置的 link，下面单独配置
-        link: false,
-        // 使用 pending heading 延迟转换，避免空 heading 上 IME composition 导致内容错位。
-        heading: false,
-      }),
-      SemanticHeading,
-      CustomCodeBlock,
-      CustomTable,
-      CustomTableRow,
-      CustomTableHeader,
-      CustomTableCell,
-      CustomImage,
-      Highlight.configure({ multicolor: false }),
-      Link.configure({
-        openOnClick: false,
-        HTMLAttributes: { class: '' },
-      }),
-      TaskList,
-      TaskItem.configure({ nested: true }),
-      Placeholder.configure({
-        placeholder: '开始写作...',
-      }),
-      MathBlock,
-      MathInline,
-      MermaidBlock,
-      Callout,
-      Frontmatter,
-      MarkdownInputRules,
-      Superscript,
-      Subscript,
-      Wikilink,
-      SlashCommands.configure({
-        suggestion: {
-          char: '/',
-          startOfLine: false,
-          items: ({ query }: { query: string }) => {
-            const q = query.toLowerCase();
-            return slashCommandItems.filter(
-              (item) =>
-                item.title.toLowerCase().includes(q) || item.description.toLowerCase().includes(q),
-            );
-          },
-          render: () => ({
-            onStart: (props: SlashCommandSuggestionProps) => {
-              slashMenuItems.value = props.items;
-              slashMenuCommand.value = props.command;
-              const rect = props.clientRect?.();
-              if (rect) slashMenuRef.value?.show({ top: rect.bottom + 4, left: rect.left });
-            },
-            onUpdate: (props: SlashCommandSuggestionProps) => {
-              slashMenuItems.value = props.items;
-              slashMenuCommand.value = props.command;
-              const rect = props.clientRect?.();
-              if (rect) slashMenuRef.value?.show({ top: rect.bottom + 4, left: rect.left });
-            },
-            onKeyDown: (props: SuggestionKeyDownProps) => {
-              const { event } = props;
-              if (event.key === 'Escape') {
-                slashMenuRef.value?.hide();
-                return true;
-              }
-              return slashMenuRef.value?.onKeyDown(event) ?? false;
-            },
-            onExit: () => {
-              slashMenuRef.value?.hide();
-            },
-          }),
-        },
-      }),
-      DragHandle,
-    ],
+    extensions: createEditorExtensions({
+      slashMenuRef,
+      slashMenuItems,
+      slashMenuCommand,
+    }),
     editorProps: {
       attributes: {
         class: 'tiptap-editor',
