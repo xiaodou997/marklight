@@ -171,6 +171,18 @@ function pendingHeadingPlugin(): Plugin<PendingHeadingState> {
       if (pluginState?.composing) return null;
       if (pluginState && pluginState.suppressUntil > Date.now()) return null;
 
+      const docChanged = transactions.some((tr) => tr.docChanged);
+
+      // ── 空 heading 退回 pending heading ──
+      // 当 heading 内容被 Backspace 删空时，把它转回 paragraph 并恢复 `# ` 前缀。
+      // 这样 pending heading 机制重新接管，避免空 heading 上的 IME composition 错位问题。
+      if (docChanged) {
+        const revert = revertEmptyHeading(newState.tr, newState.doc);
+        if (revert) return revert;
+      }
+
+      // ── pending heading → 真正 heading 转换 ──
+
       // 允许 forceCheck 触发转换，无论 docChanged 与否
       // 之前 !docChanged 条件导致 composition 结束后转换永远无法触发
       if (pluginState?.forceCheck) {
@@ -183,7 +195,6 @@ function pendingHeadingPlugin(): Plugin<PendingHeadingState> {
 
       // 当有文档变化且不在 composition/suppress 期间，也检查是否有 pending heading
       // 这确保了用户在 `# ` 后输入非 IME 文本时也能正常转换
-      const docChanged = transactions.some((tr) => tr.docChanged);
       if (
         docChanged &&
         !pluginState?.composing &&
@@ -229,6 +240,44 @@ function findPendingHeading(doc: PMNode): PendingHeading | null {
   });
 
   return pending;
+}
+
+/**
+ * 当 heading 内容被删除变空时，把它转回 paragraph 并恢复 `# ` 前缀。
+ *
+ * 场景：用户输入 `# 张三` → heading 节点 → Backspace 删完 → 空 heading。
+ * 空 heading 上的 IME composition 会导致中文错位（与 # + 空格后立即转换的问题相同）。
+ * 转回 pending heading（paragraph + `# ` 前缀）后，IME 输入正常工作。
+ */
+export function revertEmptyHeading(
+  tr: Transaction,
+  doc: PMNode,
+): Transaction | null {
+  let result: Transaction | null = null;
+
+  doc.descendants((node, pos) => {
+    if (result) return false;
+    if (node.type.name !== 'heading') return true;
+
+    // 只处理空的 heading（没有文本内容）
+    if (node.content.size > 0) return true;
+
+    const level = node.attrs.level as number;
+    if (!HEADING_LEVELS.includes(level as (typeof HEADING_LEVELS)[number])) return true;
+
+    // 把空 heading 转回 paragraph，并插入 `# ` 前缀
+    const prefix = '#'.repeat(level) + ' ';
+    const paragraphType = doc.type.schema.nodes.paragraph;
+    if (!paragraphType) return true;
+
+    tr.setBlockType(pos, pos + node.nodeSize, paragraphType);
+    tr.insertText(prefix, pos + 1);
+
+    result = tr.docChanged ? tr : null;
+    return false;
+  });
+
+  return result;
 }
 
 export function convertPendingHeading(
