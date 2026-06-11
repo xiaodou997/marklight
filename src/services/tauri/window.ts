@@ -1,5 +1,6 @@
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { invokeCommand } from './client';
+import { TAURI_COMMANDS } from './command-names';
 import type { AppOpenPathsPayload } from './events';
 
 export type NativeWindowTheme = 'light' | 'dark';
@@ -37,33 +38,33 @@ export async function setCurrentWindowTheme(theme: NativeWindowTheme) {
 }
 
 export async function setCurrentWindowBackgroundColor(color: string) {
-  await invokeCommand<void>('set_window_background_color', { color });
+  await invokeCommand<void>(TAURI_COMMANDS.setWindowBackgroundColor, { color });
 }
 
 export async function openEditorWindow(path?: string) {
-  await invokeCommand<void>('open_editor_window', { path });
+  await invokeCommand<void>(TAURI_COMMANDS.openEditorWindow, { path });
 }
 
 export async function printDocument() {
-  await invokeCommand<void>('print_document');
+  await invokeCommand<void>(TAURI_COMMANDS.printDocument);
 }
 
 export async function refreshNativeMenuShortcuts(shortcuts: Record<string, string>) {
-  await invokeCommand<void>('refresh_native_menu_shortcuts', { shortcuts });
+  await invokeCommand<void>(TAURI_COMMANDS.refreshNativeMenuShortcuts, { shortcuts });
 }
 
 export async function revealStartupOpenLog() {
-  return invokeCommand<string>('reveal_startup_open_log');
+  return invokeCommand<string>(TAURI_COMMANDS.revealStartupOpenLog);
 }
 
 export async function consumeStartupOpenRequest() {
-  return invokeCommand<AppOpenPathsPayload | null>('consume_startup_open_request');
+  return invokeCommand<AppOpenPathsPayload | null>(TAURI_COMMANDS.consumeStartupOpenRequest);
 }
 
 export async function notifyFrontendReady() {
-  return invokeCommand<AppOpenPathsPayload | null>('notify_frontend_ready');
+  return invokeCommand<AppOpenPathsPayload | null>(TAURI_COMMANDS.notifyFrontendReady);
 }
 
 export async function consumeWindowOpenRequest() {
-  return invokeCommand<AppOpenPathsPayload | null>('consume_window_open_request');
+  return invokeCommand<AppOpenPathsPayload | null>(TAURI_COMMANDS.consumeWindowOpenRequest);
 }

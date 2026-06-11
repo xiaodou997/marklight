@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
+import type { TauriCommandName } from './command-names';
 
 export interface TauriAppError {
   code: string;
@@ -54,7 +55,7 @@ export function normalizeTauriError(error: unknown): TauriAppError {
 }
 
 export async function invokeCommand<T>(
-  command: string,
+  command: TauriCommandName,
   args?: Record<string, unknown>,
 ): Promise<T> {
   try {

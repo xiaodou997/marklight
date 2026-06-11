@@ -1,4 +1,5 @@
 import { invokeCommand } from './client';
+import { TAURI_COMMANDS } from './command-names';
 
 export interface DocumentOpenResult {
   path: string;
@@ -24,7 +25,7 @@ export interface ImageAssetAuthorizationResult {
 }
 
 export async function openDocument(path: string) {
-  return invokeCommand<DocumentOpenResult>('open_document', { path });
+  return invokeCommand<DocumentOpenResult>(TAURI_COMMANDS.openDocument, { path });
 }
 
 export async function saveDocument(
@@ -33,7 +34,7 @@ export async function saveDocument(
   expectedLastModifiedMs?: number | null,
   force = false,
 ) {
-  return invokeCommand<DocumentSaveResult>('save_document', {
+  return invokeCommand<DocumentSaveResult>(TAURI_COMMANDS.saveDocument, {
     path,
     content,
     expectedLastModifiedMs,
@@ -42,23 +43,23 @@ export async function saveDocument(
 }
 
 export async function importDocumentImage(sourcePath: string, documentPath: string) {
-  return invokeCommand<DocumentImageImportResult>('import_document_image', {
+  return invokeCommand<DocumentImageImportResult>(TAURI_COMMANDS.importDocumentImage, {
     sourcePath,
     documentPath,
   });
 }
 
 export async function resolveDocumentImagePath(documentPath: string, relativePath: string) {
-  return invokeCommand<DocumentImageResolveResult>('resolve_document_image_path', {
+  return invokeCommand<DocumentImageResolveResult>(TAURI_COMMANDS.resolveDocumentImagePath, {
     documentPath,
     relativePath,
   });
 }
 
 export async function authorizeImageAsset(path: string) {
-  return invokeCommand<ImageAssetAuthorizationResult>('authorize_image_asset', { path });
+  return invokeCommand<ImageAssetAuthorizationResult>(TAURI_COMMANDS.authorizeImageAsset, { path });
 }
 
 export async function fetchRemoteImageData(url: string) {
-  return invokeCommand<string>('fetch_remote_image', { url });
+  return invokeCommand<string>(TAURI_COMMANDS.fetchRemoteImage, { url });
 }
