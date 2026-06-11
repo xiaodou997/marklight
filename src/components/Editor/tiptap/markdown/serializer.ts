@@ -337,15 +337,6 @@ const nodeSerializers: Record<string, NodeSerializer> = {
     state.closeBlock(node);
   },
 
-  wikilink(state, node) {
-    const target = node.attrs.target as string;
-    const alias = node.attrs.alias as string;
-    if (alias) {
-      state.write(`[[${target}|${alias}]]`);
-    } else {
-      state.write(`[[${target}]]`);
-    }
-  },
 };
 
 /** 将表格单元格节点序列化为纯文本（含 inline 标记） */

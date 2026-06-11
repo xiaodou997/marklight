@@ -248,8 +248,6 @@ function getTokenHandlers(schema: Schema): Record<string, TokenHandler> {
     state.addNode(schema.nodes.image, { src, alt, title });
   };
 
-  Object.assign(handlers, getPluginTokenHandlers(schema));
-
   // ── 行内标记 ──
 
   handlers.em_open = (state) => {
@@ -319,29 +317,7 @@ function getTokenHandlers(schema: Schema): Record<string, TokenHandler> {
   // ── 文本和硬换行 ──
 
   handlers.text = (state, token) => {
-    // 检查文本中是否包含 wikilink [[target]] 或 [[target|alias]]
-    if (schema.nodes.wikilink && /\[\[/.test(token.content)) {
-      const regex = /\[\[([^\]|]+)(?:\|([^\]]*))?\]\]/g;
-      let lastIndex = 0;
-      let match;
-      while ((match = regex.exec(token.content)) !== null) {
-        // 添加 wikilink 前的文本
-        if (match.index > lastIndex) {
-          state.addText(token.content.slice(lastIndex, match.index));
-        }
-        // 添加 wikilink 节点
-        const target = match[1].trim();
-        const alias = match[2]?.trim() || '';
-        state.addNode(schema.nodes.wikilink, { target, alias });
-        lastIndex = regex.lastIndex;
-      }
-      // 添加剩余文本
-      if (lastIndex < token.content.length) {
-        state.addText(token.content.slice(lastIndex));
-      }
-    } else {
-      state.addText(token.content);
-    }
+    state.addText(token.content);
   };
 
   handlers.inline = (state, token) => {
@@ -378,6 +354,8 @@ function getTokenHandlers(schema: Schema): Record<string, TokenHandler> {
     }
     state.addText(token.content);
   };
+
+  Object.assign(handlers, getPluginTokenHandlers(schema));
 
   return handlers;
 }

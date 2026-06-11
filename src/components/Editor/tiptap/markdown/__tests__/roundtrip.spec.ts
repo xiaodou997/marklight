@@ -83,6 +83,17 @@ function createTestSchema(): Schema {
         parseDOM: [{ tag: 'div[data-type="math-block"]' }],
         toDOM: () => ['div', { 'data-type': 'math-block' }, 0],
       },
+      wikilink: {
+        inline: true,
+        group: 'inline',
+        atom: true,
+        attrs: {
+          target: { default: '' },
+          alias: { default: '' },
+        },
+        parseDOM: [{ tag: 'span[data-wikilink]' }],
+        toDOM: () => ['span', { 'data-wikilink': '' }, 0],
+      },
       text: { group: 'inline' },
     },
     marks: {
@@ -180,6 +191,11 @@ describe('Round-trip: parse → serialize', () => {
     it('link', () => {
       expect(roundTrip('[text](https://example.com)\n'))
         .toBe(normalize('[text](https://example.com)\n'));
+    });
+
+    it('wikilink', () => {
+      expect(roundTrip('See [[Roadmap]] and [[Project Alpha|Alpha]].\n'))
+        .toBe(normalize('See [[Roadmap]] and [[Project Alpha|Alpha]].\n'));
     });
 
     it('superscript', () => {
