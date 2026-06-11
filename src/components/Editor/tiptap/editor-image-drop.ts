@@ -1,8 +1,10 @@
-import type { UnlistenFn } from '@tauri-apps/api/event';
-import { getCurrentWebview } from '@tauri-apps/api/webview';
 import type { Editor as TiptapEditor } from '@tiptap/vue-3';
 
 import { importDocumentImage } from '../../../services/tauri/document';
+import {
+  listenCurrentWebviewDragDrop,
+  type UnlistenFn,
+} from '../../../services/tauri/webview';
 
 interface EditorRef {
   value: TiptapEditor | null;
@@ -25,8 +27,7 @@ export async function setupEditorImageDrop({
   getDocumentPath,
 }: SetupEditorImageDropOptions): Promise<UnlistenFn | null> {
   try {
-    const webview = getCurrentWebview();
-    return await webview.onDragDropEvent(async (event) => {
+    return await listenCurrentWebviewDragDrop(async (event) => {
       if (event.payload.type !== 'drop') return;
       const paths = event.payload.paths;
       if (!paths?.length || !editor.value) return;

@@ -1,7 +1,7 @@
 import { ref } from 'vue';
 import { confirm } from '@tauri-apps/plugin-dialog';
-import { convertFileSrc } from '@tauri-apps/api/core';
 import { useFileStore } from '../stores/file';
+import { toAssetUrl } from '../services/tauri/asset';
 import { authorizeImageAsset } from '../services/tauri/document';
 
 export function useImagePreview() {
@@ -24,7 +24,7 @@ export function useImagePreview() {
       }
       activeViewMode.value = 'image';
       const authorized = await authorizeImageAsset(path);
-      imagePreviewUrl.value = convertFileSrc(authorized.path);
+      imagePreviewUrl.value = toAssetUrl(authorized.path);
       isFullscreenPreview.value = false;
     } else {
       isFullscreenPreview.value = false;

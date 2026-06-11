@@ -28,10 +28,8 @@ vi.mock('@tauri-apps/plugin-dialog', () => ({
   confirm: confirmMock,
 }));
 
-vi.mock('@tauri-apps/api/webview', () => ({
-  getCurrentWebview: () => ({
-    onDragDropEvent: onDragDropEventMock,
-  }),
+vi.mock('../../services/tauri/webview', () => ({
+  listenCurrentWebviewDragDrop: onDragDropEventMock,
 }));
 
 vi.mock('../../services/tauri/events', () => ({

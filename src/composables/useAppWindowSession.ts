@@ -1,9 +1,9 @@
 import { confirm } from '@tauri-apps/plugin-dialog';
-import { getCurrentWebview } from '@tauri-apps/api/webview';
 import type { Ref } from 'vue';
 import { onUnmounted, watch } from 'vue';
 import type { AppOpenPathsPayload } from '../services/tauri/events';
 import { listenAppOpenPaths, listenWindowCloseRequested } from '../services/tauri/events';
+import { listenCurrentWebviewDragDrop } from '../services/tauri/webview';
 import {
   consumeStartupOpenRequest,
   consumeWindowOpenRequest,
@@ -95,8 +95,7 @@ export function useAppWindowSession(options: AppWindowSessionOptions) {
       };
     }
 
-    const webview = getCurrentWebview();
-    unlistenDragDrop = await webview.onDragDropEvent(async (event) => {
+    unlistenDragDrop = await listenCurrentWebviewDragDrop(async (event) => {
       if (event.payload.type !== 'drop') {
         return;
       }
