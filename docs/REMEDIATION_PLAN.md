@@ -118,7 +118,7 @@ cargo test --manifest-path src-tauri/Cargo.toml
 - `MarkdownEditor.vue` 已抽出搜索、命令处理、图片拖放、appearance effect、metadata helper。
 - `Sidebar.vue` 已抽出文件树、搜索结果、菜单、文件对话框和大纲面板。
 - `SettingsModal.vue` 已抽出 modal chrome、导航、页面 header、基础控件和各设置 panel。
-- `App.vue` 已抽出图片预览、源码编辑、全屏图片 overlay 视图区块、DOM 事件处理和 editor state。
+- `App.vue` 已抽出图片预览、源码编辑、全屏图片 overlay 视图区块、DOM 事件处理、editor state 和本地 UI state。
 - `CommandPalette.vue` 已抽出搜索输入、命令结果列表和文件结果列表。
 - `ThemeSelector.vue` 已抽出主题卡片和主题预览。
 - `ThemeEditor.vue` 已抽出编辑 header、预览、颜色组和主题草稿状态 composable。
