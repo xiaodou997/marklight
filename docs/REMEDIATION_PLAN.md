@@ -118,14 +118,15 @@ cargo test --manifest-path src-tauri/Cargo.toml
 - `MarkdownEditor.vue` 已抽出搜索、命令处理、图片拖放、appearance effect、metadata helper。
 - `Sidebar.vue` 已抽出文件树、搜索结果、菜单、文件对话框和大纲面板。
 - `SettingsModal.vue` 已抽出 modal chrome、导航、页面 header、基础控件和各设置 panel。
-- `App.vue` 已抽出图片预览、源码编辑和全屏图片 overlay 视图区块。
+- `App.vue` 已抽出图片预览、源码编辑、全屏图片 overlay 视图区块和 DOM 事件处理。
 - `CommandPalette.vue` 已抽出搜索输入、命令结果列表和文件结果列表。
 - `ThemeSelector.vue` 已抽出主题卡片和主题预览。
 - `ThemeEditor.vue` 已抽出编辑 header、预览、颜色组和主题草稿状态 composable。
+- `MarkdownEditor.vue` 已进一步抽出 TipTap extension setup，组件降为 editor lifecycle 与 UI 组合面。
 
 剩余工作：
 
-- 继续审计 `App.vue`、`Sidebar.vue`、`MarkdownEditor.vue` 等超过 300 行或职责偏多的组件。
+- 继续审计 `App.vue` 等超过 300 行或职责偏多的组件，避免重新累积已抽出的副作用。
 - 拆分时保持 props down / events up，不把状态隐式塞进子组件。
 - 样式迁移只移动对应组件需要的 scoped CSS。
 
@@ -144,11 +145,12 @@ cargo test --manifest-path src-tauri/Cargo.toml
 - `src/components/Editor/tiptap/markdown/plugins/` 提供插件 registry。
 - math、wikilink、Mermaid、frontmatter、callout 已插件化。
 - round-trip 测试覆盖主要 Markdown fidelity 行为。
+- `plugins.spec.ts` 覆盖插件注册顺序、preprocessor、fence handler、token interceptor、token handler 和 node serializer 调度。
 
 剩余工作：
 
 - 继续把新 Markdown 语法纳入插件 registry。
-- 对插件 API 增加更直接的单元测试，避免只依赖大 round-trip 覆盖。
+- 新增插件时继续补直接的 registry/plugin 单元测试，避免只依赖大 round-trip 覆盖。
 
 ## 7. 完成审计
 
