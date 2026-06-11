@@ -5,7 +5,7 @@
  * 自定义实现以精确控制输出格式，支持 GFM 表格、任务列表等扩展语法。
  */
 import type { Node as PMNode, Mark } from '@tiptap/pm/model';
-import { mathNodeSerializers } from './plugins/math';
+import { getPluginNodeSerializers } from './plugins';
 
 // ── 序列化状态 ────────────────────────────────────���─────────────
 
@@ -301,7 +301,7 @@ const nodeSerializers: Record<string, NodeSerializer> = {
 
   // ── 插件节点 ──
 
-  ...mathNodeSerializers,
+  ...getPluginNodeSerializers(),
 
   // ── Mermaid ──
 

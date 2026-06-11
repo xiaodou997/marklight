@@ -2,6 +2,7 @@ import type Token from 'markdown-it/lib/token.mjs';
 import type { Schema } from '@tiptap/pm/model';
 import type { MarkdownParseState, TokenHandler } from '../parser';
 import type { MarkdownSerializerState, NodeSerializer } from '../serializer';
+import type { MarkdownSyntaxPlugin } from './index';
 
 export function mathTokenHandlers(schema: Schema): Record<string, TokenHandler> {
   const handlers: Record<string, TokenHandler> = {};
@@ -33,4 +34,10 @@ export const mathNodeSerializers: Record<string, NodeSerializer> = {
     state.writeLine('$$');
     state.closeBlock(node);
   },
+};
+
+export const mathMarkdownPlugin: MarkdownSyntaxPlugin = {
+  name: 'math',
+  tokenHandlers: mathTokenHandlers,
+  nodeSerializers: mathNodeSerializers,
 };

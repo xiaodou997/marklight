@@ -16,7 +16,7 @@ import markdownItSub from 'markdown-it-sub';
 import markdownItSup from 'markdown-it-sup';
 import markdownItTexmath from 'markdown-it-texmath';
 import katex from 'katex';
-import { mathTokenHandlers } from './plugins/math';
+import { getPluginTokenHandlers } from './plugins';
 
 // ── markdown-it 实例 ───────────────────────────────────────────
 
@@ -248,7 +248,7 @@ function getTokenHandlers(schema: Schema): Record<string, TokenHandler> {
     state.addNode(schema.nodes.image, { src, alt, title });
   };
 
-  Object.assign(handlers, mathTokenHandlers(schema));
+  Object.assign(handlers, getPluginTokenHandlers(schema));
 
   // ── 行内标记 ──
 
