@@ -67,6 +67,7 @@ import {
   type SlashCommandItem,
 } from './tiptap/extensions/slash-commands';
 import { DragHandle } from './tiptap/extensions/drag-handle';
+import { useEditorSearch } from './tiptap/useEditorSearch';
 import BubbleMenuComponent from './views/BubbleMenu.vue';
 import SlashMenu from './views/SlashMenu.vue';
 import SearchBar from './SearchBar.vue';
@@ -116,11 +117,6 @@ const slashMenuItems = ref<SlashCommandItem[]>([]);
 const slashMenuCommand = ref<(item: SlashCommandItem) => void>(() => {});
 const customCssId = 'marklight-custom-editor-css';
 
-// 搜索状态
-const isSearchVisible = ref(false);
-const searchMatchCount = ref(0);
-const searchCurrentIndex = ref(0);
-
 function injectCustomCSS(css: string) {
   let el = document.getElementById(customCssId) as HTMLStyleElement | null;
   if (!el) {
@@ -136,6 +132,19 @@ watch(() => settingsStore.settings.customEditorCSS, injectCustomCSS, { immediate
 // ── 创建 TipTap Editor ────────────────────────────────────────
 
 const editor = shallowRef<TiptapEditor | null>(null);
+const {
+  isSearchVisible,
+  searchMatchCount,
+  searchCurrentIndex,
+  onSearchQuery,
+  onSearchCaseSensitive,
+  onSearchNext,
+  onSearchPrev,
+  onSearchReplace,
+  onSearchReplaceAll,
+  openSearch,
+  closeSearch,
+} = useEditorSearch(editor);
 
 function createEditor(content: string) {
   if (editor.value) {
@@ -415,112 +424,6 @@ function executeEditorCommand(commandId: string): boolean {
   }
 }
 
-// ── 搜索替换 ─────────────────────────────────────────────────
-
-let searchQuery = '';
-let caseSensitive = false;
-let currentMatches: Array<{ from: number; to: number }> = [];
-
-/** 在 ProseMirror 文档中查找匹配项（精确文档位置） */
-function findMatches(query: string): Array<{ from: number; to: number }> {
-  if (!editor.value || !query) return [];
-  const doc = editor.value.state.doc;
-  const results: Array<{ from: number; to: number }> = [];
-  const searchText = caseSensitive ? query : query.toLowerCase();
-
-  doc.descendants((node, pos) => {
-    if (!node.isText || !node.text) return;
-    const text = caseSensitive ? node.text : node.text.toLowerCase();
-    let index = 0;
-    while ((index = text.indexOf(searchText, index)) !== -1) {
-      results.push({ from: pos + index, to: pos + index + query.length });
-      index += 1;
-    }
-  });
-  return results;
-}
-
-function scrollToMatch(index: number) {
-  if (!editor.value || index < 0 || index >= currentMatches.length) return;
-  const match = currentMatches[index];
-  editor.value.commands.setTextSelection(match);
-  const dom = editor.value.view.domAtPos(match.from);
-  const el = dom.node instanceof HTMLElement ? dom.node : dom.node.parentElement;
-  el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-}
-
-function onSearchQuery(query: string) {
-  searchQuery = query;
-  currentMatches = findMatches(query);
-  searchMatchCount.value = currentMatches.length;
-  searchCurrentIndex.value = currentMatches.length > 0 ? 1 : 0;
-  if (currentMatches.length > 0) scrollToMatch(0);
-}
-
-function onSearchCaseSensitive(sensitive: boolean) {
-  caseSensitive = sensitive;
-  onSearchQuery(searchQuery);
-}
-
-function onSearchNext() {
-  if (searchMatchCount.value === 0) return;
-  searchCurrentIndex.value =
-    searchCurrentIndex.value >= searchMatchCount.value ? 1 : searchCurrentIndex.value + 1;
-  scrollToMatch(searchCurrentIndex.value - 1);
-}
-
-function onSearchPrev() {
-  if (searchMatchCount.value === 0) return;
-  searchCurrentIndex.value =
-    searchCurrentIndex.value <= 1 ? searchMatchCount.value : searchCurrentIndex.value - 1;
-  scrollToMatch(searchCurrentIndex.value - 1);
-}
-
-function onSearchReplace(replacement: string) {
-  if (!editor.value || currentMatches.length === 0) return;
-  const idx = searchCurrentIndex.value - 1;
-  if (idx < 0 || idx >= currentMatches.length) return;
-  const match = currentMatches[idx];
-
-  editor.value
-    .chain()
-    .focus()
-    .setTextSelection(match)
-    .deleteSelection()
-    .insertContent(replacement)
-    .run();
-
-  // 重新搜索
-  currentMatches = findMatches(searchQuery);
-  searchMatchCount.value = currentMatches.length;
-  if (searchCurrentIndex.value > currentMatches.length) {
-    searchCurrentIndex.value = currentMatches.length > 0 ? 1 : 0;
-  }
-  if (currentMatches.length > 0) scrollToMatch(searchCurrentIndex.value - 1);
-}
-
-function onSearchReplaceAll(replacement: string) {
-  if (!editor.value || currentMatches.length === 0) return;
-  // 从后往前替换，避免位置偏移
-  const matches = [...currentMatches].reverse();
-  const chain = editor.value.chain();
-  for (const match of matches) {
-    chain.setTextSelection(match).deleteSelection().insertContent(replacement);
-  }
-  chain.run();
-
-  currentMatches = findMatches(searchQuery);
-  searchMatchCount.value = currentMatches.length;
-  searchCurrentIndex.value = 0;
-}
-
-function closeSearch() {
-  isSearchVisible.value = false;
-  searchMatchCount.value = 0;
-  searchCurrentIndex.value = 0;
-  searchQuery = '';
-}
-
 // ── 容器点击 ──────────────────────────────────────────────────
 
 function handleContainerClick(event: MouseEvent) {
@@ -628,7 +531,7 @@ defineExpose({
   undo: () => editor.value?.commands.undo(),
   redo: () => editor.value?.commands.redo(),
   openSearch: (_showReplace = false) => {
-    isSearchVisible.value = true;
+    openSearch();
     searchBarRef.value?.setShowReplace(_showReplace);
   },
   closeSearch,
