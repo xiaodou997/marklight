@@ -12,8 +12,11 @@ import { useMenuEvents } from './composables/useMenuEvents';
 import { useMenuShortcutsSync } from './composables/useMenuShortcutsSync';
 import { useWorkspaceSession } from './composables/useWorkspaceSession';
 import CommandPalette from './components/Editor/CommandPalette.vue';
+import ImageFullscreenOverlay from './components/Editor/ImageFullscreenOverlay.vue';
+import ImagePreviewView from './components/Editor/ImagePreviewView.vue';
 import ShortcutsModal from './components/Editor/ShortcutsModal.vue';
 import Sidebar, { type OutlineItem } from './components/Editor/Sidebar.vue';
+import SourceEditorView from './components/Editor/SourceEditorView.vue';
 import StatusBar from './components/Layout/StatusBar.vue';
 import TitleBar from './components/Layout/TitleBar.vue';
 import SettingsModal from './components/Settings/SettingsModal.vue';
@@ -353,40 +356,17 @@ onUnmounted(() => {
           @update="handleEditorUpdate"
         />
 
-        <div
+        <ImagePreviewView
           v-else-if="activeViewMode === 'image' && imagePreviewUrl"
-          class="h-full w-full flex items-center justify-center p-12 overflow-auto"
-          style="background-color: var(--bg-color)"
-        >
-          <div class="relative group max-w-full max-h-full">
-            <img
-              :src="imagePreviewUrl"
-              class="max-w-full max-h-full object-contain shadow-md rounded cursor-zoom-in"
-              style="border: 1px solid var(--border-color); background-color: var(--bg-color)"
-              title="双击全屏预览"
-              @dblclick="isFullscreenPreview = true"
-            />
-            <div
-              class="absolute bottom-4 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/50 text-white text-[10px] px-3 py-1 rounded-full backdrop-blur-sm pointer-events-none"
-            >
-              双击全屏查看
-            </div>
-          </div>
-        </div>
+          :image-url="imagePreviewUrl"
+          @open-fullscreen="isFullscreenPreview = true"
+        />
 
-        <div v-else class="h-full w-full p-8">
-          <textarea
-            class="w-full h-full resize-none outline-none font-mono text-sm leading-relaxed p-4 rounded-lg"
-            style="
-              color: var(--text-color);
-              background-color: var(--sidebar-bg);
-              border: 1px solid var(--border-color);
-            "
-            :value="fileStore.currentFile.content"
-            placeholder="在此输入 Markdown 源码..."
-            @input="(e) => fileStore.setContent((e.target as HTMLTextAreaElement).value)"
-          ></textarea>
-        </div>
+        <SourceEditorView
+          v-else
+          :content="fileStore.currentFile.content"
+          @update-content="fileStore.setContent"
+        />
       </main>
     </div>
 
@@ -417,35 +397,10 @@ onUnmounted(() => {
       @open-file="handleOpenFile"
     />
 
-    <Teleport to="body">
-      <Transition name="fade">
-        <div
-          v-if="isFullscreenPreview && imagePreviewUrl"
-          class="fixed inset-0 z-[2000] bg-black/90 backdrop-blur-md flex items-center justify-center p-8 cursor-zoom-out"
-          @click="closeFullscreenPreview"
-        >
-          <img :src="imagePreviewUrl" class="max-w-full max-h-full object-contain" @click.stop />
-          <button
-            class="absolute top-6 right-6 w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors"
-            @click="closeFullscreenPreview"
-          >
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path d="M18 6L6 18M6 6l12 12" stroke-width="2" stroke-linecap="round" />
-            </svg>
-          </button>
-        </div>
-      </Transition>
-    </Teleport>
+    <ImageFullscreenOverlay
+      :visible="isFullscreenPreview && Boolean(imagePreviewUrl)"
+      :image-url="imagePreviewUrl || ''"
+      @close="closeFullscreenPreview"
+    />
   </div>
 </template>
-
-<style scoped>
-.fade-enter-active,
-.fade-leave-active {
-  transition: opacity 0.2s ease;
-}
-.fade-enter-from,
-.fade-leave-to {
-  opacity: 0;
-}
-</style>
