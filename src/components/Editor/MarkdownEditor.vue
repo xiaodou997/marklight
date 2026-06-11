@@ -27,7 +27,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, watch, shallowRef, onBeforeUnmount } from 'vue';
+import { onMounted, ref, shallowRef, onBeforeUnmount } from 'vue';
 import { debounce } from 'lodash-es';
 import { Editor as TiptapEditor, EditorContent } from '@tiptap/vue-3';
 import type { SuggestionKeyDownProps, SuggestionProps } from '@tiptap/suggestion';
@@ -39,7 +39,6 @@ import TaskItem from '@tiptap/extension-task-item';
 import Placeholder from '@tiptap/extension-placeholder';
 
 import { useFileStore } from '../../stores/file';
-import { useSettingsStore } from '../../stores/settings';
 import { parseMarkdown } from './tiptap/markdown/parser';
 import { serializeMarkdown } from './tiptap/markdown/serializer';
 import { CustomCodeBlock } from './tiptap/extensions/code-block';
@@ -77,6 +76,7 @@ import {
   type EditorOutlineItem,
 } from './tiptap/editor-metadata';
 import { setupEditorImageDrop } from './tiptap/editor-image-drop';
+import { useEditorAppearance } from './tiptap/useEditorAppearance';
 import { useEditorSearch } from './tiptap/useEditorSearch';
 import BubbleMenuComponent from './views/BubbleMenu.vue';
 import SlashMenu from './views/SlashMenu.vue';
@@ -92,48 +92,18 @@ type EditorUpdatePayload = {
   selectionText?: string;
   outline?: EditorOutlineItem[];
 };
-// 深色模式 highlight.js 主题切换
-const hljsDarkCssId = 'hljs-dark-theme';
-function syncHljsTheme() {
-  const isDark = document.documentElement.classList.contains('dark');
-  let el = document.getElementById(hljsDarkCssId) as HTMLLinkElement | null;
-  if (isDark) {
-    if (!el) {
-      el = document.createElement('link');
-      el.id = hljsDarkCssId;
-      el.rel = 'stylesheet';
-      el.href = new URL('highlight.js/styles/github-dark.css', import.meta.url).href;
-      document.head.appendChild(el);
-    }
-  } else {
-    el?.remove();
-  }
-}
 
 const props = defineProps<{ initialContent?: string }>();
 const emit = defineEmits<{ (e: 'update', data: EditorUpdatePayload): void }>();
 
 const fileStore = useFileStore();
-const settingsStore = useSettingsStore();
 const editorWrapRef = ref<HTMLElement | null>(null);
 const bubbleMenuRef = ref<InstanceType<typeof BubbleMenuComponent> | null>(null);
 const searchBarRef = ref<InstanceType<typeof SearchBar> | null>(null);
 const slashMenuRef = ref<InstanceType<typeof SlashMenu> | null>(null);
 const slashMenuItems = ref<SlashCommandItem[]>([]);
 const slashMenuCommand = ref<(item: SlashCommandItem) => void>(() => {});
-const customCssId = 'marklight-custom-editor-css';
-
-function injectCustomCSS(css: string) {
-  let el = document.getElementById(customCssId) as HTMLStyleElement | null;
-  if (!el) {
-    el = document.createElement('style');
-    el.id = customCssId;
-    document.head.appendChild(el);
-  }
-  el.textContent = css;
-}
-
-watch(() => settingsStore.settings.customEditorCSS, injectCustomCSS, { immediate: true });
+useEditorAppearance();
 
 // ── 创建 TipTap Editor ────────────────────────────────────────
 
@@ -337,19 +307,10 @@ async function setupDragDrop() {
   });
 }
 
-// ── 主题同步 ──────────────────────────────────────────────────
-
-const themeObserver = new MutationObserver(syncHljsTheme);
-
 // ── 生命周期 ──────────────────────────────────────────────────
 
 onMounted(() => {
   createEditor(props.initialContent || '');
-  syncHljsTheme();
-  themeObserver.observe(document.documentElement, {
-    attributes: true,
-    attributeFilter: ['class'],
-  });
   setupDragDrop();
 });
 
@@ -357,7 +318,6 @@ onBeforeUnmount(() => {
   debouncedUpdate.cancel();
   editor.value?.destroy();
   editor.value = null;
-  themeObserver.disconnect();
   if (unlistenDragDrop) {
     unlistenDragDrop();
     unlistenDragDrop = null;
