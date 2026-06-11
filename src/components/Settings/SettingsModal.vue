@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue';
 import { confirm } from '@tauri-apps/plugin-dialog';
 import { useSettingsStore } from '../../stores/settings';
+import SettingsFontSelect from './SettingsFontSelect.vue';
 import SettingsModalFooter from './SettingsModalFooter.vue';
 import SettingsModalHeader from './SettingsModalHeader.vue';
 import SettingsPageHeader from './SettingsPageHeader.vue';
@@ -33,15 +34,6 @@ const {
   cancelEdit,
   captureKeydown,
 } = useShortcutSettings(settings);
-
-// 字体选项
-const fontOptions = [
-  { value: 'JetBrains Mono', label: 'JetBrains Mono' },
-  { value: 'Source Code Pro', label: 'Source Code Pro' },
-  { value: 'Fira Code', label: 'Fira Code' },
-  { value: 'Menlo', label: 'Menlo' },
-  { value: 'Monaco', label: 'Monaco' },
-];
 
 const tabMeta = {
   appearance: {
@@ -201,22 +193,10 @@ function onKeyDown(e: KeyboardEvent) {
                         max-label="24px"
                       />
 
-                      <div class="space-y-2 settings-form-item">
-                        <label class="block text-sm font-medium" style="color: var(--text-color)">字体族</label>
-                        <select
-                          v-model="settings.fontFamily"
-                          class="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono"
-                          style="
-                            border-color: var(--border-color);
-                            background-color: var(--bg-color);
-                            color: var(--text-color);
-                          "
-                        >
-                          <option v-for="opt in fontOptions" :key="opt.value" :value="opt.value">
-                            {{ opt.label }}
-                          </option>
-                        </select>
-                      </div>
+                      <SettingsFontSelect
+                        v-model="settings.fontFamily"
+                        class="settings-form-item"
+                      />
 
                       <SettingsRangeField
                         v-model="settings.lineHeight"
