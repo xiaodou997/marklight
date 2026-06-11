@@ -3,6 +3,8 @@ import { ref, computed } from 'vue';
 import { confirm } from '@tauri-apps/plugin-dialog';
 import { useSettingsStore } from '../../stores/settings';
 import { WECHAT_THEMES } from '../../utils/wechat-themes';
+import SettingsModalFooter from './SettingsModalFooter.vue';
+import SettingsModalHeader from './SettingsModalHeader.vue';
 import ThemeSelector from './ThemeSelector.vue';
 import ThemeEditor from './ThemeEditor.vue';
 import SettingsRangeField from './SettingsRangeField.vue';
@@ -117,22 +119,7 @@ function onKeyDown(e: KeyboardEvent) {
           @click.stop
         >
           <!-- 头部 -->
-          <div
-            class="flex items-center justify-between px-7 py-5 border-b"
-            style="border-color: var(--border-color)"
-          >
-            <h2 class="text-lg font-semibold" style="color: var(--text-color)">设置</h2>
-            <button class="settings-close-btn" @click="close">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
-          </div>
+          <SettingsModalHeader @close="close" />
 
           <!-- 主体 -->
           <div class="flex flex-1 overflow-hidden settings-shell">
@@ -507,24 +494,7 @@ function onKeyDown(e: KeyboardEvent) {
           </div>
 
           <!-- 底部 -->
-          <div
-            class="flex items-center justify-between px-7 py-4 border-t settings-footer"
-            style="border-color: var(--border-color); background-color: var(--sidebar-bg)"
-          >
-            <button
-              class="px-4 py-2 text-sm transition-colors"
-              style="color: var(--muted-color)"
-              @click="handleReset"
-            >
-              恢复默认
-            </button>
-            <button
-              class="px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors"
-              @click="close"
-            >
-              完成
-            </button>
-          </div>
+          <SettingsModalFooter @reset="handleReset" @close="close" />
         </div>
       </div>
     </Transition>
@@ -557,20 +527,6 @@ function onKeyDown(e: KeyboardEvent) {
 
 .settings-shell {
   min-height: 0;
-}
-
-.settings-close-btn {
-  padding: 4px;
-  border-radius: 12px;
-  color: var(--muted-color);
-  transition:
-    background-color 0.15s,
-    color 0.15s;
-}
-
-.settings-close-btn:hover {
-  background: var(--hover-bg);
-  color: var(--text-color);
 }
 
 .settings-content-area {
@@ -735,10 +691,6 @@ function onKeyDown(e: KeyboardEvent) {
     border-color 0.15s,
     background-color 0.15s,
     color 0.15s;
-}
-
-.settings-footer {
-  box-shadow: 0 -1px 0 rgba(15, 23, 42, 0.02);
 }
 
 .settings-warning-card {
