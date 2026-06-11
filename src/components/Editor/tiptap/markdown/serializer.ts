@@ -303,22 +303,6 @@ const nodeSerializers: Record<string, NodeSerializer> = {
 
   ...getPluginNodeSerializers(),
 
-  // ── Callout ──
-
-  callout(state, node) {
-    const type = node.attrs.type || 'note';
-    const title = node.attrs.title || '';
-    state.writeLine(`> [!${type}] ${title}`.trimEnd());
-    // 序列化子内容，每行加 > 前缀
-    const inner = new MarkdownSerializerState();
-    inner.renderContent(node);
-    const text = inner.output.replace(/\n$/, '');
-    for (const line of text.split('\n')) {
-      state.writeLine(`> ${line}`);
-    }
-    state.closeBlock(node);
-  },
-
 };
 
 /** 将表格单元格节点序列化为纯文本（含 inline 标记） */

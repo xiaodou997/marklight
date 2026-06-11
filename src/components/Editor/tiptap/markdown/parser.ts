@@ -16,7 +16,12 @@ import markdownItSub from 'markdown-it-sub';
 import markdownItSup from 'markdown-it-sup';
 import markdownItTexmath from 'markdown-it-texmath';
 import katex from 'katex';
-import { getPluginFenceHandlers, getPluginPreprocessors, getPluginTokenHandlers } from './plugins';
+import {
+  getPluginFenceHandlers,
+  getPluginPreprocessors,
+  getPluginTokenHandlers,
+  getPluginTokenInterceptors,
+} from './plugins';
 
 // ── markdown-it 实例 ───────────────────────────────────────────
 
@@ -50,11 +55,13 @@ export class MarkdownParseState {
   schema: Schema;
   stack: StackItem[];
   marks: readonly Mark[];
+  pluginData: Record<string, unknown>;
 
-  constructor(schema: Schema) {
+  constructor(schema: Schema, pluginData: Record<string, unknown> = {}) {
     this.schema = schema;
     this.stack = [{ type: schema.nodes.doc, attrs: {}, content: [], marks: Mark.none }];
     this.marks = Mark.none;
+    this.pluginData = pluginData;
   }
 
   get top(): StackItem {
@@ -363,31 +370,19 @@ function getTokenHandlers(schema: Schema): Record<string, TokenHandler> {
 
 const md = createMarkdownIt();
 
-/**
- * 提取 > [!TYPE] 形式的 Callout 块，替换为占位符
- */
-function extractCallouts(content: string): { processed: string; callouts: Array<{ type: string; title: string; body: string }> } {
-  const callouts: Array<{ type: string; title: string; body: string }> = [];
-  const processed = content.replace(/^> \[!(\w+)\]\s*(.*)\n((?:>.*\n?)*)/gm, (_match, type, title, bodyRaw) => {
-    const body = bodyRaw.replace(/^> ?/gm, '').trim();
-    const index = callouts.length;
-    callouts.push({ type: type.toLowerCase(), title: title.trim(), body });
-    return `\n<!--CALLOUT_BLOCK_${index}-->\n`;
-  });
-  return { processed, callouts };
-}
-
 export function parseMarkdown(schema: Schema, content: string): PMNode {
   if (!content || !content.trim()) {
     return schema.nodes.doc.create(null, [schema.nodes.paragraph.create()]);
   }
 
-  const state = new MarkdownParseState(schema);
+  const pluginData: Record<string, unknown> = {};
+  const state = new MarkdownParseState(schema, pluginData);
 
   const preprocessors = getPluginPreprocessors(schema);
   const preprocessResults = preprocessors.map((preprocessor) => {
     const result = preprocessor.preprocess({ content });
     content = result.content;
+    pluginData[preprocessor.name] = result.data;
     return { preprocessor, data: result.data };
   });
 
@@ -397,32 +392,16 @@ export function parseMarkdown(schema: Schema, content: string): PMNode {
     }
   }
 
-  // 1. 提取 callout 块
-  const { processed: bodyFinal, callouts } = extractCallouts(content);
-
-  // 2. 用 markdown-it 解析主体内容
-  const tokens = md.parse(bodyFinal, {});
+  // 1. 用 markdown-it 解析主体内容
+  const tokens = md.parse(content, {});
   const handlers = getTokenHandlers(schema);
+  const tokenInterceptors = getPluginTokenInterceptors(schema);
 
   for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i];
 
-    const calloutMatch = token.content.match(/<!--CALLOUT_BLOCK_(\d+)-->/);
-    if ((token.type === 'html_block' || token.type === 'inline') && calloutMatch && schema.nodes.callout) {
-      const idx = parseInt(calloutMatch[1]);
-      const callout = callouts[idx];
-      if (callout) {
-        state.openNode(schema.nodes.callout, { type: callout.type, title: callout.title || callout.type });
-        if (callout.body) {
-          state.openNode(schema.nodes.paragraph);
-          state.addText(callout.body);
-          state.closeNode();
-        } else {
-          state.addNode(schema.nodes.paragraph);
-        }
-        state.closeNode();
-        continue;
-      }
+    if (tokenInterceptors.some((interceptor) => interceptor(state, token, tokens, i))) {
+      continue;
     }
 
     const handler = handlers[token.type];

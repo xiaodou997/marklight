@@ -2,6 +2,7 @@ import type { Schema } from '@tiptap/pm/model';
 import type Token from 'markdown-it/lib/token.mjs';
 import type { MarkdownParseState, TokenHandler } from '../parser';
 import type { NodeSerializer } from '../serializer';
+import { calloutMarkdownPlugin } from './callout';
 import { frontmatterMarkdownPlugin } from './frontmatter';
 import { mathMarkdownPlugin } from './math';
 import { mermaidMarkdownPlugin } from './mermaid';
@@ -17,6 +18,7 @@ export type PreprocessResult<T = unknown> = {
 };
 
 export interface Preprocessor<T = unknown> {
+  name: string;
   preprocess(context: PreprocessContext): PreprocessResult<T>;
   beforeParse?(state: MarkdownParseState, data: T): void;
 }
@@ -28,16 +30,25 @@ export type FenceHandler = (
   content: string,
 ) => boolean;
 
+export type TokenInterceptor = (
+  state: MarkdownParseState,
+  token: Token,
+  tokens: Token[],
+  index: number,
+) => boolean;
+
 export interface MarkdownSyntaxPlugin {
   name: string;
   preprocessor?: (schema: Schema) => Preprocessor | null;
   fenceHandler?: (schema: Schema) => FenceHandler | null;
+  tokenInterceptor?: (schema: Schema) => TokenInterceptor | null;
   tokenHandlers?: (schema: Schema) => Record<string, TokenHandler>;
   nodeSerializers?: Record<string, NodeSerializer>;
 }
 
 export const markdownSyntaxPlugins = [
   frontmatterMarkdownPlugin,
+  calloutMarkdownPlugin,
   mathMarkdownPlugin,
   mermaidMarkdownPlugin,
   wikilinkMarkdownPlugin,
@@ -61,6 +72,13 @@ export function getPluginFenceHandlers(schema: Schema): FenceHandler[] {
   return markdownSyntaxPlugins.flatMap((plugin) => {
     const handler = plugin.fenceHandler?.(schema);
     return handler ? [handler] : [];
+  });
+}
+
+export function getPluginTokenInterceptors(schema: Schema): TokenInterceptor[] {
+  return markdownSyntaxPlugins.flatMap((plugin) => {
+    const interceptor = plugin.tokenInterceptor?.(schema);
+    return interceptor ? [interceptor] : [];
   });
 }
 

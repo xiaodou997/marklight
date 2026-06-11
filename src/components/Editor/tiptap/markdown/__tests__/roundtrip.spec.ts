@@ -100,6 +100,16 @@ function createTestSchema(): Schema {
         parseDOM: [{ tag: 'pre[data-frontmatter]' }],
         toDOM: () => ['pre', { 'data-frontmatter': '' }, ['code', 0]],
       },
+      callout: {
+        group: 'block',
+        content: 'block+',
+        attrs: {
+          type: { default: 'note' },
+          title: { default: '' },
+        },
+        parseDOM: [{ tag: 'div[data-type="callout"]' }],
+        toDOM: () => ['div', { 'data-type': 'callout' }, 0],
+      },
       wikilink: {
         inline: true,
         group: 'inline',
@@ -241,6 +251,11 @@ describe('Round-trip: parse → serialize', () => {
 
     it('frontmatter', () => {
       const md = '---\ntitle: MarkLight\ntags:\n  - editor\n---\n\n# Hello\n';
+      expect(roundTrip(md)).toBe(normalize(md));
+    });
+
+    it('callout', () => {
+      const md = '> [!note] Tip\n> Remember this.\n';
       expect(roundTrip(md)).toBe(normalize(md));
     });
 

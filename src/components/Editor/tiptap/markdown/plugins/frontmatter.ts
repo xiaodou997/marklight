@@ -8,6 +8,7 @@ export interface FrontmatterData {
 
 export function frontmatterPreprocessor(schema: Schema): Preprocessor<FrontmatterData> {
   return {
+    name: 'frontmatter',
     preprocess({ content }) {
       const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?/);
       if (!match) {
