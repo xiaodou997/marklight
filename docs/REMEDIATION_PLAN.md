@@ -118,7 +118,7 @@ cargo test --manifest-path src-tauri/Cargo.toml
 - `MarkdownEditor.vue` 已抽出搜索、命令处理、图片拖放、appearance effect、metadata helper。
 - `Sidebar.vue` 已抽出文件树、搜索结果、菜单、文件对话框和大纲面板。
 - `SettingsModal.vue` 已抽出 modal chrome、导航、页面 header、基础控件和各设置 panel。
-- `App.vue` 已抽出图片预览、源码编辑、全屏图片 overlay 视图区块和 DOM 事件处理。
+- `App.vue` 已抽出图片预览、源码编辑、全屏图片 overlay 视图区块、DOM 事件处理和 editor state。
 - `CommandPalette.vue` 已抽出搜索输入、命令结果列表和文件结果列表。
 - `ThemeSelector.vue` 已抽出主题卡片和主题预览。
 - `ThemeEditor.vue` 已抽出编辑 header、预览、颜色组和主题草稿状态 composable。
@@ -126,7 +126,7 @@ cargo test --manifest-path src-tauri/Cargo.toml
 
 剩余工作：
 
-- 继续审计 `App.vue` 等超过 300 行或职责偏多的组件，避免重新累积已抽出的副作用。
+- 继续审计 `App.vue` 等组合面，避免重新累积已抽出的副作用。
 - 拆分时保持 props down / events up，不把状态隐式塞进子组件。
 - 样式迁移只移动对应组件需要的 scoped CSS。
 
