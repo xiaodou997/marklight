@@ -1,8 +1,12 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { useSettingsStore } from '../../stores/settings';
-import type { Theme, ThemeAppearance, ThemeColors, ThemeId } from '../../themes/types';
+import type { Theme, ThemeColors, ThemeId } from '../../themes/types';
 import { cloneTheme, exportTheme, generateThemeId, getPresetTheme, importTheme } from '../../themes/manager';
+import ThemeColorGroups from './ThemeColorGroups.vue';
+import ThemeEditorHeader from './ThemeEditorHeader.vue';
+import ThemeEditorPreview from './ThemeEditorPreview.vue';
+import type { ThemeColorGroup } from './theme-editor-types';
 
 const props = defineProps<{
   themeId?: ThemeId;
@@ -32,7 +36,7 @@ const editorIntro = computed(() => {
     : '当前编辑基于现有主题创建副本，保存后会生成一个新的自定义主题。';
 });
 
-const colorGroups = [
+const colorGroups: ThemeColorGroup[] = [
   {
     name: '主色调',
     keys: ['primaryColor', 'primaryHover', 'primaryLight'] as (keyof ThemeColors)[],
@@ -62,10 +66,6 @@ const colorGroups = [
     keys: ['calloutNote', 'calloutTip', 'calloutWarning', 'calloutDanger', 'calloutSuccess', 'calloutQuote'] as (keyof ThemeColors)[],
   },
 ];
-
-function getAppearanceLabel(appearance: ThemeAppearance) {
-  return appearance === 'dark' ? '深色主题' : '浅色主题';
-}
 
 function createThemeDraft(baseTheme: Theme, preserveId: boolean) {
   const nextTheme = cloneTheme(baseTheme);
@@ -203,14 +203,6 @@ async function importThemeFile(event: Event) {
   input.value = '';
 }
 
-function formatColorLabel(key: keyof ThemeColors) {
-  return key
-    .replace(/Color|Bg|Border|Shadow|Hover|Light|Secondary/g, (match) => ` ${match}`)
-    .replace(/([A-Z])/g, ' $1')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
 watch(
   () => props.themeId,
   (nextThemeId) => {
@@ -236,80 +228,22 @@ defineExpose({
     </div>
 
     <div v-if="isAdvancedPanelOpen && isEditing && editTheme" class="theme-editor-content">
-      <div class="theme-editor-header">
-        <div class="theme-editor-heading">
-          <input
-            v-model="themeName"
-            type="text"
-            class="theme-name-input"
-            placeholder="主题名称"
-          />
-          <span class="theme-appearance-badge">{{ getAppearanceLabel(editTheme.appearance) }}</span>
-          <p class="theme-editor-intro">{{ editorIntro }}</p>
-        </div>
-        <div class="theme-editor-actions">
-          <button class="theme-action-btn" title="导出" @click="exportCurrentTheme">
-            <svg class="theme-action-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-            </svg>
-          </button>
-          <label class="theme-action-btn" title="导入">
-            <svg class="theme-action-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4-4m0 0L8 8m4-4v12" />
-            </svg>
-            <input type="file" accept=".json" class="hidden" @change="importThemeFile" />
-          </label>
-        </div>
-      </div>
+      <ThemeEditorHeader
+        :theme-name="themeName"
+        :appearance="editTheme.appearance"
+        :intro="editorIntro"
+        @update-theme-name="themeName = $event"
+        @export="exportCurrentTheme"
+        @import="importThemeFile"
+      />
 
-      <div class="theme-preview-card">
-        <div
-          class="theme-preview-surface"
-          :style="{
-            backgroundColor: editTheme.colors.bgColor,
-            borderColor: editTheme.colors.borderColor,
-            color: editTheme.colors.textColor,
-          }"
-        >
-          <div
-            class="theme-preview-chip"
-            :style="{ backgroundColor: editTheme.colors.primaryColor }"
-          />
-          <div
-            class="theme-preview-text"
-            :style="{ backgroundColor: editTheme.colors.textColor }"
-          />
-          <div
-            class="theme-preview-text theme-preview-text--muted"
-            :style="{ backgroundColor: editTheme.colors.textSecondary }"
-          />
-        </div>
-      </div>
+      <ThemeEditorPreview :colors="editTheme.colors" />
 
-      <div class="color-groups">
-        <div v-for="group in colorGroups" :key="group.name" class="color-group">
-          <div class="color-group-name">{{ group.name }}</div>
-          <div class="color-items">
-            <div v-for="key in group.keys" :key="key" class="color-item">
-              <label class="color-label">{{ formatColorLabel(key) }}</label>
-              <div class="color-input-wrapper">
-                <input
-                  type="color"
-                  :value="editTheme.colors[key]"
-                  class="color-input"
-                  @input="(event) => updateColor(key, (event.target as HTMLInputElement).value)"
-                />
-                <input
-                  type="text"
-                  :value="editTheme.colors[key]"
-                  class="color-text-input"
-                  @input="(event) => updateColor(key, (event.target as HTMLInputElement).value)"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <ThemeColorGroups
+        :colors="editTheme.colors"
+        :groups="colorGroups"
+        @update-color="updateColor"
+      />
 
       <div class="theme-editor-footer">
         <button class="theme-cancel-btn" @click="cancelEdit">取消</button>
@@ -341,177 +275,6 @@ defineExpose({
   display: flex;
   flex-direction: column;
   gap: 16px;
-}
-
-.theme-editor-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.theme-editor-heading {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  flex: 1;
-}
-
-.theme-name-input {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  background: var(--input-bg);
-  color: var(--text-color);
-  font-size: 14px;
-  outline: none;
-}
-
-.theme-name-input:focus {
-  border-color: var(--input-focus-border);
-  box-shadow: var(--input-focus-shadow);
-}
-
-.theme-appearance-badge {
-  width: fit-content;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: var(--primary-light);
-  color: var(--primary-color);
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.theme-editor-intro {
-  margin: 0;
-  color: var(--muted-color);
-  font-size: 12px;
-  line-height: 1.6;
-}
-
-.theme-editor-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.theme-action-btn {
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  background: var(--bg-color);
-  color: var(--text-color);
-  cursor: pointer;
-  transition: background-color 0.15s, border-color 0.15s;
-}
-
-.theme-action-btn:hover {
-  background: var(--hover-bg);
-  border-color: var(--primary-color);
-}
-
-.theme-action-icon {
-  width: 18px;
-  height: 18px;
-}
-
-.theme-preview-card {
-  padding: 14px;
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--border-color);
-  background: var(--sidebar-bg);
-}
-
-.theme-preview-surface {
-  min-height: 88px;
-  padding: 16px;
-  border: 1px solid;
-  border-radius: var(--radius-lg);
-}
-
-.theme-preview-chip {
-  width: 56px;
-  height: 12px;
-  border-radius: 999px;
-}
-
-.theme-preview-text {
-  width: 78%;
-  height: 10px;
-  margin-top: 18px;
-  border-radius: 999px;
-  opacity: 0.9;
-}
-
-.theme-preview-text--muted {
-  width: 52%;
-  margin-top: 10px;
-  opacity: 0.55;
-}
-
-.color-groups {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.color-group {
-  padding: 14px;
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--border-color);
-  background: var(--bg-color);
-}
-
-.color-group-name {
-  margin-bottom: 12px;
-  color: var(--text-color);
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.color-items {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 10px;
-}
-
-.color-item {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.color-label {
-  color: var(--muted-color);
-  font-size: 12px;
-}
-
-.color-input-wrapper {
-  display: flex;
-  gap: 8px;
-}
-
-.color-input {
-  width: 40px;
-  height: 36px;
-  padding: 0;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  background: none;
-}
-
-.color-text-input {
-  flex: 1;
-  padding: 8px 10px;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  background: var(--input-bg);
-  color: var(--text-color);
-  font-family: 'SFMono-Regular', 'JetBrains Mono', monospace;
 }
 
 .theme-editor-footer {
