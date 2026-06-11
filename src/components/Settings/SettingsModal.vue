@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue';
 import { confirm } from '@tauri-apps/plugin-dialog';
 import { useSettingsStore } from '../../stores/settings';
+import EditorSettingsPanel from './EditorSettingsPanel.vue';
 import ExportSettingsPanel from './ExportSettingsPanel.vue';
 import SaveSettingsPanel from './SaveSettingsPanel.vue';
 import SettingsFontSelect from './SettingsFontSelect.vue';
@@ -12,8 +13,6 @@ import ThemeSelector from './ThemeSelector.vue';
 import ThemeEditor from './ThemeEditor.vue';
 import SettingsRangeField from './SettingsRangeField.vue';
 import SettingsSidebarNav, { type SettingsTabKey } from './SettingsSidebarNav.vue';
-import SettingsSwitch from './SettingsSwitch.vue';
-import SettingsTabWidthSelector from './SettingsTabWidthSelector.vue';
 import { useShortcutSettings } from './useShortcutSettings';
 
 const settingsStore = useSettingsStore();
@@ -213,56 +212,13 @@ function onKeyDown(e: KeyboardEvent) {
                 </div>
 
                 <!-- 编辑器设置 -->
-                <div v-show="activeTab === 'editor'" class="space-y-6">
-                  <section class="settings-section-card settings-section-card--hero">
-                    <div>
-                      <div class="settings-section-title">编辑器行为</div>
-                      <p class="settings-section-desc">
-                        控制行号、拼写检查和侧边栏大纲等核心编辑体验。
-                      </p>
-                    </div>
-                    <div class="settings-hero-metrics">
-                      <div class="settings-hero-chip">Tab：{{ settings.tabWidth }} 空格</div>
-                      <div class="settings-hero-chip">
-                        拼写检查：{{ settings.spellCheck ? '开启' : '关闭' }}
-                      </div>
-                    </div>
-                  </section>
-
-                  <section class="settings-section-card">
-                    <div class="settings-row">
-                      <div>
-                        <label class="settings-row-title">显示行号</label>
-                        <p class="settings-row-desc">在编辑器左侧显示行号</p>
-                      </div>
-                      <SettingsSwitch v-model="settings.showLineNumbers" label="切换显示行号" />
-                    </div>
-
-                    <div class="settings-row">
-                      <div>
-                        <label class="settings-row-title">拼写检查</label>
-                        <p class="settings-row-desc">启用系统拼写检查</p>
-                      </div>
-                      <SettingsSwitch v-model="settings.spellCheck" label="切换拼写检查" />
-                    </div>
-
-                    <div class="settings-row">
-                      <div>
-                        <label class="settings-row-title">大纲默认展开</label>
-                        <p class="settings-row-desc">启动时自动展开侧边栏大纲</p>
-                      </div>
-                      <SettingsSwitch v-model="settings.outlineExpanded" label="切换大纲默认展开" />
-                    </div>
-
-                    <div class="settings-row settings-row--column">
-                      <div>
-                        <label class="settings-row-title">Tab 宽度</label>
-                        <p class="settings-row-desc">控制缩进与代码块、列表的默认对齐宽度。</p>
-                      </div>
-                      <SettingsTabWidthSelector v-model="settings.tabWidth" />
-                    </div>
-                  </section>
-                </div>
+                <EditorSettingsPanel
+                  v-show="activeTab === 'editor'"
+                  v-model:show-line-numbers="settings.showLineNumbers"
+                  v-model:spell-check="settings.spellCheck"
+                  v-model:outline-expanded="settings.outlineExpanded"
+                  v-model:tab-width="settings.tabWidth"
+                />
 
                 <!-- 快捷键设置 -->
                 <div v-show="activeTab === 'shortcuts'" class="space-y-6">
@@ -478,37 +434,6 @@ function onKeyDown(e: KeyboardEvent) {
   gap: 16px;
 }
 
-.settings-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 12px 0;
-}
-
-.settings-row + .settings-row {
-  border-top: 1px solid var(--border-light);
-}
-
-.settings-row--column {
-  align-items: flex-start;
-  flex-direction: column;
-}
-
-.settings-row-title {
-  display: block;
-  color: var(--text-color);
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.settings-row-desc {
-  margin: 4px 0 0;
-  color: var(--muted-color);
-  font-size: 12px;
-  line-height: 1.7;
-}
-
 .settings-warning-card {
   padding: 14px 16px;
   border-color: #facc15;
@@ -564,11 +489,5 @@ function onKeyDown(e: KeyboardEvent) {
   .settings-form-grid {
     grid-template-columns: 1fr;
   }
-
-  .settings-row {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
 }
 </style>
