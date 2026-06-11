@@ -18,7 +18,7 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 tauri = { version = "2", features = ["protocol-asset"] }
 tauri-plugin-opener = "2"
-tauri-plugin-dialog = "2.7.0"
+tauri-plugin-dialog = "2.7.1"
 tauri-plugin-clipboard-manager = "2"
 tauri-plugin-cli = "2"
 tauri-plugin-single-instance = "2"
@@ -30,7 +30,7 @@ notify = "6.1"
 reqwest = { version = "0.12", features = ["json"] }
 base64 = "0.22"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
-tauri-plugin-store = "2.4.2"
+tauri-plugin-store = "2.4.3"
 tauri-plugin-window-state = "2.4.1"
 
 [target.'cfg(target_os = "macos")'.dependencies]
