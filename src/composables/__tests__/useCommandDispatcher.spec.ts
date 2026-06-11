@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { ref } from 'vue';
+import { COMMANDS } from '../../commands/registry';
 import { useCommandDispatcher } from '../useCommandDispatcher';
 
 vi.mock('../../services/tauri/opener', () => ({
@@ -75,8 +76,23 @@ function createDispatcher() {
       hasFocus,
       openSearch,
       handleNew,
+      handleOpen,
+      handleOpenFolder,
+      handleSave,
+      handleSaveAs,
+      handleOpenNewWindow,
+      exportHtml,
+      exportPdf,
+      copyToWechat,
       toggleSidebar,
+      toggleSourceMode,
+      openSettings,
       openCommandPalette,
+      openShortcuts,
+      toggleFocusMode,
+      showAbout,
+      toggleFullscreen,
+      handleQuit,
     },
     state: {
       activeViewMode,
@@ -117,5 +133,38 @@ describe('useCommandDispatcher', () => {
     await expect(dispatcher.executeCommand('view.showFiles', 'palette')).resolves.toBe(true);
     expect(state.sidebarMode.value).toBe('files');
     expect(state.isSidebarOpen.value).toBe(true);
+  });
+
+  it('handles every registered app command', async () => {
+    const { dispatcher, spies, state } = createDispatcher();
+    state.activeViewMode.value = 'editor';
+    state.isSourceMode.value = false;
+
+    const appCommands = COMMANDS.filter((command) => command.scope === 'app');
+
+    for (const command of appCommands) {
+      await expect(dispatcher.executeCommand(command.id, 'palette')).resolves.toBe(true);
+    }
+
+    expect(spies.handleNew).toHaveBeenCalled();
+    expect(spies.handleOpen).toHaveBeenCalled();
+    expect(spies.handleOpenFolder).toHaveBeenCalled();
+    expect(spies.handleSave).toHaveBeenCalled();
+    expect(spies.handleSaveAs).toHaveBeenCalled();
+    expect(spies.handleOpenNewWindow).toHaveBeenCalled();
+    expect(spies.exportHtml).toHaveBeenCalled();
+    expect(spies.exportPdf).toHaveBeenCalled();
+    expect(spies.copyToWechat).toHaveBeenCalled();
+    expect(spies.openSearch).toHaveBeenCalledWith(false);
+    expect(spies.openSearch).toHaveBeenCalledWith(true);
+    expect(spies.openCommandPalette).toHaveBeenCalled();
+    expect(spies.toggleSidebar).toHaveBeenCalled();
+    expect(spies.toggleSourceMode).toHaveBeenCalled();
+    expect(spies.toggleFocusMode).toHaveBeenCalled();
+    expect(spies.toggleFullscreen).toHaveBeenCalled();
+    expect(spies.openSettings).toHaveBeenCalled();
+    expect(spies.openShortcuts).toHaveBeenCalled();
+    expect(spies.showAbout).toHaveBeenCalled();
+    expect(spies.handleQuit).toHaveBeenCalled();
   });
 });

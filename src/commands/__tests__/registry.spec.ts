@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  COMMANDS,
+  WINDOW_TITLEBAR_MENUS,
   checkKeyConflicts,
   getMenuShortcuts,
   getShortcut,
@@ -32,5 +34,40 @@ describe('command registry', () => {
     const shortcuts = getMenuShortcuts({ 'view.showFiles': 'Mod-Shift-2' });
     expect(shortcuts['view.showFiles']).toBe('CmdOrCtrl+Shift+2');
     expect(shortcuts['file.save']).toBe('CmdOrCtrl+S');
+  });
+
+  it('keeps command ids unique and lookupable', () => {
+    const ids = COMMANDS.map((command) => command.id);
+    expect(new Set(ids).size).toBe(ids.length);
+
+    for (const id of ids) {
+      expect(getCommand(id)?.id).toBe(id);
+    }
+  });
+
+  it('keeps titlebar menu entries backed by registered commands', () => {
+    const ids = new Set(COMMANDS.map((command) => command.id));
+
+    for (const menu of WINDOW_TITLEBAR_MENUS) {
+      for (const item of menu.items) {
+        if (item === 'separator') {
+          continue;
+        }
+
+        expect(ids.has(item)).toBe(true);
+      }
+    }
+  });
+
+  it('keeps menu shortcuts limited to registered menu commands', () => {
+    const menuCommandIds = new Set(
+      COMMANDS.filter((command) => command.menuSection).map((command) => command.id),
+    );
+    const shortcutIds = Object.keys(getMenuShortcuts());
+
+    expect(shortcutIds.length).toBeGreaterThan(0);
+    for (const id of shortcutIds) {
+      expect(menuCommandIds.has(id)).toBe(true);
+    }
   });
 });
