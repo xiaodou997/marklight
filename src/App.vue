@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, onMounted, onUnmounted, ref, watch } from 'vue';
+import { computed, defineAsyncComponent, onMounted, onUnmounted, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useAppWindowSession } from './composables/useAppWindowSession';
 import { useCommandDispatcher } from './composables/useCommandDispatcher';
 import { useAppDomEvents } from './composables/useAppDomEvents';
 import { useAppEditorState } from './composables/useAppEditorState';
+import { useAppUiState } from './composables/useAppUiState';
 import { useDocumentSession } from './composables/useDocumentSession';
 import { useExportActions } from './composables/useExportActions';
 import { useImagePreview } from './composables/useImagePreview';
@@ -85,12 +86,19 @@ const { syncMenuShortcuts, stopWatching: stopWatchingMenuShortcuts } = useMenuSh
   isLoaded,
 });
 
-const isSidebarOpen = ref(true);
-const isSourceMode = ref(false);
-const sidebarMode = ref<'outline' | 'files'>('outline');
-const imagePasteWarning = ref<string | null>(null);
-const isCommandPaletteOpen = ref(false);
-const isShortcutsModalOpen = ref(false);
+const {
+  isSidebarOpen,
+  isSourceMode,
+  sidebarMode,
+  imagePasteWarning,
+  isCommandPaletteOpen,
+  isShortcutsModalOpen,
+  toggleSidebar,
+  toggleSourceMode,
+  openCommandPalette,
+  openShortcutsModal,
+  showImagePasteWarning,
+} = useAppUiState();
 
 async function handleOpenFolder() {
   const opened = await workspaceSession.openWorkspacePicker();
@@ -105,14 +113,6 @@ async function handleOpenNewWindow(path?: string) {
 
 function handleFileCreatedWrapper(name: string, isFolder: boolean) {
   void workspaceSession.createEntry(name, isFolder);
-}
-
-function toggleSidebar() {
-  isSidebarOpen.value = !isSidebarOpen.value;
-}
-
-function toggleSourceMode() {
-  isSourceMode.value = !isSourceMode.value;
 }
 
 const windowTitle = computed(() => {
@@ -163,24 +163,13 @@ const { executeCommand } = useCommandDispatcher({
   toggleSidebar,
   toggleSourceMode,
   openSettings: () => settingsStore.openModal(),
-  openCommandPalette: () => {
-    isCommandPaletteOpen.value = true;
-  },
-  openShortcuts: () => {
-    isShortcutsModalOpen.value = true;
-  },
+  openCommandPalette,
+  openShortcuts: openShortcutsModal,
   toggleFocusMode: () => settingsStore.toggleFocusMode(),
   showAbout,
   toggleFullscreen: windowSession.toggleFullscreen,
   handleQuit: windowSession.handleQuit,
 });
-
-function showImagePasteWarning(message: string) {
-  imagePasteWarning.value = message;
-  setTimeout(() => {
-    imagePasteWarning.value = null;
-  }, 3000);
-}
 
 useAppDomEvents({
   editorRef,
