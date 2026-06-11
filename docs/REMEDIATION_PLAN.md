@@ -36,7 +36,7 @@ cargo test --manifest-path src-tauri/Cargo.toml
 
 ## 2. Tauri 安全边界
 
-状态：进行中。
+状态：已完成主要收口，持续维护。
 
 目标：
 
@@ -53,11 +53,12 @@ cargo test --manifest-path src-tauri/Cargo.toml
 - `src/services/tauri/asset.ts` 收敛 `convertFileSrc`。
 - `src/services/tauri/dialog.ts`、`clipboard.ts`、`opener.ts`、`os.ts` 收敛插件 API。
 - capability 已删除未使用的 `clipboard-manager:allow-write-text`，只保留当前微信复制需要的 HTML 写入权限。
+- `src/services/tauri/__tests__/` 覆盖 command、event、document、workspace、plugin、window、store、webview 等 service wrapper 的关键契约。
 
 剩余工作：
 
+- 新增原生能力时必须先进入 `src/services/tauri/`，再由业务层消费。
 - 继续审计 capability 中每个权限是否仍被使用，删除有明确证据表明未使用的授权。
-- 为 service 层增加必要的单元测试或 mock 验证。
 
 ## 3. 命令系统
 
