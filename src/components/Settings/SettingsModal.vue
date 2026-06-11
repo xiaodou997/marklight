@@ -6,6 +6,7 @@ import { WECHAT_THEMES } from '../../utils/wechat-themes';
 import ThemeSelector from './ThemeSelector.vue';
 import ThemeEditor from './ThemeEditor.vue';
 import SettingsRangeField from './SettingsRangeField.vue';
+import SettingsSidebarNav, { type SettingsTabKey } from './SettingsSidebarNav.vue';
 import SettingsSwitch from './SettingsSwitch.vue';
 import { useShortcutSettings } from './useShortcutSettings';
 
@@ -13,7 +14,7 @@ const settingsStore = useSettingsStore();
 const settings = settingsStore.settings;
 
 // 当前选中的设置分组
-const activeTab = ref<'appearance' | 'editor' | 'shortcuts' | 'save' | 'export'>('appearance');
+const activeTab = ref<SettingsTabKey>('appearance');
 const {
   conflictWarning,
   editingId,
@@ -37,15 +38,6 @@ const fontOptions = [
   { value: 'Fira Code', label: 'Fira Code' },
   { value: 'Menlo', label: 'Menlo' },
   { value: 'Monaco', label: 'Monaco' },
-];
-
-// Tab 切换动画
-const tabs = [
-  { key: 'appearance', label: '外观', icon: '🎨' },
-  { key: 'editor', label: '编辑器', icon: '✏️' },
-  { key: 'shortcuts', label: '快捷键', icon: '⌨️' },
-  { key: 'save', label: '保存', icon: '💾' },
-  { key: 'export', label: '导出', icon: '📤' },
 ];
 
 const tabMeta = {
@@ -145,26 +137,7 @@ function onKeyDown(e: KeyboardEvent) {
           <!-- 主体 -->
           <div class="flex flex-1 overflow-hidden settings-shell">
             <!-- 侧边导航 -->
-            <nav
-              class="w-44 p-4 border-r shrink-0 settings-sidebar"
-              style="border-color: var(--border-color)"
-            >
-              <div class="settings-sidebar-label">偏好设置</div>
-              <button
-                v-for="tab in tabs"
-                :key="tab.key"
-                class="w-full text-left px-3 py-2.5 rounded-xl mb-1 transition-colors flex items-center gap-2 settings-nav-btn"
-                :style="
-                  activeTab === tab.key
-                    ? 'background-color: rgba(99,102,241,0.1); color: var(--primary-color);'
-                    : `color: var(--text-color);`
-                "
-                @click="activeTab = tab.key as any"
-              >
-                <span>{{ tab.icon }}</span>
-                <span>{{ tab.label }}</span>
-              </button>
-            </nav>
+            <SettingsSidebarNav v-model="activeTab" />
 
             <!-- 设置内容 -->
             <div
@@ -586,20 +559,6 @@ function onKeyDown(e: KeyboardEvent) {
   min-height: 0;
 }
 
-.settings-sidebar {
-  background: color-mix(in srgb, var(--bg-color) 92%, white 8%);
-}
-
-.settings-sidebar-label {
-  margin-bottom: 12px;
-  padding: 0 4px;
-  color: var(--muted-color);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
 .settings-close-btn {
   padding: 4px;
   border-radius: 12px;
@@ -612,14 +571,6 @@ function onKeyDown(e: KeyboardEvent) {
 .settings-close-btn:hover {
   background: var(--hover-bg);
   color: var(--text-color);
-}
-
-.settings-nav-btn {
-  font-weight: 600;
-}
-
-.settings-nav-btn:hover {
-  background: var(--hover-bg);
 }
 
 .settings-content-area {
