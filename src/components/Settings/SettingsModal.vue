@@ -5,6 +5,7 @@ import { useSettingsStore } from '../../stores/settings';
 import { WECHAT_THEMES } from '../../utils/wechat-themes';
 import ThemeSelector from './ThemeSelector.vue';
 import ThemeEditor from './ThemeEditor.vue';
+import SettingsRangeField from './SettingsRangeField.vue';
 import SettingsSwitch from './SettingsSwitch.vue';
 import { useShortcutSettings } from './useShortcutSettings';
 
@@ -231,24 +232,17 @@ function onKeyDown(e: KeyboardEvent) {
                       </div>
                     </div>
                     <div class="settings-form-grid">
-                      <div class="space-y-2 settings-form-item">
-                        <label class="block text-sm font-medium" style="color: var(--text-color)">
-                          字体大小: {{ settings.fontSize }}px
-                        </label>
-                        <input
-                          v-model.number="settings.fontSize"
-                          type="range"
-                          min="12"
-                          max="24"
-                          step="1"
-                          class="w-full h-2 rounded-lg appearance-none cursor-pointer accent-blue-500"
-                          style="background-color: var(--border-color)"
-                        />
-                        <div class="flex justify-between text-xs" style="color: var(--muted-color)">
-                          <span>12px</span>
-                          <span>24px</span>
-                        </div>
-                      </div>
+                      <SettingsRangeField
+                        v-model="settings.fontSize"
+                        class="settings-form-item"
+                        label="字体大小"
+                        :min="12"
+                        :max="24"
+                        :step="1"
+                        value-suffix="px"
+                        min-label="12px"
+                        max-label="24px"
+                      />
 
                       <div class="space-y-2 settings-form-item">
                         <label class="block text-sm font-medium" style="color: var(--text-color)">字体族</label>
@@ -267,20 +261,14 @@ function onKeyDown(e: KeyboardEvent) {
                         </select>
                       </div>
 
-                      <div class="space-y-2 settings-form-item">
-                        <label class="block text-sm font-medium" style="color: var(--text-color)">
-                          行高: {{ settings.lineHeight }}
-                        </label>
-                        <input
-                          v-model.number="settings.lineHeight"
-                          type="range"
-                          min="1.2"
-                          max="2.4"
-                          step="0.1"
-                          class="w-full h-2 rounded-lg appearance-none cursor-pointer accent-blue-500"
-                          style="background-color: var(--border-color)"
-                        />
-                      </div>
+                      <SettingsRangeField
+                        v-model="settings.lineHeight"
+                        class="settings-form-item"
+                        label="行高"
+                        :min="1.2"
+                        :max="2.4"
+                        :step="0.1"
+                      />
                     </div>
                   </section>
                 </div>
@@ -467,21 +455,17 @@ function onKeyDown(e: KeyboardEvent) {
                         <label class="settings-row-title">保存间隔: {{ settings.autoSaveInterval }} 秒</label>
                         <p class="settings-row-desc">在不打断写作的前提下平衡安全性与性能。</p>
                       </div>
-                      <div class="space-y-2 w-full">
-                        <input
-                          v-model.number="settings.autoSaveInterval"
-                          type="range"
-                          min="10"
-                          max="120"
-                          step="10"
-                          class="w-full h-2 rounded-lg appearance-none cursor-pointer accent-blue-500"
-                          style="background-color: var(--border-color)"
-                        />
-                        <div class="flex justify-between text-xs" style="color: var(--muted-color)">
-                          <span>10秒</span>
-                          <span>120秒</span>
-                        </div>
-                      </div>
+                      <SettingsRangeField
+                        v-model="settings.autoSaveInterval"
+                        class="w-full"
+                        label="保存间隔"
+                        :min="10"
+                        :max="120"
+                        :step="10"
+                        value-suffix=" 秒"
+                        min-label="10秒"
+                        max-label="120秒"
+                      />
                     </div>
                   </section>
                 </div>
@@ -751,10 +735,6 @@ function onKeyDown(e: KeyboardEvent) {
   gap: 16px;
 }
 
-.settings-form-item {
-  min-width: 0;
-}
-
 .settings-row {
   display: flex;
   align-items: center;
@@ -851,26 +831,6 @@ function onKeyDown(e: KeyboardEvent) {
   border-color: var(--primary-color);
   color: var(--primary-color);
   outline: none;
-}
-
-/* Range input 样式 */
-input[type='range']::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  appearance: none;
-  width: 16px;
-  height: 16px;
-  background: #3b82f6;
-  border-radius: 50%;
-  cursor: pointer;
-}
-
-input[type='range']::-moz-range-thumb {
-  width: 16px;
-  height: 16px;
-  background: #3b82f6;
-  border-radius: 50%;
-  cursor: pointer;
-  border: none;
 }
 
 @media (max-width: 960px) {
