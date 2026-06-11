@@ -100,12 +100,12 @@ cargo test --manifest-path src-tauri/Cargo.toml
 
 剩余工作：
 
-- 继续降低 `App.vue` 中工作区、窗口和导出编排的耦合。
+- 新增文档、工作区、窗口和导出编排行为时，优先进入对应 composable。
 - 新增文档生命周期行为时优先补 `useDocumentSession.spec.ts`。
 
 ## 5. 巨型组件拆分
 
-状态：进行中。
+状态：已完成主要拆分，持续维护。
 
 目标：
 
