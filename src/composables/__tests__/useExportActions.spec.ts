@@ -21,7 +21,7 @@ vi.mock('../../services/tauri/document', () => ({
   saveDocument: mocks.saveDocumentMock,
 }));
 
-vi.mock('@tauri-apps/plugin-clipboard-manager', () => ({
+vi.mock('../../services/tauri/clipboard', () => ({
   writeHtml: mocks.writeHtmlMock,
 }));
 

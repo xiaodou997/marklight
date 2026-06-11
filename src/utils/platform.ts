@@ -2,7 +2,7 @@
  * 跨平台适配工具类
  */
 
-import { platform as tauriPlatform } from '@tauri-apps/plugin-os';
+import { platform as tauriPlatform } from '../services/tauri/os';
 
 type OsPlatform = 'macos' | 'windows' | 'linux' | 'ios' | 'android' | 'freebsd' | 'dragonfly' | 'netbsd' | 'openbsd' | 'solaris' | 'unknown';
 

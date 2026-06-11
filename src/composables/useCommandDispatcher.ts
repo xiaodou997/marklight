@@ -1,7 +1,7 @@
-import { openUrl } from '@tauri-apps/plugin-opener';
 import type { Ref } from 'vue';
 import type { CommandSource } from '../commands/registry';
 import { getCommand } from '../commands/registry';
+import { openUrl } from '../services/tauri/opener';
 import { revealStartupOpenLog } from '../services/tauri/window';
 
 type SidebarMode = 'outline' | 'files';

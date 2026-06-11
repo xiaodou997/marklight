@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { ref } from 'vue';
 import { useCommandDispatcher } from '../useCommandDispatcher';
 
-vi.mock('@tauri-apps/plugin-opener', () => ({
+vi.mock('../../services/tauri/opener', () => ({
   openUrl: vi.fn(),
 }));
 
