@@ -91,6 +91,15 @@ function createTestSchema(): Schema {
         parseDOM: [{ tag: 'div[data-type="mermaid-block"]' }],
         toDOM: () => ['div', { 'data-type': 'mermaid-block' }, 0],
       },
+      frontmatter: {
+        group: 'block',
+        content: 'text*',
+        marks: '',
+        code: true,
+        defining: true,
+        parseDOM: [{ tag: 'pre[data-frontmatter]' }],
+        toDOM: () => ['pre', { 'data-frontmatter': '' }, ['code', 0]],
+      },
       wikilink: {
         inline: true,
         group: 'inline',
@@ -227,6 +236,11 @@ describe('Round-trip: parse → serialize', () => {
 
     it('mermaid block', () => {
       const md = '```mermaid\ngraph TD\n  A --> B\n```\n';
+      expect(roundTrip(md)).toBe(normalize(md));
+    });
+
+    it('frontmatter', () => {
+      const md = '---\ntitle: MarkLight\ntags:\n  - editor\n---\n\n# Hello\n';
       expect(roundTrip(md)).toBe(normalize(md));
     });
 

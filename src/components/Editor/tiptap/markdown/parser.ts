@@ -16,7 +16,7 @@ import markdownItSub from 'markdown-it-sub';
 import markdownItSup from 'markdown-it-sup';
 import markdownItTexmath from 'markdown-it-texmath';
 import katex from 'katex';
-import { getPluginFenceHandlers, getPluginTokenHandlers } from './plugins';
+import { getPluginFenceHandlers, getPluginPreprocessors, getPluginTokenHandlers } from './plugins';
 
 // ── markdown-it 实例 ───────────────────────────────────────────
 
@@ -364,18 +364,6 @@ function getTokenHandlers(schema: Schema): Record<string, TokenHandler> {
 const md = createMarkdownIt();
 
 /**
- * 提取 YAML frontmatter（文档开头的 --- ... ---）
- * 返回 { frontmatter, body }
- */
-function extractFrontmatter(content: string): { frontmatter: string | null; body: string } {
-  const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?/);
-  if (match) {
-    return { frontmatter: match[1], body: content.slice(match[0].length) };
-  }
-  return { frontmatter: null, body: content };
-}
-
-/**
  * 提取 > [!TYPE] 形式的 Callout 块，替换为占位符
  */
 function extractCallouts(content: string): { processed: string; callouts: Array<{ type: string; title: string; body: string }> } {
@@ -394,21 +382,27 @@ export function parseMarkdown(schema: Schema, content: string): PMNode {
     return schema.nodes.doc.create(null, [schema.nodes.paragraph.create()]);
   }
 
-  // 1. 提取 frontmatter
-  const { frontmatter, body: bodyAfterFm } = extractFrontmatter(content);
-
-  // 2. 提取 callout 块
-  const { processed: bodyFinal, callouts } = extractCallouts(bodyAfterFm);
-
-  // 3. 用 markdown-it 解析主体内容
-  const tokens = md.parse(bodyFinal, {});
   const state = new MarkdownParseState(schema);
-  const handlers = getTokenHandlers(schema);
 
-  // 插入 frontmatter 节点（如果有）
-  if (frontmatter && schema.nodes.frontmatter) {
-    state.addNode(schema.nodes.frontmatter, {}, [schema.text(frontmatter)]);
+  const preprocessors = getPluginPreprocessors(schema);
+  const preprocessResults = preprocessors.map((preprocessor) => {
+    const result = preprocessor.preprocess({ content });
+    content = result.content;
+    return { preprocessor, data: result.data };
+  });
+
+  for (const result of preprocessResults) {
+    if (result.preprocessor.beforeParse && result.data !== undefined) {
+      result.preprocessor.beforeParse(state, result.data);
+    }
   }
+
+  // 1. 提取 callout 块
+  const { processed: bodyFinal, callouts } = extractCallouts(content);
+
+  // 2. 用 markdown-it 解析主体内容
+  const tokens = md.parse(bodyFinal, {});
+  const handlers = getTokenHandlers(schema);
 
   for (let i = 0; i < tokens.length; i++) {
     const token = tokens[i];

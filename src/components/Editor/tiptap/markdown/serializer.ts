@@ -319,15 +319,6 @@ const nodeSerializers: Record<string, NodeSerializer> = {
     state.closeBlock(node);
   },
 
-  // ── Frontmatter ──
-
-  frontmatter(state, node) {
-    state.writeLine('---');
-    state.writeLine(node.textContent);
-    state.writeLine('---');
-    state.closeBlock(node);
-  },
-
 };
 
 /** 将表格单元格节点序列化为纯文本（含 inline 标记） */
