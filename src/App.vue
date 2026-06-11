@@ -5,6 +5,7 @@ import type { EditorView } from '@tiptap/pm/view';
 import { storeToRefs } from 'pinia';
 import { useAppWindowSession } from './composables/useAppWindowSession';
 import { useCommandDispatcher } from './composables/useCommandDispatcher';
+import { useAppDomEvents } from './composables/useAppDomEvents';
 import { useDocumentSession } from './composables/useDocumentSession';
 import { useExportActions } from './composables/useExportActions';
 import { useImagePreview } from './composables/useImagePreview';
@@ -150,16 +151,6 @@ function toggleSourceMode() {
   isSourceMode.value = !isSourceMode.value;
 }
 
-function onCopy(event: ClipboardEvent) {
-  if (!editorRef.value || isSourceMode.value || activeViewMode.value !== 'editor') return;
-  const view = editorRef.value.getEditorView?.();
-  if (!view || !view.hasFocus()) return;
-  const markdown = editorRef.value.getSelectionMarkdown?.() || '';
-  if (!markdown) return;
-  event.clipboardData?.setData('text/plain', markdown);
-  event.preventDefault();
-}
-
 const windowTitle = computed(() => {
   const file = fileStore.currentFile;
   let fileName = '未命名';
@@ -220,14 +211,28 @@ const { executeCommand } = useCommandDispatcher({
   handleQuit: windowSession.handleQuit,
 });
 
-const handleImagePasteWarning = (event: Event) => {
-  const detail = (event as CustomEvent).detail as string | undefined;
-  if (!detail) return;
-  imagePasteWarning.value = detail;
+function showImagePasteWarning(message: string) {
+  imagePasteWarning.value = message;
   setTimeout(() => {
     imagePasteWarning.value = null;
   }, 3000);
-};
+}
+
+useAppDomEvents({
+  editorRef,
+  activeViewMode,
+  isSourceMode,
+  isFullscreenPreview,
+  isFocusMode: () => settingsStore.isFocusMode,
+  customShortcuts: () => settingsStore.settings.customShortcuts,
+  findCommandByShortcut,
+  executeCommand,
+  clearFullscreenPreview: () => {
+    isFullscreenPreview.value = false;
+  },
+  toggleFocusMode: () => settingsStore.toggleFocusMode(),
+  showImagePasteWarning,
+});
 
 watch(
   () => [fileStore.currentFile.path, activeViewMode.value] as const,
@@ -245,49 +250,12 @@ useMenuEvents(async (commandId) => {
 
 onMounted(async () => {
   await settingsStore.init();
-  document.addEventListener('copy', onCopy);
-  window.addEventListener('image-paste-warning', handleImagePasteWarning as EventListener);
-  window.addEventListener('keydown', handleKeyDown);
   await workspaceSession.setup();
   await windowSession.setup();
   await syncMenuShortcuts();
 });
 
-async function handleKeyDown(event: KeyboardEvent) {
-  const target = event.target as HTMLElement | null;
-  if (target?.closest('[data-shortcut-capture="true"]')) {
-    return;
-  }
-
-  const command = findCommandByShortcut(event, settingsStore.settings.customShortcuts);
-  if (command) {
-    if (
-      target?.closest('.tiptap-editor')
-      && (command.id === 'editor.undo' || command.id === 'editor.redo')
-    ) {
-      return;
-    }
-
-    const handled = await executeCommand(command.id, 'shortcut');
-    if (handled) {
-      event.preventDefault();
-      return;
-    }
-  }
-
-  if (event.key === 'Escape') {
-    if (isFullscreenPreview.value) {
-      isFullscreenPreview.value = false;
-    } else if (settingsStore.isFocusMode) {
-      settingsStore.toggleFocusMode();
-    }
-  }
-}
-
 onUnmounted(() => {
-  document.removeEventListener('copy', onCopy);
-  window.removeEventListener('keydown', handleKeyDown);
-  window.removeEventListener('image-paste-warning', handleImagePasteWarning as EventListener);
   workspaceSession.cleanup();
   windowSession.cleanup();
   stopWatchingMenuShortcuts();
