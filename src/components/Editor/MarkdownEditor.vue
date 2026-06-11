@@ -68,6 +68,11 @@ import {
 } from './tiptap/extensions/slash-commands';
 import { DragHandle } from './tiptap/extensions/drag-handle';
 import {
+  executeEditorCommand,
+  runBubbleMenuAction,
+  type BubbleMenuActionData,
+} from './tiptap/editor-commands';
+import {
   extractEditorOutline,
   getEditorCursorInfo,
   getEditorWordCount,
@@ -88,10 +93,6 @@ type EditorUpdatePayload = {
   selectionText?: string;
   outline?: EditorOutlineItem[];
 };
-type BubbleMenuActionData = {
-  href?: string;
-};
-
 // 深色模式 highlight.js 主题切换
 const hljsDarkCssId = 'hljs-dark-theme';
 function syncHljsTheme() {
@@ -313,85 +314,7 @@ function updateBubbleMenu(ed: TiptapEditor) {
 }
 
 function onBubbleMenuAction(type: string, data?: BubbleMenuActionData) {
-  if (!editor.value) return;
-  const chain = editor.value.chain().focus();
-
-  switch (type) {
-    case 'bold':
-      chain.toggleBold().run();
-      break;
-    case 'italic':
-      chain.toggleItalic().run();
-      break;
-    case 'code':
-      chain.toggleCode().run();
-      break;
-    case 'link':
-      if (data?.href) {
-        chain.setLink({ href: data.href }).run();
-      }
-      break;
-    case 'unlink':
-      chain.unsetLink().run();
-      break;
-    case 'h1':
-      chain.toggleHeading({ level: 1 }).run();
-      break;
-    case 'h2':
-      chain.toggleHeading({ level: 2 }).run();
-      break;
-  }
-}
-
-function executeEditorCommand(commandId: string): boolean {
-  if (!editor.value) {
-    return false;
-  }
-
-  const chain = editor.value.chain().focus();
-
-  switch (commandId) {
-    case 'editor.undo':
-      return editor.value.commands.undo();
-    case 'editor.redo':
-      return editor.value.commands.redo();
-    case 'editor.bold':
-      return chain.toggleBold().run();
-    case 'editor.italic':
-      return chain.toggleItalic().run();
-    case 'editor.strike':
-      return chain.toggleStrike().run();
-    case 'editor.highlight':
-      return chain.toggleHighlight().run();
-    case 'editor.code':
-      return chain.toggleCode().run();
-    case 'editor.heading1':
-      return chain.toggleHeading({ level: 1 }).run();
-    case 'editor.heading2':
-      return chain.toggleHeading({ level: 2 }).run();
-    case 'editor.heading3':
-      return chain.toggleHeading({ level: 3 }).run();
-    case 'editor.heading4':
-      return chain.toggleHeading({ level: 4 }).run();
-    case 'editor.heading5':
-      return chain.toggleHeading({ level: 5 }).run();
-    case 'editor.heading6':
-      return chain.toggleHeading({ level: 6 }).run();
-    case 'editor.paragraph':
-      return chain.setParagraph().run();
-    case 'editor.bulletList':
-      return chain.toggleBulletList().run();
-    case 'editor.orderedList':
-      return chain.toggleOrderedList().run();
-    case 'editor.taskList':
-      return chain.toggleTaskList().run();
-    case 'editor.blockquote':
-      return chain.toggleBlockquote().run();
-    case 'editor.codeBlock':
-      return chain.toggleCodeBlock().run();
-    default:
-      return false;
-  }
+  runBubbleMenuAction(editor.value, type, data);
 }
 
 // ── 容器点击 ──────────────────────────────────────────────────
@@ -497,7 +420,7 @@ defineExpose({
   },
   getEditorView: () => editor.value?.view ?? null,
   hasFocus: () => editor.value?.isFocused ?? false,
-  executeCommand: executeEditorCommand,
+  executeCommand: (commandId: string) => executeEditorCommand(editor.value, commandId),
   undo: () => editor.value?.commands.undo(),
   redo: () => editor.value?.commands.redo(),
   openSearch: (_showReplace = false) => {
