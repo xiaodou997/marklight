@@ -36,79 +36,20 @@
       @scroll-to="$emit('scroll-to', $event)"
     />
 
-    <!-- 文件树模式 -->
-    <div v-else class="flex-1 flex flex-col overflow-hidden">
-      <div v-if="!rootFolder" class="flex-1 p-4 text-xs text-gray-400 italic">
-        请打开文件夹以查看文件列表
-        <button class="block mt-2 text-blue-500 hover:underline" @click="$emit('open-folder')">
-          打开文件夹
-        </button>
-      </div>
-      <template v-else>
-        <!-- 搜索框 -->
-        <div class="flex-shrink-0 px-3 py-2 border-b" style="border-color: var(--border-color)">
-          <input
-            v-model="searchQuery"
-            type="text"
-            placeholder="搜索文件..."
-            class="w-full px-2 py-1 text-xs rounded focus:outline-none"
-            style="
-              background: var(--bg-color);
-              border: 1px solid var(--border-color);
-              color: var(--text-color);
-            "
-          />
-        </div>
-
-        <!-- 文件树（可滚动） -->
-        <div class="flex-1 overflow-y-auto py-1">
-          <!-- 搜索结果：平铺列表 -->
-          <FileTreeSearchResults
-            v-if="searchQuery"
-            :nodes="searchResults"
-            :current-file-path="currentFilePath"
-            @select="handleNodeClick"
-            @context-menu="showContextMenu"
-          />
-
-          <!-- 正常树视图 -->
-          <FileTreePanel
-            v-else
-            :items="flatTree"
-            :current-file-path="currentFilePath"
-            @select="handleNodeClick"
-            @context-menu="showContextMenu"
-          />
-        </div>
-      </template>
-    </div>
-
-    <!-- 底部工具栏 -->
-    <div
-      v-if="mode === 'files' && rootFolder"
-      class="flex-shrink-0 border-t px-2 py-1.5"
-      style="border-color: var(--border-color); background: var(--sidebar-bg)"
-    >
-      <div class="flex items-center justify-between">
-        <span class="text-[10px] text-gray-400 truncate flex-1">{{ rootFolderName }}</span>
-        <!-- 新建按钮 -->
-        <button
-          class="ml-2 flex-shrink-0 text-gray-400 hover:text-blue-500 transition-colors"
-          title="新建"
-          @click="showNewMenu"
-        >
-          <svg
-            class="w-4 h-4"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-          >
-            <path d="M12 5v14M5 12h14" />
-          </svg>
-        </button>
-      </div>
-    </div>
+    <SidebarFilesPanel
+      v-else
+      :root-folder="rootFolder"
+      :root-folder-name="rootFolderName"
+      :search-query="searchQuery"
+      :search-results="searchResults"
+      :flat-tree="flatTree"
+      :current-file-path="currentFilePath"
+      @update-search-query="searchQuery = $event"
+      @open-folder="$emit('open-folder')"
+      @select-node="handleNodeClick"
+      @context-menu="showContextMenu"
+      @new-menu="showNewMenu"
+    />
 
     <SidebarMenus
       :context-menu="contextMenu"
@@ -137,9 +78,8 @@
 import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue';
 import type { TreeNode } from '../../composables/useWorkspaceSession';
 import { confirm } from '../../services/tauri/dialog';
-import FileTreePanel from './FileTreePanel.vue';
-import FileTreeSearchResults from './FileTreeSearchResults.vue';
 import SidebarFileDialogs from './SidebarFileDialogs.vue';
+import SidebarFilesPanel from './SidebarFilesPanel.vue';
 import SidebarMenus from './SidebarMenus.vue';
 import SidebarOutlinePanel, { type SidebarOutlineItem } from './SidebarOutlinePanel.vue';
 
