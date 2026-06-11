@@ -5,10 +5,11 @@
  * 自定义实现以精确控制输出格式，支持 GFM 表格、任务列表等扩展语法。
  */
 import type { Node as PMNode, Mark } from '@tiptap/pm/model';
+import { mathNodeSerializers } from './plugins/math';
 
 // ── 序列化状态 ────────────────────────────────────���─────────────
 
-class MarkdownSerializerState {
+export class MarkdownSerializerState {
   output = '';
   private closed: PMNode | null = null;
   private inTightList = false;
@@ -168,7 +169,7 @@ class MarkdownSerializerState {
 
 // ── 节点序列化器 ──────────────────���─────────────────────────────
 
-type NodeSerializer = (state: MarkdownSerializerState, node: PMNode) => void;
+export type NodeSerializer = (state: MarkdownSerializerState, node: PMNode) => void;
 
 const nodeSerializers: Record<string, NodeSerializer> = {
   doc(state, node) {
@@ -256,10 +257,6 @@ const nodeSerializers: Record<string, NodeSerializer> = {
     }
   },
 
-  mathInline(state, node) {
-    state.write(`$${node.attrs.latex || ''}$`);
-  },
-
   // ── 表格 ──
 
   table(state, node) {
@@ -302,14 +299,9 @@ const nodeSerializers: Record<string, NodeSerializer> = {
   tableHeader() { /* handled by table */ },
   tableCell() { /* handled by table */ },
 
-  // ── 数学公式 ──
+  // ── 插件节点 ──
 
-  mathBlock(state, node) {
-    state.writeLine('$$');
-    state.writeLine(node.textContent);
-    state.writeLine('$$');
-    state.closeBlock(node);
-  },
+  ...mathNodeSerializers,
 
   // ── Mermaid ──
 

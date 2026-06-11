@@ -16,6 +16,7 @@ import markdownItSub from 'markdown-it-sub';
 import markdownItSup from 'markdown-it-sup';
 import markdownItTexmath from 'markdown-it-texmath';
 import katex from 'katex';
+import { mathTokenHandlers } from './plugins/math';
 
 // ── markdown-it 实例 ───────────────────────────────────────────
 
@@ -45,7 +46,7 @@ interface StackItem {
   marks: readonly Mark[];
 }
 
-class MarkdownParseState {
+export class MarkdownParseState {
   schema: Schema;
   stack: StackItem[];
   marks: readonly Mark[];
@@ -110,7 +111,12 @@ class MarkdownParseState {
 
 // ── Token 处理器 ────────────────────��───────────────────────────
 
-type TokenHandler = (state: MarkdownParseState, token: Token, tokens: Token[], index: number) => void;
+export type TokenHandler = (
+  state: MarkdownParseState,
+  token: Token,
+  tokens: Token[],
+  index: number,
+) => void;
 
 function getTokenHandlers(schema: Schema): Record<string, TokenHandler> {
   const handlers: Record<string, TokenHandler> = {};
@@ -242,18 +248,7 @@ function getTokenHandlers(schema: Schema): Record<string, TokenHandler> {
     state.addNode(schema.nodes.image, { src, alt, title });
   };
 
-  if (schema.nodes.mathInline) {
-    handlers.math_inline = (state, token) => {
-      state.addNode(schema.nodes.mathInline, { latex: token.content.trim() });
-    };
-  }
-
-  if (schema.nodes.mathBlock) {
-    handlers.math_block = (state, token) => {
-      const latex = token.content.replace(/^\n|\n$/g, '');
-      state.addNode(schema.nodes.mathBlock, {}, latex ? [schema.text(latex)] : undefined);
-    };
-  }
+  Object.assign(handlers, mathTokenHandlers(schema));
 
   // ── 行内标记 ──
 
