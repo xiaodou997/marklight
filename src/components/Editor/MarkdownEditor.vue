@@ -45,24 +45,7 @@ import { useSettingsStore } from '../../stores/settings';
 import { parseMarkdown } from './tiptap/markdown/parser';
 import { serializeMarkdown } from './tiptap/markdown/serializer';
 import { CustomCodeBlock } from './tiptap/extensions/code-block';
-import { HeadingMarker, HeadingWithMarker } from './tiptap/extensions/heading-marker';
-import {
-  BoldOpen,
-  BoldClose,
-  ItalicOpen,
-  ItalicClose,
-  StrikeOpen,
-  StrikeClose,
-  HighlightOpen,
-  HighlightClose,
-  SupOpen,
-  SupClose,
-  SubOpen,
-  SubClose,
-  CodeOpen,
-  CodeClose,
-  MarkTokenSync,
-} from './tiptap/extensions/mark-tokens';
+import { SemanticHeading } from './tiptap/extensions/semantic-heading';
 import {
   CustomTable,
   CustomTableRow,
@@ -76,12 +59,6 @@ import { MermaidBlock } from './tiptap/extensions/mermaid-block';
 import { Callout } from './tiptap/extensions/callout';
 import { Frontmatter } from './tiptap/extensions/frontmatter';
 import { MarkdownInputRules } from './tiptap/extensions/input-rules';
-import {
-  LinkBracketOpen,
-  LinkBracketClose,
-  LinkUrl,
-  LinkTokenSync,
-} from './tiptap/extensions/link-token';
 import { Superscript, Subscript } from './tiptap/extensions/sub-sup';
 import { Wikilink } from './tiptap/extensions/wikilink';
 import {
@@ -172,11 +149,10 @@ function createEditor(content: string) {
         codeBlock: false,
         // 禁用 StarterKit 内置的 link，下面单独配置
         link: false,
-        // 禁用 StarterKit 内置的 heading，使用方案 C 的自定义 heading + marker
+        // 使用 pending heading 延迟转换，避免空 heading 上 IME composition 导致内容错位。
         heading: false,
       }),
-      HeadingMarker,
-      HeadingWithMarker,
+      SemanticHeading,
       CustomCodeBlock,
       CustomTable,
       CustomTableRow,
@@ -199,10 +175,6 @@ function createEditor(content: string) {
       Callout,
       Frontmatter,
       MarkdownInputRules,
-      LinkBracketOpen,
-      LinkBracketClose,
-      LinkUrl,
-      LinkTokenSync,
       Superscript,
       Subscript,
       Wikilink,
@@ -245,22 +217,6 @@ function createEditor(content: string) {
         },
       }),
       DragHandle,
-      // Phase A/B: mark token 实体化
-      BoldOpen,
-      BoldClose,
-      ItalicOpen,
-      ItalicClose,
-      StrikeOpen,
-      StrikeClose,
-      HighlightOpen,
-      HighlightClose,
-      SupOpen,
-      SupClose,
-      SubOpen,
-      SubClose,
-      CodeOpen,
-      CodeClose,
-      MarkTokenSync,
     ],
     editorProps: {
       attributes: {
@@ -338,14 +294,9 @@ function extractOutline(ed: TiptapEditor): Array<{ level: number; text: string; 
   const outline: Array<{ level: number; text: string; pos: number }> = [];
   ed.state.doc.descendants((node, pos) => {
     if (node.type.name === 'heading') {
-      // 跳过开头的 headingMarker（占 1 个位置），仅保留正文文本
-      const text =
-        node.firstChild?.type.name === 'headingMarker'
-          ? node.textBetween(1, node.content.size)
-          : node.textContent;
       outline.push({
         level: node.attrs.level,
-        text,
+        text: node.textContent,
         pos,
       });
     }

@@ -18,19 +18,11 @@ function createTestSchema(): Schema {
       paragraph: { group: 'block', content: 'inline*', parseDOM: [{ tag: 'p' }], toDOM: () => ['p', 0] },
       heading: {
         group: 'block',
-        content: 'headingMarker? inline*',
+        content: 'inline*',
         attrs: { level: { default: 1 } },
         defining: true,
         parseDOM: [1, 2, 3, 4, 5, 6].map((level) => ({ tag: `h${level}`, attrs: { level } })),
         toDOM: (node: PMNode) => [`h${node.attrs.level}`, 0],
-      },
-      headingMarker: {
-        inline: true,
-        atom: true,
-        selectable: true,
-        attrs: { level: { default: 1 } },
-        parseDOM: [{ tag: 'span[data-heading-marker]' }],
-        toDOM: (node: PMNode) => ['span', { 'data-heading-marker': '', 'data-level': node.attrs.level }, '#'.repeat(node.attrs.level) + ' '],
       },
       blockquote: { group: 'block', content: 'block+', parseDOM: [{ tag: 'blockquote' }], toDOM: () => ['blockquote', 0] },
       bulletList: { group: 'block', content: 'listItem+', parseDOM: [{ tag: 'ul' }], toDOM: () => ['ul', 0] },
@@ -92,27 +84,6 @@ function createTestSchema(): Schema {
         toDOM: () => ['div', { 'data-type': 'math-block' }, 0],
       },
       text: { group: 'inline' },
-      // mark tokens (Phase A)
-      boldOpen: { inline: true, group: 'inline', atom: true, selectable: false, toDOM: () => ['span', {}, '**'] },
-      boldClose: { inline: true, group: 'inline', atom: true, selectable: false, toDOM: () => ['span', {}, '**'] },
-      italicOpen: { inline: true, group: 'inline', atom: true, selectable: false, toDOM: () => ['span', {}, '*'] },
-      italicClose: { inline: true, group: 'inline', atom: true, selectable: false, toDOM: () => ['span', {}, '*'] },
-      strikeOpen: { inline: true, group: 'inline', atom: true, selectable: false, toDOM: () => ['span', {}, '~~'] },
-      strikeClose: { inline: true, group: 'inline', atom: true, selectable: false, toDOM: () => ['span', {}, '~~'] },
-      // mark tokens (Phase B)
-      highlightOpen: { inline: true, group: 'inline', atom: true, selectable: false, toDOM: () => ['span', {}, '=='] },
-      highlightClose: { inline: true, group: 'inline', atom: true, selectable: false, toDOM: () => ['span', {}, '=='] },
-      supOpen: { inline: true, group: 'inline', atom: true, selectable: false, toDOM: () => ['span', {}, '^'] },
-      supClose: { inline: true, group: 'inline', atom: true, selectable: false, toDOM: () => ['span', {}, '^'] },
-      subOpen: { inline: true, group: 'inline', atom: true, selectable: false, toDOM: () => ['span', {}, '~'] },
-      subClose: { inline: true, group: 'inline', atom: true, selectable: false, toDOM: () => ['span', {}, '~'] },
-      // mark tokens (Phase C)
-      codeOpen: { inline: true, group: 'inline', atom: true, selectable: false, toDOM: () => ['span', {}, '`'] },
-      codeClose: { inline: true, group: 'inline', atom: true, selectable: false, toDOM: () => ['span', {}, '`'] },
-      // mark tokens (Phase D)
-      linkBracketOpen: { inline: true, group: 'inline', atom: true, selectable: false, toDOM: () => ['span', {}, '['] },
-      linkBracketClose: { inline: true, group: 'inline', atom: true, selectable: false, toDOM: () => ['span', {}, ']'] },
-      linkUrl: { inline: true, group: 'inline', atom: true, selectable: true, attrs: { href: { default: '' }, title: { default: null } }, toDOM: () => ['span', {}, '(url)'] },
     },
     marks: {
       bold: { parseDOM: [{ tag: 'strong' }], toDOM: () => ['strong', 0] },
@@ -173,7 +144,18 @@ describe('Round-trip: parse → serialize', () => {
   });
 
   describe('headings', () => {
-    it('heading with marker', () => {
+    it('parses heading as semantic inline content without marker nodes', () => {
+      const schema = createTestSchema();
+      const doc = parseMarkdown(schema, '## Hello\n');
+      const heading = doc.firstChild;
+
+      expect(heading?.type.name).toBe('heading');
+      expect(heading?.attrs.level).toBe(2);
+      expect(heading?.firstChild?.isText).toBe(true);
+      expect(heading?.textContent).toBe('Hello');
+    });
+
+    it('heading', () => {
       expect(roundTrip('## Hello\n')).toBe(normalize('## Hello\n'));
     });
 

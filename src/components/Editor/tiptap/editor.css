@@ -48,6 +48,134 @@
   position: relative;
 }
 
+.tiptap-editor h1::before,
+.tiptap-editor h2::before,
+.tiptap-editor h3::before,
+.tiptap-editor h4::before,
+.tiptap-editor h5::before,
+.tiptap-editor h6::before {
+  position: absolute;
+  left: calc(-1 * var(--mk-heading-gutter-width));
+  top: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  width: calc(var(--mk-heading-gutter-width) - var(--mk-heading-gutter-gap));
+  line-height: 1;
+  color: var(--muted-color);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  opacity: 0.58;
+  pointer-events: none;
+  user-select: none;
+  white-space: nowrap;
+  transform: translateY(-50%);
+}
+
+.tiptap-editor h1::before {
+  content: 'H1';
+}
+
+.tiptap-editor h2::before {
+  content: 'H2';
+}
+
+.tiptap-editor h3::before {
+  content: 'H3';
+}
+
+.tiptap-editor h4::before {
+  content: 'H4';
+}
+
+.tiptap-editor h5::before {
+  content: 'H5';
+}
+
+.tiptap-editor h6::before {
+  content: 'H6';
+}
+
+.tiptap-editor .mk-pending-heading {
+  position: relative;
+}
+
+.tiptap-editor .mk-pending-heading::before {
+  position: absolute;
+  left: calc(-1 * var(--mk-heading-gutter-width));
+  top: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  width: calc(var(--mk-heading-gutter-width) - var(--mk-heading-gutter-gap));
+  line-height: 1;
+  color: var(--muted-color);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  opacity: 0.58;
+  pointer-events: none;
+  user-select: none;
+  white-space: nowrap;
+  transform: translateY(-50%);
+  content: attr(data-pending-heading-level);
+}
+
+.tiptap-editor .mk-pending-heading-1 {
+  font-size: 1.875em;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--text-color);
+}
+
+.tiptap-editor .mk-pending-heading-2 {
+  font-size: 1.5em;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--text-color);
+}
+
+.tiptap-editor .mk-pending-heading-3 {
+  font-size: 1.25em;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--text-color);
+}
+
+.tiptap-editor .mk-pending-heading-4 {
+  font-size: 1.125em;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--text-color);
+}
+
+.tiptap-editor .mk-pending-heading-5,
+.tiptap-editor .mk-pending-heading-6 {
+  font-size: 1em;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--text-color);
+}
+
+/*
+ * Pending heading 前缀样式：
+ * `# ` 文本以淡化颜色显示，类似 Typora 的 Markdown 语法提示。
+ * 不使用 color: transparent 或 font-size: 0，因为：
+ * - color: transparent 会让 IME 拼音预编辑文本也变透明
+ * - font-size: 0 会让光标消失
+ * 用淡化颜色既能提示用户这是 Markdown 语法，又不影响光标和 IME。
+ */
+.tiptap-editor .mk-pending-heading-prefix {
+  color: var(--muted-color);
+  opacity: 0.45;
+  font-size: 0.6em;
+  vertical-align: baseline;
+  font-weight: normal;
+}
+
 .tiptap-editor h1 {
   font-size: 1.875em;
   font-weight: 700;
@@ -740,116 +868,6 @@ html.dark .mk-deco-highlight {
   font-weight: normal;
   font-size: 0.6em;
   vertical-align: baseline;
-}
-
-/* ── 方案 C：headingMarker 节点（固定宽度左侧槽位） ───────────────── */
-.tiptap-editor .mk-heading-marker {
-  position: absolute;
-  left: calc(-1 * var(--mk-heading-gutter-width));
-  top: 50%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: flex-end;
-  width: calc(var(--mk-heading-gutter-width) - var(--mk-heading-gutter-gap));
-  line-height: 1;
-  color: var(--muted-color);
-  font-family: var(--font-mono);
-  font-size: 0.68rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  opacity: 0.58;
-  pointer-events: none;
-  user-select: none;
-  white-space: nowrap;
-  transform: translateY(-50%);
-}
-
-.tiptap-editor .mk-heading-marker.mk-tok--visible {
-  opacity: 0.58;
-}
-
-.tiptap-editor .mk-heading-marker.ProseMirror-selectednode {
-  background-color: rgba(99, 102, 241, 0.18);
-  border-radius: 2px;
-  outline: 1px solid var(--primary-color);
-}
-
-/* ── Mark token 节点样式（Typora 风格：默认隐藏，光标进入时显示）── */
-.tiptap-editor .mk-tok {
-  display: inline;
-  font-family: var(--font-mono);
-  font-size: 0;
-  width: 0;
-  overflow: hidden;
-  color: var(--muted-color);
-  opacity: 0;
-  user-select: none;
-  pointer-events: none;
-  font-weight: normal;
-  font-style: normal;
-  text-decoration: none;
-  transition: font-size 0.1s, opacity 0.1s;
-}
-
-.tiptap-editor .mk-tok--visible {
-  font-size: 0.85em;
-  width: auto;
-  overflow: visible;
-  opacity: 0.6;
-}
-
-/* ── Link token 样式 ──────────────────────────────────────── */
-.tiptap-editor .mk-tok-link-url.mk-tok--visible {
-  pointer-events: auto;
-  cursor: pointer;
-}
-
-.tiptap-editor .mk-link-url-editor {
-  display: none;
-  white-space: pre-wrap;
-  word-break: break-word;
-  outline: none;
-}
-
-.tiptap-editor .mk-tok-link-url.mk-tok--visible .mk-link-url-editor,
-.tiptap-editor .mk-tok-link-url--editing .mk-link-url-editor,
-.tiptap-editor .mk-tok-link-url--invalid .mk-link-url-editor {
-  display: inline;
-}
-
-.tiptap-editor .mk-tok-link-url--editing {
-  font-size: 0.85em;
-  width: auto;
-  overflow: visible;
-  opacity: 1;
-  color: var(--text-color);
-  pointer-events: auto;
-}
-
-.tiptap-editor .mk-tok-link-url--invalid {
-  font-size: 0.85em;
-  width: auto;
-  overflow: visible;
-  opacity: 1;
-  color: #ef4444;
-  pointer-events: auto;
-}
-
-.tiptap-editor h1 .mk-tok-link-url,
-.tiptap-editor h2 .mk-tok-link-url,
-.tiptap-editor h3 .mk-tok-link-url,
-.tiptap-editor h4 .mk-tok-link-url,
-.tiptap-editor h5 .mk-tok-link-url,
-.tiptap-editor h6 .mk-tok-link-url,
-.tiptap-editor h1 .mk-link-url-editor,
-.tiptap-editor h2 .mk-link-url-editor,
-.tiptap-editor h3 .mk-link-url-editor,
-.tiptap-editor h4 .mk-link-url-editor,
-.tiptap-editor h5 .mk-link-url-editor,
-.tiptap-editor h6 .mk-link-url-editor {
-  display: inline;
-  vertical-align: baseline;
-  line-height: inherit;
 }
 
 /* ── Wikilink ────────────────────────────────────────────────── */

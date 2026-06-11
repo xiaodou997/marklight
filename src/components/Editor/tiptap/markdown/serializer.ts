@@ -5,7 +5,6 @@
  * 自定义实现以精确控制输出格式，支持 GFM 表格、任务列表等扩展语法。
  */
 import type { Node as PMNode, Mark } from '@tiptap/pm/model';
-import { TOKEN_NODE_NAMES } from '../extensions/mark-tokens';
 
 // ── 序列化状态 ────────────────────────────────────���─────────────
 
@@ -83,8 +82,6 @@ class MarkdownSerializerState {
         }
       }
     } else {
-      // 检查下一个**非 token**节点是否继续拥有这些 marks
-      // token 节点不带 mark，如果看 token 作为 next 会导致 mark 提前关闭
       const next = this.findNextNonToken(parent, index);
       for (let i = marks.length - 1; i >= 0; i--) {
         const mark = marks[i];
@@ -115,7 +112,7 @@ class MarkdownSerializerState {
   private findNextNonToken(parent: PMNode, index: number): PMNode | null {
     for (let i = index + 1; i < parent.childCount; i++) {
       const child = parent.child(i);
-      if (!TOKEN_NODE_NAMES.has(child.type.name)) return child;
+      return child;
     }
     return null;
   }
@@ -190,34 +187,10 @@ const nodeSerializers: Record<string, NodeSerializer> = {
   },
 
   heading(state, node) {
-    // 方案 C：# 由 headingMarker 子节点输出，这里只渲染内联内容
+    state.write('#'.repeat(node.attrs.level) + ' ');
     state.renderInline(node);
     state.closeBlock(node);
   },
-
-  headingMarker(state, node) {
-    state.write('#'.repeat(node.attrs.level) + ' ');
-  },
-
-  // Phase A/B/C: mark token no-op（mark 边界的语法符号由 markDelimiter 输出）
-  boldOpen() {},
-  boldClose() {},
-  italicOpen() {},
-  italicClose() {},
-  strikeOpen() {},
-  strikeClose() {},
-  highlightOpen() {},
-  highlightClose() {},
-  supOpen() {},
-  supClose() {},
-  subOpen() {},
-  subClose() {},
-  codeOpen() {},
-  codeClose() {},
-  // Phase D: link token no-op
-  linkBracketOpen() {},
-  linkBracketClose() {},
-  linkUrl() {},
 
   blockquote(state, node) {
     // 序列化引用块：逐行添加 > 前缀

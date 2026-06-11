@@ -127,10 +127,6 @@ function getTokenHandlers(schema: Schema): Record<string, TokenHandler> {
   handlers.heading_open = (state, token) => {
     const level = parseInt(token.tag.slice(1));
     state.openNode(schema.nodes.heading, { level });
-    // 方案 C：marker 是文档实体，作为 heading 的第一个子节点
-    if (schema.nodes.headingMarker) {
-      state.addNode(schema.nodes.headingMarker, { level });
-    }
   };
   handlers.heading_close = (state) => {
     state.closeNode();
