@@ -37,10 +37,8 @@ import Link from '@tiptap/extension-link';
 import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
 import Placeholder from '@tiptap/extension-placeholder';
-import { getCurrentWebview } from '@tauri-apps/api/webview';
 
 import { useFileStore } from '../../stores/file';
-import { importDocumentImage } from '../../services/tauri/document';
 import { useSettingsStore } from '../../stores/settings';
 import { parseMarkdown } from './tiptap/markdown/parser';
 import { serializeMarkdown } from './tiptap/markdown/serializer';
@@ -78,6 +76,7 @@ import {
   getEditorWordCount,
   type EditorOutlineItem,
 } from './tiptap/editor-metadata';
+import { setupEditorImageDrop } from './tiptap/editor-image-drop';
 import { useEditorSearch } from './tiptap/useEditorSearch';
 import BubbleMenuComponent from './views/BubbleMenu.vue';
 import SlashMenu from './views/SlashMenu.vue';
@@ -332,36 +331,10 @@ function handleContainerClick(event: MouseEvent) {
 let unlistenDragDrop: (() => void) | null = null;
 
 async function setupDragDrop() {
-  try {
-    const webview = getCurrentWebview();
-    unlistenDragDrop = await webview.onDragDropEvent(async (event) => {
-      if (event.payload.type !== 'drop') return;
-      const paths = event.payload.paths;
-      if (!paths?.length || !editor.value) return;
-
-      const filePath = fileStore.currentFile.path;
-      if (!filePath) return;
-
-      for (const imagePath of paths) {
-        const ext = imagePath.split('.').pop()?.toLowerCase() || '';
-        if (!['png', 'jpg', 'jpeg', 'gif', 'svg', 'webp', 'bmp'].includes(ext)) continue;
-
-        try {
-          const savedImage = await importDocumentImage(imagePath, filePath);
-
-          editor.value
-            ?.chain()
-            .focus()
-            .setImage({ src: savedImage.relativePath, alt: '' })
-            .run();
-        } catch (err) {
-          console.error('Failed to handle dropped image:', err);
-        }
-      }
-    });
-  } catch (err) {
-    console.error('Failed to setup drag-drop:', err);
-  }
+  unlistenDragDrop = await setupEditorImageDrop({
+    editor,
+    getDocumentPath: () => fileStore.currentFile.path,
+  });
 }
 
 // ── 主题同步 ──────────────────────────────────────────────────
