@@ -72,36 +72,22 @@
         <!-- 文件树（可滚动） -->
         <div class="flex-1 overflow-y-auto py-1">
           <!-- 搜索结果：平铺列表 -->
-          <template v-if="searchQuery">
-            <div v-if="searchResults.length === 0" class="px-4 py-3 text-xs text-gray-400 italic">
-              没有匹配的文件
-            </div>
-            <FileTreeNode
-              v-for="node in searchResults"
-              :key="node.path"
-              :node="node"
-              :current-file-path="currentFilePath"
-              :show-toggle="false"
-              @select="handleNodeClick"
-              @context-menu="showContextMenu"
-            />
-          </template>
+          <FileTreeSearchResults
+            v-if="searchQuery"
+            :nodes="searchResults"
+            :current-file-path="currentFilePath"
+            @select="handleNodeClick"
+            @context-menu="showContextMenu"
+          />
 
           <!-- 正常树视图 -->
-          <template v-else>
-            <div v-if="flatTree.length === 0" class="px-4 py-3 text-xs text-gray-400 italic">
-              当前文件夹为空
-            </div>
-            <FileTreeNode
-              v-for="{ node, depth } in flatTree"
-              :key="node.path"
-              :node="node"
-              :depth="depth"
-              :current-file-path="currentFilePath"
-              @select="handleNodeClick"
-              @context-menu="showContextMenu"
-            />
-          </template>
+          <FileTreePanel
+            v-else
+            :items="flatTree"
+            :current-file-path="currentFilePath"
+            @select="handleNodeClick"
+            @context-menu="showContextMenu"
+          />
         </div>
       </template>
     </div>
@@ -229,7 +215,8 @@ import { ref, computed, nextTick, onMounted, onUnmounted, watch } from 'vue';
 import { confirm } from '@tauri-apps/plugin-dialog';
 import { getFileManagerName } from '../../utils/platform';
 import type { TreeNode } from '../../composables/useWorkspaceSession';
-import FileTreeNode from './FileTreeNode.vue';
+import FileTreePanel from './FileTreePanel.vue';
+import FileTreeSearchResults from './FileTreeSearchResults.vue';
 
 export interface OutlineItem {
   text: string;
