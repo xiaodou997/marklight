@@ -13,6 +13,7 @@ import ThemeSelector from './ThemeSelector.vue';
 import ThemeEditor from './ThemeEditor.vue';
 import SettingsRangeField from './SettingsRangeField.vue';
 import SettingsSidebarNav, { type SettingsTabKey } from './SettingsSidebarNav.vue';
+import ShortcutSettingsPanel from './ShortcutSettingsPanel.vue';
 import { useShortcutSettings } from './useShortcutSettings';
 
 const settingsStore = useSettingsStore();
@@ -221,87 +222,22 @@ function onKeyDown(e: KeyboardEvent) {
                 />
 
                 <!-- 快捷键设置 -->
-                <div v-show="activeTab === 'shortcuts'" class="space-y-6">
-                  <section class="settings-section-card settings-section-card--hero">
-                    <div class="text-sm" style="color: var(--muted-color)">
-                      {{ isMac ? 'Mac 使用 ⌘ 键' : 'Windows/Linux 使用 Ctrl 键' }} ·
-                      点击行可修改快捷键
-                    </div>
-                    <button
-                      class="text-xs"
-                      style="color: var(--primary-color)"
-                      @click="resetAllShortcuts"
-                    >
-                      重置全部
-                    </button>
-                  </section>
-
-                  <section
-                    v-if="conflictWarning"
-                    class="settings-section-card settings-warning-card"
-                  >
-                    <div class="settings-warning-text">⚠️ {{ conflictWarning }}</div>
-                  </section>
-
-                  <section
-                    v-for="group in shortcutGroups"
-                    :key="group.name"
-                    class="settings-section-card"
-                  >
-                    <div class="settings-section-heading settings-section-heading--compact">
-                      <div class="settings-section-title">{{ group.name }}</div>
-                    </div>
-                    <div class="grid gap-1.5">
-                      <div
-                        v-for="item in group.items"
-                        :key="item.id"
-                        class="flex items-center justify-between py-2 px-3 rounded-lg cursor-pointer transition-all"
-                        :style="
-                          editingId === item.id
-                            ? 'background-color: rgba(99,102,241,0.08); outline: 2px solid var(--primary-color);'
-                            : 'background-color: var(--sidebar-bg);'
-                        "
-                        @click="startEdit(item)"
-                      >
-                        <span class="text-sm" style="color: var(--text-color)">{{
-                          item.description
-                        }}</span>
-
-                        <div class="flex items-center gap-1.5">
-                          <button
-                            v-if="!isDefaultShortcut(item)"
-                            class="w-6 h-6 flex items-center justify-center text-xs text-gray-400 hover:text-gray-600 hover:bg-gray-200 rounded transition-colors"
-                            title="重置为默认"
-                            @click.stop="resetShortcut(item)"
-                          >
-                            ↺
-                          </button>
-
-                          <input
-                            v-if="editingId === item.id"
-                            :ref="setCaptureInputRef"
-                            type="text"
-                            readonly
-                            data-shortcut-capture="true"
-                            :value="formatShortcutDisplay(editingKey)"
-                            class="shortcut-input editing"
-                            placeholder="按下..."
-                            @keydown="captureKeydown($event, item)"
-                            @blur="cancelEdit"
-                          />
-
-                          <div
-                            v-else
-                            class="shortcut-input"
-                            :class="{ custom: !isDefaultShortcut(item) }"
-                          >
-                            {{ formatShortcutDisplay(item.shortcut) }}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </section>
-                </div>
+                <ShortcutSettingsPanel
+                  v-show="activeTab === 'shortcuts'"
+                  :conflict-warning="conflictWarning"
+                  :editing-id="editingId"
+                  :editing-key="editingKey"
+                  :format-shortcut-display="formatShortcutDisplay"
+                  :is-default-shortcut="isDefaultShortcut"
+                  :is-mac="isMac"
+                  :set-capture-input-ref="setCaptureInputRef"
+                  :shortcut-groups="shortcutGroups"
+                  @reset-all="resetAllShortcuts"
+                  @reset-shortcut="resetShortcut"
+                  @start-edit="startEdit"
+                  @cancel-edit="cancelEdit"
+                  @capture-keydown="captureKeydown"
+                />
 
                 <!-- 保存设置 -->
                 <SaveSettingsPanel
@@ -395,10 +331,6 @@ function onKeyDown(e: KeyboardEvent) {
   margin-bottom: 14px;
 }
 
-.settings-section-heading--compact {
-  margin-bottom: 12px;
-}
-
 .settings-section-title {
   color: var(--text-color);
   font-size: 15px;
@@ -432,49 +364,6 @@ function onKeyDown(e: KeyboardEvent) {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
-}
-
-.settings-warning-card {
-  padding: 14px 16px;
-  border-color: #facc15;
-  background: #fefce8;
-}
-
-.settings-warning-text {
-  color: #a16207;
-  font-size: 13px;
-  font-weight: 600;
-}
-
-/* 快捷键输入框样式 */
-.shortcut-input {
-  min-width: 100px;
-  height: 30px;
-  padding: 0 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 13px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-  background: var(--bg-color);
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  color: var(--text-color);
-  text-align: center;
-  white-space: nowrap;
-  letter-spacing: 0.5px;
-}
-
-.shortcut-input.custom {
-  color: var(--primary-color);
-  border-color: var(--primary-color);
-}
-
-.shortcut-input.editing {
-  background: rgba(99, 102, 241, 0.08);
-  border-color: var(--primary-color);
-  color: var(--primary-color);
-  outline: none;
 }
 
 @media (max-width: 960px) {
