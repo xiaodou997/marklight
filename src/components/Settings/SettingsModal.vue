@@ -2,7 +2,6 @@
 import { ref, computed } from 'vue';
 import { confirm } from '@tauri-apps/plugin-dialog';
 import { useSettingsStore } from '../../stores/settings';
-import { WECHAT_THEMES } from '../../utils/wechat-themes';
 import SettingsModalFooter from './SettingsModalFooter.vue';
 import SettingsModalHeader from './SettingsModalHeader.vue';
 import SettingsPageHeader from './SettingsPageHeader.vue';
@@ -11,6 +10,7 @@ import ThemeEditor from './ThemeEditor.vue';
 import SettingsRangeField from './SettingsRangeField.vue';
 import SettingsSidebarNav, { type SettingsTabKey } from './SettingsSidebarNav.vue';
 import SettingsSwitch from './SettingsSwitch.vue';
+import WechatThemeSelector from './WechatThemeSelector.vue';
 import { useShortcutSettings } from './useShortcutSettings';
 
 const settingsStore = useSettingsStore();
@@ -447,43 +447,7 @@ function onKeyDown(e: KeyboardEvent) {
                         </p>
                       </div>
                     </div>
-                    <div class="grid grid-cols-2 gap-3 mt-3">
-                      <button
-                        v-for="theme in WECHAT_THEMES"
-                        :key="theme.id"
-                        class="p-3 rounded-lg border-2 transition-all text-left"
-                        :style="
-                          settings.wechatTheme === theme.id
-                            ? 'border-color: var(--primary-color); background-color: rgba(99,102,241,0.08);'
-                            : 'border-color: var(--border-color);'
-                        "
-                        @click="settings.wechatTheme = theme.id"
-                      >
-                        <div class="flex items-center gap-2 mb-2">
-                          <span
-                            class="w-4 h-4 rounded-full"
-                            :style="{ backgroundColor: theme.colors.primary }"
-                          ></span>
-                          <span class="text-sm font-medium" style="color: var(--text-color)">{{
-                            theme.name
-                          }}</span>
-                        </div>
-                        <div class="flex gap-1">
-                          <span
-                            class="w-6 h-2 rounded"
-                            :style="{ backgroundColor: theme.colors.primary }"
-                          ></span>
-                          <span
-                            class="w-6 h-2 rounded"
-                            :style="{ backgroundColor: theme.colors.primaryDark }"
-                          ></span>
-                          <span
-                            class="w-6 h-2 rounded"
-                            :style="{ backgroundColor: theme.colors.codeBg }"
-                          ></span>
-                        </div>
-                      </button>
-                    </div>
+                    <WechatThemeSelector v-model="settings.wechatTheme" />
                   </section>
                 </div>
               </div>
