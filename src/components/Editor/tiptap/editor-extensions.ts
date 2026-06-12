@@ -20,6 +20,7 @@ import { MathInline } from './extensions/math-inline';
 import { MermaidBlock } from './extensions/mermaid-block';
 import { Callout } from './extensions/callout';
 import { Frontmatter } from './extensions/frontmatter';
+import { SemanticInlineMarks } from './extensions/semantic-inline-marks';
 import { MarkdownInputRules } from './extensions/input-rules';
 import { Superscript, Subscript } from './extensions/sub-sup';
 import { Wikilink } from './extensions/wikilink';
@@ -76,6 +77,7 @@ export function createEditorExtensions(options: EditorExtensionOptions) {
     MermaidBlock,
     Callout,
     Frontmatter,
+    SemanticInlineMarks,
     MarkdownInputRules,
     Superscript,
     Subscript,
