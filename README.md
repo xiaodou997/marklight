@@ -73,15 +73,15 @@ More documentation:
 ## Development
 
 ```bash
-bun install
-bun run dev
-bun run dev:tauri
-bun run build
-bun run build:tauri
-bun run lint
-bun run format
-bunx vue-tsc --noEmit
-bun run test
+npm install
+npm run dev
+npm run dev:tauri
+npm run build
+npm run build:tauri
+npm run lint
+npm run format
+npx vue-tsc --noEmit
+npm run test
 cargo check --manifest-path src-tauri/Cargo.toml
 ```
 

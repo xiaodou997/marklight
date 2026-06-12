@@ -12,15 +12,15 @@
 ### Frontend and app
 
 ```bash
-bun install
-bun run dev
-bun run dev:tauri
-bun run build
-bun run build:tauri
-bun run preview
-bun run lint
-bun run lint:fix
-bun run format
+npm install
+npm run dev
+npm run dev:tauri
+npm run build
+npm run build:tauri
+npm run preview
+npm run lint
+npm run lint:fix
+npm run format
 ```
 
 ### Tests
@@ -29,7 +29,7 @@ Vitest is configured in `vitest.config.ts`.
 Run tests with:
 
 ```bash
-bun run test
+npm run test
 ```
 
 ## What lives where
