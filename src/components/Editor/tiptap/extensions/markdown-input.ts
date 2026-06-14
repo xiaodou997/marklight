@@ -125,6 +125,12 @@ export const MarkdownInput = Extension.create({
   },
 });
 
+// 测试基建：导出插件工厂、PluginKey 与状态类型，供 IME/输入编排回归测试驱动
+// 状态机（用 meta 事务模拟 compositionstart/end、用 fake timers 推进 Date.now/setTimeout）。
+// 仅为可测性增加的 additive export，不改变任何运行时行为或分支。
+export { markdownInputPlugin, markdownInputPluginKey };
+export type { MarkdownInputState };
+
 function markdownInputPlugin(): Plugin<MarkdownInputState> {
   return new Plugin<MarkdownInputState>({
     key: markdownInputPluginKey,
