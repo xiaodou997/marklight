@@ -151,6 +151,31 @@ describe('状态机层：composition 编排不变量', () => {
     expect(markNames(state.doc).has('bold')).toBe(true);
   });
 
+  it('(b2) `[` + 中文 composition + `](url)`：settle 后转 link mark', () => {
+    // 已输入 `[`，光标在末尾（pos 2）。
+    let state = stateWith(docOf(paragraph('[')), 2);
+
+    state = dispatch(state, (tr) => metaCompositionStart(tr));
+    state = dispatch(state, (tr) => tr.insertText('中文', state.selection.from));
+    // composition 期间不转。
+    expect(markNames(state.doc).has('link')).toBe(false);
+
+    state = dispatch(state, (tr) => metaCompositionEnd(tr, Date.now() + 50));
+    // 闭合 `](url)` 由非 IME 输入补上。
+    state = dispatch(state, (tr) => tr.insertText('](https://a.com)', state.selection.from));
+    // 抑制窗内不转。
+    expect(markNames(state.doc).has('link')).toBe(false);
+
+    vi.advanceTimersByTime(50);
+    state = dispatch(state, (tr) => metaForceCheck(tr));
+
+    // `[中文](https://a.com)` → link「中文」，href 正确。
+    const text = state.doc.firstChild!.firstChild!;
+    expect(text.textContent).toBe('中文');
+    const linkMark = text.marks.find((m) => m.type.name === 'link');
+    expect(linkMark?.attrs.href).toBe('https://a.com');
+  });
+
   it('(c) 空标题 Backspace → 回退成 `# ` paragraph', () => {
     // heading(level 2) 含「X」，光标在 X 之后（pos 2）。
     let state = stateWith(docOf(heading(2, 'X')), 2);

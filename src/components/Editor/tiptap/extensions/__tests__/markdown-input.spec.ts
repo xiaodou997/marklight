@@ -5,6 +5,7 @@ import { createMarkdownCompatSchema } from '../../markdown/compat-schema';
 import {
   convertPendingHeading,
   convertPendingInlineMarks,
+  convertPendingLink,
   revertEmptyHeading,
 } from '../markdown-input';
 
@@ -89,6 +90,82 @@ describe('convertPendingInlineMarks', () => {
           content: [{ type: 'text', text: '**未完成*' }],
         },
       ],
+    });
+  });
+});
+
+function convertLinkSyntax(text: string) {
+  const schema = createMarkdownCompatSchema();
+  const paragraph = schema.nodes.paragraph.create(null, [schema.text(text)]);
+  const doc = schema.nodes.doc.create(null, [paragraph]);
+  const state = EditorState.create({
+    schema,
+    doc,
+    selection: TextSelection.create(doc, 1 + text.length),
+  });
+
+  const tr = convertPendingLink(state.tr, state);
+  return tr ? state.apply(tr).doc.toJSON() : state.doc.toJSON();
+}
+
+describe('convertPendingLink', () => {
+  it('converts `[text](url)` into a link mark with href', () => {
+    expect(convertLinkSyntax('[OpenAI](https://openai.com)')).toEqual({
+      type: 'doc',
+      content: [
+        {
+          type: 'paragraph',
+          content: [
+            {
+              type: 'text',
+              marks: [{ type: 'link', attrs: { href: 'https://openai.com', target: null, title: null } }],
+              text: 'OpenAI',
+            },
+          ],
+        },
+      ],
+    });
+  });
+
+  it('converts a link with Chinese link text', () => {
+    const json = convertLinkSyntax('[中文链接](https://a.com)');
+    const textNode = json.content[0].content[0];
+    expect(textNode.text).toBe('中文链接');
+    expect(textNode.marks[0].type).toBe('link');
+    expect(textNode.marks[0].attrs.href).toBe('https://a.com');
+  });
+
+  it('keeps text before the link unmarked', () => {
+    const json = convertLinkSyntax('see [docs](https://x.com)');
+    expect(json.content[0].content).toEqual([
+      { type: 'text', text: 'see ' },
+      {
+        type: 'text',
+        marks: [{ type: 'link', attrs: { href: 'https://x.com', target: null, title: null } }],
+        text: 'docs',
+      },
+    ]);
+  });
+
+  it('does not convert incomplete or empty link syntax', () => {
+    expect(convertLinkSyntax('[text](')).toEqual({
+      type: 'doc',
+      content: [{ type: 'paragraph', content: [{ type: 'text', text: '[text](' }] }],
+    });
+    expect(convertLinkSyntax('[text]()')).toEqual({
+      type: 'doc',
+      content: [{ type: 'paragraph', content: [{ type: 'text', text: '[text]()' }] }],
+    });
+    expect(convertLinkSyntax('[](https://x.com)')).toEqual({
+      type: 'doc',
+      content: [{ type: 'paragraph', content: [{ type: 'text', text: '[](https://x.com)' }] }],
+    });
+  });
+
+  it('does not convert when a url contains whitespace', () => {
+    expect(convertLinkSyntax('[text](https://x.com a)')).toEqual({
+      type: 'doc',
+      content: [{ type: 'paragraph', content: [{ type: 'text', text: '[text](https://x.com a)' }] }],
     });
   });
 });
