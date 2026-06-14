@@ -66,35 +66,37 @@ export function parseMarkdownTablePaste(schema: Schema, text: string): Slice | n
 
 const markdownPastePluginKey = new PluginKey('markdownPaste');
 
+export function markdownPastePlugin(): Plugin {
+  return new Plugin({
+    key: markdownPastePluginKey,
+    props: {
+      handlePaste(view, event) {
+        const clipboard = event.clipboardData;
+        if (!clipboard) return false;
+
+        const text = clipboard.getData('text/plain');
+        if (!text || !looksLikeMarkdownTable(text)) return false;
+
+        // 剪贴板带有富文本 `<table>`（从网页/Excel 拷）时，交给默认 HTML 粘贴，
+        // 避免双重转换或丢失来源格式。
+        const html = clipboard.getData('text/html');
+        if (html && /<table[\s>]/i.test(html)) return false;
+
+        const slice = parseMarkdownTablePaste(view.state.schema, text);
+        if (!slice) return false;
+
+        const tr = view.state.tr.replaceSelection(slice).scrollIntoView();
+        view.dispatch(tr);
+        return true;
+      },
+    },
+  });
+}
+
 export const MarkdownPaste = Extension.create({
   name: 'markdownPaste',
 
   addProseMirrorPlugins() {
-    return [
-      new Plugin({
-        key: markdownPastePluginKey,
-        props: {
-          handlePaste(view, event) {
-            const clipboard = event.clipboardData;
-            if (!clipboard) return false;
-
-            const text = clipboard.getData('text/plain');
-            if (!text || !looksLikeMarkdownTable(text)) return false;
-
-            // 剪贴板带有富文本 `<table>`（从网页/Excel 拷）时，交给默认 HTML 粘贴，
-            // 避免双重转换或丢失来源格式。
-            const html = clipboard.getData('text/html');
-            if (html && /<table[\s>]/i.test(html)) return false;
-
-            const slice = parseMarkdownTablePaste(view.state.schema, text);
-            if (!slice) return false;
-
-            const tr = view.state.tr.replaceSelection(slice).scrollIntoView();
-            view.dispatch(tr);
-            return true;
-          },
-        },
-      }),
-    ];
+    return [markdownPastePlugin()];
   },
 });
