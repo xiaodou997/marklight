@@ -98,6 +98,7 @@
   content: 'H6';
 }
 
+/* ── Pending heading（输入 `# 文字` 时尚未转成真正 heading 的段落）── */
 .tiptap-editor .mk-pending-heading {
   position: relative;
 }
@@ -163,10 +164,8 @@
 /*
  * Pending heading 前缀样式：
  * `# ` 文本以淡化颜色显示，类似 Typora 的 Markdown 语法提示。
- * 不使用 color: transparent 或 font-size: 0，因为：
- * - color: transparent 会让 IME 拼音预编辑文本也变透明
- * - font-size: 0 会让光标消失
- * 用淡化颜色既能提示用户这是 Markdown 语法，又不影响光标和 IME。
+ * 不使用 color: transparent 或 font-size: 0：前者会让 IME 拼音预编辑文本也变透明，
+ * 后者会让光标消失。淡化颜色既提示这是 Markdown 语法，又不影响光标和 IME。
  */
 .tiptap-editor .mk-pending-heading-prefix {
   color: var(--muted-color);
@@ -225,9 +224,14 @@
 }
 
 /* ── 引用块 ────────────────────────────────────────────────── */
+/*
+ * padding-left 预留 ≥ 标题 gutter 宽度：
+ * 引用块内的标题，其 H badge（h1..h6::before，left: -gutter）会落在这段内距里，
+ * 位于竖线右侧而非压在竖线上。gutter 之外再补一点 gap 让正文与竖线留出呼吸空间。
+ */
 .tiptap-editor blockquote {
   border-left: 3px solid var(--primary-color);
-  padding-left: 12px;
+  padding-left: calc(var(--mk-heading-gutter-width) + var(--mk-heading-gutter-gap));
   margin: 0.5em 0;
   color: var(--text-color);
   opacity: 0.85;
