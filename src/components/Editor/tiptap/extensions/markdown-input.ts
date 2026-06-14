@@ -272,6 +272,10 @@ function markdownInputPlugin(): Plugin<MarkdownInputState> {
       const marks = convertPendingInlineMarks(newState.tr, newState);
       if (marks) return marks;
 
+      // 4. 链接直输 [文字](url)：带 href attr，单独处理（同一兜底路径，覆盖 IME）。
+      const link = convertPendingLink(newState.tr, newState);
+      if (link) return link;
+
       return null;
     },
   });
@@ -371,6 +375,49 @@ export function convertPendingInlineMarks(
   tr.delete(openingStart, innerStart);
   tr.addMark(openingStart, openingStart + match.innerText.length, match.markType.create());
   tr.removeStoredMark(match.markType);
+
+  return tr.steps.length ? tr : null;
+}
+
+// ── 链接直输 [文字](url) ───────────────────────────────────────
+
+// 链接文本不含 `]`/换行且非空；URL 不含空白与括号且非空；锚定在光标前文本末尾。
+const linkInputRegex = /\[([^\]\n]+)\]\(([^()\s]+)\)$/;
+
+/**
+ * 光标前文本以 `[文字](url)` 结尾时，转换为 link mark（href=url）。
+ *
+ * 与 convertPendingInlineMarks 同构（删闭合、删开头、加 mark），但 link 带 href
+ * 属性、结构特殊，故单列。非 IME 即时转换、IME 经 compositionend 的 forceCheck 兜底。
+ */
+export function convertPendingLink(tr: Transaction, state: EditorState): Transaction | null {
+  const linkType = state.schema.marks.link;
+  if (!linkType) return null;
+
+  const { $cursor } = state.selection as TextSelection;
+  if (!$cursor) return null;
+
+  const parent = $cursor.parent;
+  if (!parent.isTextblock || parent.type.spec.code) return null;
+
+  const textBeforeCursor = parent.textBetween(0, $cursor.parentOffset, undefined, '￼');
+  const match = linkInputRegex.exec(textBeforeCursor);
+  if (!match) return null;
+
+  const linkText = match[1];
+  const href = match[2];
+  if (!linkText || !href) return null;
+
+  const parentStart = $cursor.start();
+  const openBracketPos = parentStart + (textBeforeCursor.length - match[0].length);
+  const textStart = openBracketPos + 1;
+  const textEnd = textStart + linkText.length;
+  const closeEnd = openBracketPos + match[0].length;
+
+  tr.delete(textEnd, closeEnd); // 删 `](url)`
+  tr.delete(openBracketPos, textStart); // 删 `[`
+  tr.addMark(openBracketPos, openBracketPos + linkText.length, linkType.create({ href }));
+  tr.removeStoredMark(linkType);
 
   return tr.steps.length ? tr : null;
 }
