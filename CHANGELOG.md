@@ -10,11 +10,14 @@
 
 ## [Unreleased]
 
+## [1.1.5] - 2026-06-14
+
 ### 🚀 新功能
-- feat(editor): 粘贴 Markdown 表格自动识别为表格节点
+- feat(editor): 粘贴 Markdown 表格自动识别为表格节点 (#9)
 - feat(editor): 支持 `[文字](url)` 链接直输 (#7)
 
 ### 🧪 测试
+- test: 给粘贴表格加真实 EditorView 端到端测试 (#10)
 - test: 给 IME/输入编排路径加自动化回归测试 (#6)
 
 ## [1.1.4] - 2026-06-14
