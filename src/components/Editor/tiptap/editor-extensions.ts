@@ -21,6 +21,7 @@ import { MermaidBlock } from './extensions/mermaid-block';
 import { Callout } from './extensions/callout';
 import { Frontmatter } from './extensions/frontmatter';
 import { MarkdownInput } from './extensions/markdown-input';
+import { MarkdownPaste } from './extensions/markdown-paste';
 import { Superscript, Subscript } from './extensions/sub-sup';
 import { Wikilink } from './extensions/wikilink';
 import {
@@ -77,6 +78,7 @@ export function createEditorExtensions(options: EditorExtensionOptions) {
     Callout,
     Frontmatter,
     MarkdownInput,
+    MarkdownPaste,
     Superscript,
     Subscript,
     Wikilink,

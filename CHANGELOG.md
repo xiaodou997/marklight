@@ -11,6 +11,7 @@
 ## [Unreleased]
 
 ### 🚀 新功能
+- feat(editor): 粘贴 Markdown 表格自动识别为表格节点
 - feat(editor): 支持 `[文字](url)` 链接直输 (#7)
 
 ### 🧪 测试
