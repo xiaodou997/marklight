@@ -24,6 +24,7 @@ Thumbs.db
 *.log
 npm-debug.log*
 pnpm-debug.log*
+bun-debug.log*
 
 # Environment
 .env

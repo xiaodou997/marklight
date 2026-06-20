@@ -98,11 +98,10 @@ jobs:
           echo -e "$BODY" >> $GITHUB_OUTPUT
           echo "$EOF" >> $GITHUB_OUTPUT
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          node-version: 24
-          cache: npm
+          bun-version: 1.3.14
 
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
@@ -115,7 +114,7 @@ jobs:
           workspaces: './src-tauri -> target'
 
       - name: Install frontend dependencies
-        run: npm ci
+        run: bun install --frozen-lockfile
 
       - name: Build the app
         uses: tauri-apps/tauri-action@v0

@@ -5,9 +5,9 @@
 本计划用于把当前代码库从“可运行”推进到边界清晰、可持续维护的状态。执行时必须保持小提交；每个阶段完成后都要通过：
 
 ```bash
-npm run test
-npm run lint
-npm run build
+bun run test
+bun run lint
+bun run build
 cargo test --manifest-path src-tauri/Cargo.toml
 ```
 
